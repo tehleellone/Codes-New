@@ -748,6 +748,8 @@ if (fneIsAdmin()) {
     listView.style.display = 'none';
     listView.innerHTML = fneListHTML();
     content.appendChild(listView);
+
+    fneInjectHistoryModal();
   
     // Wire TCV auto-calc
     ['fne_mrc','fne_otc','fne_contract_dur'].forEach(id => {
@@ -1310,6 +1312,34 @@ if (fneIsAdmin()) {
   .ms-option { display: flex; align-items: center; gap: .45rem; padding: .42rem .65rem; cursor: pointer; font-size: .8rem; }
   .ms-option:hover { background: var(--nab); }
   .ms-option input { accent-color: var(--acc); }
+
+  /* Version history (edit mode) */
+  .fne-history-timeline { display: flex; flex-direction: column; gap: 14px; }
+  .fne-history-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; box-shadow: var(--cs);
+  }
+  .fne-history-card-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 14px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+  }
+  .fne-history-version-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 42px; padding: 4px 10px; border-radius: 999px;
+    background: var(--nab); border: 1px solid var(--nab2); color: var(--acc);
+    font-size: .72rem; font-weight: 800;
+  }
+  .fne-history-changes-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+  .fne-history-changes-table th {
+    text-align: left; padding: 8px 12px; background: var(--bg-secondary);
+    color: var(--t3); font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 1px solid var(--border);
+  }
+  .fne-history-changes-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .fne-history-changes-table tr:last-child td { border-bottom: none; }
+  .fne-history-old { color: var(--t3); text-decoration: line-through; }
+  .fne-history-new { color: var(--t1); font-weight: 700; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   </style>
   
   <div id="fneToast" class="fne-toast"></div>
@@ -1352,7 +1382,11 @@ if (fneIsAdmin()) {
     <div id="fneEditBanner" class="fne-edit-banner">
       <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       <span id="fneEditBannerTxt">Editing record —</span>
-      <button class="fne-btn fne-btn-secondary" style="padding:.25rem .65rem;font-size:.72rem;margin-left:auto;" onclick="fneOpenForm(null)">
+      <button type="button" class="fne-btn fne-btn-secondary" id="fneViewHistoryBtn" style="display:none;padding:.25rem .65rem;font-size:.72rem;margin-left:auto;" onclick="fneShowItemHistory()">
+        <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        View History
+      </button>
+      <button class="fne-btn fne-btn-secondary" style="padding:.25rem .65rem;font-size:.72rem;" onclick="fneOpenForm(null)">
         + New Instead
       </button>
     </div>
@@ -1793,7 +1827,8 @@ function fneOpenForm(itemId, fromList) {
       if (banner)    banner.style.display = 'none';
       if (saveBtn)   saveBtn.textContent  = 'Save Entry';
       if (delBtn)    delBtn.style.display = 'none';
-      // Unlock all one-time fields
+      const histBtn = document.getElementById('fneViewHistoryBtn');
+      if (histBtn) histBtn.style.display = 'none';
       fneSetLockState('exp_rfs', false);
       fneSetLockState('impl_start', false);
       fneSetActualRfsMaxDate();
@@ -1817,6 +1852,8 @@ function fneOpenForm(itemId, fromList) {
       banner.style.display = 'flex';
       bannerTxt.textContent = 'Editing ID ' + itemId + ' — ' + (item.customerName || '');
     }
+    const histBtn = document.getElementById('fneViewHistoryBtn');
+    if (histBtn) histBtn.style.display = 'inline-flex';
   
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
     const clean = v => (v === '—' ? '' : v) || '';
@@ -1945,6 +1982,17 @@ function fneOpenForm(itemId, fromList) {
     } else {
       fneResetForm();
     }
+  }
+
+  // After a create/update/delete completes, land back on the Tracker List
+  // instead of leaving the user stuck on the New Entry / Edit form.
+  function fneGoToListAfterSave() {
+    FNE_EDIT_ID = null;
+    FNE_CAME_FROM_LIST = false;
+    FNE_PENDING_ATTACH = [];
+    FNE_EXISTING_ATTACH = [];
+    fneEnsurePowerUserUi();
+    showFneView('list', document.getElementById('navFneList'));
   }
   
   // ══════════════════════════════════════════════════════════════════
@@ -2230,6 +2278,7 @@ if (!fneIsAdmin()) {
           if (saveBtnEl) saveBtnEl.disabled = false;
           fneFetchAndUpsertItem(savedId, function() {
             fneUpdateListCounts();
+            fneGoToListAfterSave();
           });
         });
       };
@@ -2346,6 +2395,7 @@ if (!fneIsAdmin()) {
           fneSetLockState('exp_rfs',   false);
           fneSetLockState('impl_start', false);
           if (deletedId) fneRemoveListItems([deletedId]);
+          fneGoToListAfterSave();
         } else {
           fneToast('Delete failed: HTTP ' + xhr.status, 'error');
         }
@@ -2435,11 +2485,36 @@ if (!fneIsAdmin()) {
     fneLoadList(true);
   }
 
+  // When embedded in the main dashboard (fne.html), the dashboard already
+  // fetches this same SharePoint list on launch. Reuse that raw data instead
+  // of hitting SharePoint a second time when the user opens Tracker List.
+  function fneTryHydrateFromDashboard() {
+    if (window.FNE_STANDALONE) return false;
+    const raw = window.FNE_RAW_ITEMS;
+    if (!Array.isArray(raw) || !raw.length) return false;
+    FNE_LIST_DATA = raw.map(fneMapItem);
+    FNE_LIST_LOADED = true;
+    fneRecalcMaxListId();
+    FNE_LAST_SYNC_ISO = new Date().toISOString();
+    fneListBuildAllFilters();
+    return true;
+  }
+
   function fneLoadList(force, onComplete) {
     if (FNE_LIST_LOADING) return;
     if (!force && FNE_LIST_LOADED) {
       fneListApplyFilter();
       if (onComplete) onComplete();
+      return;
+    }
+    if (!force && !FNE_LIST_LOADED && fneTryHydrateFromDashboard()) {
+      fneListApplyFilter();
+      fneUpdateListCounts();
+      const spinner0 = document.getElementById('fneListSpinner');
+      const gridEl0  = document.getElementById('fneGrid');
+      if (spinner0) spinner0.style.display = 'none';
+      if (gridEl0)  gridEl0.style.display  = 'block';
+      if (onComplete) onComplete(null);
       return;
     }
 
@@ -3757,6 +3832,306 @@ if (!fneIsAdmin()) {
   }
   
   
+  // ══════════════════════════════════════════════════════════════════
+  //  VERSION HISTORY (SharePoint item versions — same pattern as SM)
+  // ══════════════════════════════════════════════════════════════════
+  const FNE_HISTORY_FIELDS = {
+    'Title': 'FES / Shortfall Ref',
+    [FNE_F.SUB_REQ]: 'Request Type',
+    [FNE_F.IMPL_TYPE]: 'Implementation Type',
+    [FNE_F.START_DATE]: 'Received Date',
+    [FNE_F.SLA]: 'SLA (days)',
+    [FNE_F.EXP_RFS]: 'Expected RFS Date',
+    [FNE_F.BUILD_STATUS]: 'Building Connectivity',
+    [FNE_F.CUST_NAME]: 'Customer Name',
+    [FNE_F.SOF]: 'SOF',
+    [FNE_F.MRC]: 'MRC',
+    [FNE_F.EST_COST]: 'Estimated Cost',
+    [FNE_F.VERTICAL]: 'Vertical',
+    [FNE_F.COMMENTS]: 'Comments',
+    [FNE_F.REQ_STATUS]: 'Request Status',
+    [FNE_F.CUST_ADDR]: 'Customer Address',
+    [FNE_F.ACC_CODE]: 'Account Code',
+    [FNE_F.ASSIGNED_BY]: 'Assigned By',
+    [FNE_F.PROJ_TYPE]: 'Connectivity Type',
+    [FNE_F.UNIT_NO]: 'Unit No',
+    [FNE_F.OTC]: 'OTC',
+    [FNE_F.TCV]: 'TCV',
+    [FNE_F.OSP_REQ]: 'OSP Civil',
+    [FNE_F.OSP_ET]: 'OSP ET (days)',
+    [FNE_F.FES_REF]: 'FES Reference',
+    [FNE_F.SURVEY_REF]: 'Site Survey Ref',
+    [FNE_F.GAID]: 'GAID',
+    [FNE_F.BID_REF]: 'Bid Number',
+    [FNE_F.WO_NUM]: 'WO Number',
+    [FNE_F.ACC_DIR]: 'Account Director',
+    [FNE_F.CONTRACT_DUR]: 'Contract Duration',
+    [FNE_F.FNE_MGR]: 'FNE Manager',
+    [FNE_F.RFS_BASELINE]: 'Actual RFS Date',
+    [FNE_F.CRITICAL_PROJ]: 'Critical Project',
+    [FNE_F.COMMENTS_NEW]: 'Comments (New)',
+    [FNE_F.IMPL_START]: 'Implementation Start Date',
+    [FNE_F.PROJ_HEALTH]: 'Project Health',
+    [FNE_F.SPI]: 'SPI',
+    [FNE_F.TEMP_CONN]: 'Temporary Connection',
+    [FNE_F.TARGET_MIG]: 'Target Migration Date',
+    [FNE_F.BLOCKER]: 'Blocker',
+    [FNE_F.PM_MAN_DAYS]: 'Project Duration',
+    'Account_x0020_Manager': 'Account Manager',
+  };
+
+  let FNE_LIST_GUID = '';
+
+  function fneInjectHistoryModal() {
+    if (document.getElementById('fneEditHistoryModal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'fneEditHistoryModal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:24px;';
+    modal.innerHTML = `
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:18px;max-width:1100px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.35);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);background:var(--bg-secondary);">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;">Item Version History</div>
+            <div id="fneEditHistoryModalTitle" style="font-size:17px;font-weight:800;color:var(--t1);margin-top:4px;"></div>
+            <div style="font-size:12px;color:var(--t3);margin-top:4px;">Track who changed what and when — same data as SharePoint version history</div>
+          </div>
+          <button type="button" onclick="fneCloseItemHistory()" style="background:rgba(239,68,68,.12);border:none;border-radius:10px;width:36px;height:36px;cursor:pointer;color:#ef4444;font-size:20px;line-height:1;">×</button>
+        </div>
+        <div id="fneEditHistoryModalBody" style="padding:20px 22px;overflow-y:auto;flex:1;"></div>
+      </div>`;
+    modal.addEventListener('click', function(e) { if (e.target === modal) fneCloseItemHistory(); });
+    document.body.appendChild(modal);
+  }
+
+  function fneHistoryFmtDate(iso) {
+    if (!iso) return 'N/A';
+    const d = new Date(iso);
+    if (isNaN(d)) return String(iso);
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function fneHistoryNorm(val) {
+    if (val === null || val === undefined) return '';
+    return String(val).replace(/\u00a0/g, ' ').trim();
+  }
+
+  function fneCleanSpHistoryValue(val) {
+    val = fneHistoryNorm(val);
+    if (val.indexOf(';#') >= 0) val = val.split(';#').pop();
+    if (val.includes('<')) val = fneHtmlToPlain(val);
+    return val;
+  }
+
+  function fneHistoryFieldLabel(raw) {
+    const key = String(raw || '').trim();
+    if (!key) return key;
+    if (FNE_HISTORY_FIELDS[key]) return FNE_HISTORY_FIELDS[key];
+    return key.replace(/_x0020_/g, ' ').replace(/_x002d_/g, '-').replace(/_/g, ' ').trim();
+  }
+
+  function fneParseVersionFields(data) {
+    if (!data || !data.d) return {};
+    const d = data.d;
+    if (d.FieldValuesAsText && typeof d.FieldValuesAsText === 'object' && !d.FieldValuesAsText.__deferred) {
+      return d.FieldValuesAsText;
+    }
+    const copy = Object.assign({}, d);
+    delete copy.__metadata;
+    if (copy.FieldValuesAsText && copy.FieldValuesAsText.__deferred) delete copy.FieldValuesAsText;
+    return copy;
+  }
+
+  function fneEditorFromFields(fields) {
+    return fneCleanSpHistoryValue(fields.Editor || fields['Modified By'] || fields.Author || '');
+  }
+
+  function fneHistoryVersionLabel(version) {
+    if (!version) return '';
+    if (version.VersionLabel) return version.VersionLabel;
+    if (version.VersionId) return (version.VersionId / 512).toFixed(1);
+    return String(version.ID || '');
+  }
+
+  function fneCompareVersionFields(newerFields, olderFields) {
+    const changes = [];
+    const checked = {};
+    function pushChange(key) {
+      if (checked[key] || !key || key.indexOf('__') === 0) return;
+      checked[key] = true;
+      const oldVal = fneCleanSpHistoryValue((olderFields || {})[key]);
+      const newVal = fneCleanSpHistoryValue((newerFields || {})[key]);
+      if (oldVal === newVal) return;
+      changes.push({
+        label: FNE_HISTORY_FIELDS[key] || fneHistoryFieldLabel(key),
+        oldVal: oldVal || '—',
+        newVal: newVal || '—',
+      });
+    }
+    Object.keys(FNE_HISTORY_FIELDS).forEach(pushChange);
+    Object.keys(newerFields || {}).forEach(pushChange);
+    Object.keys(olderFields || {}).forEach(pushChange);
+    return changes;
+  }
+
+  function fneHistoryFetch(url) {
+    return fetch(url, {
+      headers: { Accept: 'application/json;odata=verbose' },
+      credentials: 'include',
+    });
+  }
+
+  function fneGetListGuid() {
+    if (FNE_LIST_GUID) return Promise.resolve(FNE_LIST_GUID);
+    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')?$select=Id";
+    return fneHistoryFetch(url).then(function(res) {
+      if (!res.ok) throw new Error('Could not resolve SharePoint list ID');
+      return res.json();
+    }).then(function(data) {
+      FNE_LIST_GUID = data.d.Id;
+      return FNE_LIST_GUID;
+    });
+  }
+
+  function fneFetchItemVersions(itemId) {
+    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items(" + itemId + ")/versions";
+    return fneHistoryFetch(url).then(function(res) {
+      if (!res.ok) throw new Error('Failed to load version history (' + res.status + ')');
+      return res.json();
+    }).then(function(data) {
+      const versions = data.d.results || [];
+      versions.sort(function(a, b) { return new Date(b.Created) - new Date(a.Created); });
+      return versions;
+    });
+  }
+
+  function fneFetchVersionFields(itemId, versionId) {
+    const textUrl = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items(" + itemId + ")/versions(" + versionId + ")/FieldValuesAsText";
+    return fneHistoryFetch(textUrl).then(function(res) {
+      if (res.ok) return res.json().then(function(data) { return fneParseVersionFields(data); });
+      return fneHistoryFetch(
+        FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items(" + itemId + ")/versions(" + versionId + ")"
+      ).then(function(res2) {
+        if (!res2.ok) return {};
+        return res2.json().then(function(data) { return fneParseVersionFields(data); });
+      });
+    }).catch(function() { return {}; });
+  }
+
+  function fneBuildItemHistoryEntries(itemId) {
+    return fneFetchItemVersions(itemId).then(function(versions) {
+      if (!versions.length) return [];
+      return Promise.all(versions.map(function(v) { return fneFetchVersionFields(itemId, v.ID); })).then(function(fieldSets) {
+        return versions.map(function(v, idx) {
+          const fields = fieldSets[idx] || {};
+          const olderFields = idx < versions.length - 1 ? (fieldSets[idx + 1] || {}) : null;
+          const changes = olderFields ? fneCompareVersionFields(fields, olderFields) : [];
+          let editor = fneEditorFromFields(fields);
+          if (!editor && v.Editor && typeof v.Editor === 'object' && v.Editor.Title) editor = v.Editor.Title;
+          return {
+            versionId: v.ID,
+            versionLabel: fneHistoryVersionLabel(v),
+            created: v.Created,
+            editor: editor,
+            changes: changes,
+            isCurrent: idx === 0,
+          };
+        });
+      });
+    });
+  }
+
+  function fneRenderItemHistoryTimeline(entries, container) {
+    if (!entries.length) {
+      container.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--t3);">' +
+        '<div style="font-size:15px;font-weight:700;">No version history</div>' +
+        '<div style="font-size:13px;margin-top:6px;">This item has not been modified since creation.</div></div>';
+      return;
+    }
+
+    let html = '<div class="fne-history-timeline">';
+    entries.forEach(function(entry, idx) {
+      const hasChanges = entry.changes && entry.changes.length > 0;
+      const versionText = entry.versionLabel || ('v' + (idx + 1));
+      html += '<div class="fne-history-card">';
+      html += '<div class="fne-history-card-head">';
+      html += '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">';
+      html += '<span class="fne-history-version-badge">' + versionText + '</span>';
+      html += '<div><div style="font-size:13px;font-weight:700;color:var(--t1);">' +
+        (entry.isCurrent ? 'Current version' : 'Previous version') + '</div>';
+      html += '<div style="font-size:12px;color:var(--t3);margin-top:2px;">Modified by <strong style="color:var(--t2);">' +
+        (entry.editor || 'Unknown') + '</strong></div></div></div>';
+      html += '<div style="font-size:12px;color:var(--t3);font-weight:600;white-space:nowrap;">' +
+        fneHistoryFmtDate(entry.created) + '</div>';
+      html += '</div>';
+
+      if (hasChanges) {
+        const showValueOnly = entry.changes.every(function(ch) { return ch.oldVal === '—' || !ch.oldVal; });
+        html += '<table class="fne-history-changes-table"><thead><tr>';
+        if (showValueOnly) {
+          html += '<th style="width:40%;">Field</th><th style="width:60%;">Value</th>';
+        } else {
+          html += '<th style="width:28%;">Field</th><th style="width:36%;">Previous</th><th style="width:36%;">New value</th>';
+        }
+        html += '</tr></thead><tbody>';
+        entry.changes.forEach(function(ch) {
+          html += '<tr><td style="font-weight:700;color:var(--t1);">' + ch.label + '</td>';
+          if (showValueOnly) {
+            html += '<td><span class="fne-history-new">' + ch.newVal + '</span></td></tr>';
+          } else {
+            html += '<td><span class="fne-history-old">' + ch.oldVal + '</span></td>' +
+              '<td><span class="fne-history-new">' + ch.newVal + '</span></td></tr>';
+          }
+        });
+        html += '</tbody></table>';
+      } else if (idx === entries.length - 1) {
+        html += '<div style="padding:14px 16px;font-size:13px;color:var(--t3);">Initial item creation — no field details captured.</div>';
+      } else {
+        html += '<div style="padding:14px 16px;font-size:13px;color:var(--t3);">No tracked field changes in this version.</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  function fneShowItemHistory() {
+    const itemId = FNE_EDIT_ID;
+    if (!itemId) {
+      fneToast('Open a record in edit mode to view history', 'error');
+      return;
+    }
+    const item = FNE_LIST_DATA.find(function(i) { return i.id === itemId; });
+    const modal = document.getElementById('fneEditHistoryModal');
+    const body = document.getElementById('fneEditHistoryModalBody');
+    const title = document.getElementById('fneEditHistoryModalTitle');
+    if (!modal || !body) return;
+
+    title.textContent = 'ID ' + itemId + (item && item.customerName ? ' · ' + item.customerName : '');
+    body.innerHTML = '<div style="text-align:center;padding:40px;"><svg style="width:24px;height:24px;stroke:var(--acc);fill:none;stroke-width:2;animation:spin 1s linear infinite" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><div style="margin-top:12px;font-size:13px;color:var(--t3);">Loading version history...</div></div>';
+    modal.style.display = 'flex';
+
+    fneBuildItemHistoryEntries(itemId).then(function(entries) {
+      fneRenderItemHistoryTimeline(entries, body);
+    }).catch(function(err) {
+      console.error('[fneShowItemHistory]', err);
+      fneGetListGuid().then(function(listGuid) {
+        const openLink = FNE_SP + '/_layouts/15/Versions.aspx?list=' + encodeURIComponent(listGuid) + '&ID=' + itemId;
+        body.innerHTML = '<div style="color:#ef4444;padding:16px;line-height:1.5;">Error loading item history: ' + err.message +
+          '<div style="font-size:12px;color:var(--t3);margin-top:8px;">Versioning must be enabled on the FNE Tracker list.</div>' +
+          '<div style="margin-top:12px;"><a href="' + openLink + '" target="_blank" rel="noopener" style="color:var(--acc);font-weight:600;">Open SharePoint Version History</a></div></div>';
+      }).catch(function() {
+        body.innerHTML = '<div style="color:#ef4444;padding:16px;line-height:1.5;">Error loading item history: ' + err.message +
+          '<div style="font-size:12px;color:var(--t3);margin-top:8px;">Versioning must be enabled on the FNE Tracker list.</div></div>';
+      });
+    });
+  }
+
+  function fneCloseItemHistory() {
+    const modal = document.getElementById('fneEditHistoryModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+
   function fneInit() {
     fneInjectViews();
     fneInjectNav();
@@ -3845,4 +4220,6 @@ if (!fneIsAdmin()) {
   window.fneRemovePendingAttach  = fneRemovePendingAttach;
   window.fneRemoveExistingAttach = fneRemoveExistingAttach;
   window.fneHtmlToPlain     = fneHtmlToPlain;
+  window.fneShowItemHistory = fneShowItemHistory;
+  window.fneCloseItemHistory = fneCloseItemHistory;
   window.FNE_GRID_API       = null;
