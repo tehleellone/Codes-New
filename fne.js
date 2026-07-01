@@ -4004,6 +4004,421 @@ if (!fneIsAdmin()) {
     });
   }
 
+  // --- Version history: Versions.aspx scrape + lists.asmx SOAP enrichment ---
+  // The REST "/versions" collection 404s on this on-prem SharePoint (same issue we
+  // hit on the SM tracker), so the classic Versions.aspx page + legacy SOAP API
+  // are used as the primary source, with the REST approach kept only as a last resort.
+
+  function fneStripHtml(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function fneCellTextNoNestedTables(cell) {
+    if (!cell) return '';
+    const clone = cell.cloneNode(true);
+    clone.querySelectorAll('table').forEach(function(t) { t.remove(); });
+    return fneStripHtml(clone.innerHTML);
+  }
+
+  function fneLooksLikeDate(text) {
+    const t = String(text || '').trim();
+    return /^\d{1,2}\/\d{1,2}\/\d{4}/.test(t) || /^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/.test(t);
+  }
+
+  function fneResolveSpUrl(href) {
+    if (!href) return null;
+    if (href.indexOf('http') === 0) return href;
+    try { return new URL(href, FNE_SP + '/').href; }
+    catch (e) { return FNE_SP + (href.charAt(0) === '/' ? href : '/' + href); }
+  }
+
+  function fneExtractVersionViewUrl(verRow) {
+    if (!verRow) return null;
+    const links = verRow.querySelectorAll('a[href]');
+    for (let i = 0; i < links.length; i++) {
+      const href = links[i].getAttribute('href') || '';
+      if (/VersionNo=|listform\.aspx|DispForm\.aspx|displayifs\.aspx/i.test(href)) {
+        return fneResolveSpUrl(href);
+      }
+    }
+    return null;
+  }
+
+  function fneExtractVersionNoFromRow(verRow) {
+    if (!verRow) return null;
+    const html = verRow.innerHTML || '';
+    let m = html.match(/VersionNo=(\d+)/i);
+    if (m) return parseInt(m[1], 10);
+    m = html.match(/VersionNo['"%3D\s:=]+(\d{3,6})/i);
+    if (m) return parseInt(m[1], 10);
+    return null;
+  }
+
+  function fneVersionLabelToNo(label) {
+    return Math.round(parseFloat(String(label)) * 512);
+  }
+
+  function fneParsePlainVersionChangeText(text, changes, seen) {
+    if (!text) return;
+    seen = seen || {};
+    Object.keys(FNE_HISTORY_FIELDS).forEach(function(key) {
+      if (text.indexOf(key) === 0) {
+        const label = FNE_HISTORY_FIELDS[key];
+        if (seen[label]) return;
+        seen[label] = true;
+        changes.push({ label: label, oldVal: '—', newVal: text.slice(key.length).trim() || '—' });
+      }
+    });
+  }
+
+  function fneParseChangesFromRawFragment(html, changes, seen) {
+    seen = seen || {};
+    Object.keys(FNE_HISTORY_FIELDS).forEach(function(key) {
+      const label = FNE_HISTORY_FIELDS[key];
+      if (seen[label]) return;
+      const re = new RegExp('SPField\\w+_' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\s\\S]{0,400}?ms-formbody[^>]*>([\\s\\S]*?)<', 'i');
+      const m = html.match(re);
+      if (m) {
+        seen[label] = true;
+        changes.push({ label: label, oldVal: '—', newVal: fneStripHtml(m[1]) || '—' });
+      }
+    });
+  }
+
+  function fneCollectVersionChanges(root, changes, seen) {
+    if (!root) return;
+    seen = seen || {};
+
+    root.querySelectorAll('tr[id^="SPField"]').forEach(function(tr) {
+      if (tr.closest('table[ctxname="ctxVer"]')) return;
+      const rowId = tr.getAttribute('id') || '';
+      const idMatch = rowId.match(/SPField(?:\w+?)_(.+)$/i);
+      let label = idMatch ? fneHistoryFieldLabel(idMatch[1]) : '';
+      const body = tr.querySelector('.ms-formbody');
+      const tds = tr.querySelectorAll('td');
+      let newVal = '';
+      if (body) newVal = fneStripHtml(body.innerHTML);
+      else if (tds.length >= 2) newVal = fneStripHtml(tds[tds.length - 1].innerHTML);
+      else if (tds.length === 1) newVal = fneStripHtml(tds[0].innerHTML);
+      if (!label && tds.length >= 1) label = fneHistoryFieldLabel(fneStripHtml(tds[0].innerHTML));
+      if (!label || fneLooksLikeDate(label) || seen[label]) return;
+      seen[label] = true;
+      changes.push({ label: label, oldVal: '—', newVal: newVal || '—' });
+    });
+
+    root.querySelectorAll('.ms-formlabel').forEach(function(lab) {
+      const tr = lab.closest('tr');
+      if (!tr || tr.closest('table[ctxname="ctxVer"]')) return;
+      const body = tr.querySelector('.ms-formbody');
+      if (!body) return;
+      const label = fneHistoryFieldLabel(fneStripHtml(lab.innerHTML));
+      const newVal = fneStripHtml(body.innerHTML);
+      if (!label || fneLooksLikeDate(label) || seen[label]) return;
+      seen[label] = true;
+      changes.push({ label: label, oldVal: '—', newVal: newVal || '—' });
+    });
+
+    root.querySelectorAll('tr').forEach(function(tr) {
+      if (tr.id && tr.id.indexOf('SPField') === 0) return;
+      if (tr.closest('table[ctxname="ctxVer"]')) return;
+      const tds = tr.querySelectorAll(':scope > td');
+      if (tds.length < 2) return;
+      const label = fneHistoryFieldLabel(fneStripHtml(tds[0].innerHTML));
+      const newVal = fneStripHtml(tds[1].innerHTML);
+      if (!label || fneLooksLikeDate(label) || /^no\.?$/i.test(label) || /^modified/i.test(label)) return;
+      if (seen[label]) return;
+      seen[label] = true;
+      changes.push({ label: label, oldVal: '—', newVal: newVal || '—' });
+    });
+
+    root.querySelectorAll('td[colspan]').forEach(function(td) {
+      if (td.querySelector('table')) {
+        td.querySelectorAll('table tr').forEach(function(tr) {
+          const tds = tr.querySelectorAll('td');
+          if (tds.length >= 2) {
+            const label = fneHistoryFieldLabel(fneStripHtml(tds[0].innerHTML));
+            const newVal = fneStripHtml(tds[1].innerHTML);
+            if (label && !fneLooksLikeDate(label) && !seen[label]) {
+              seen[label] = true;
+              changes.push({ label: label, oldVal: '—', newVal: newVal || '—' });
+            }
+          }
+        });
+      } else {
+        fneParsePlainVersionChangeText(fneStripHtml(td.innerHTML), changes, seen);
+      }
+    });
+
+    if (!changes.length && root.innerHTML) {
+      fneParseChangesFromRawFragment(root.innerHTML, changes, seen);
+    }
+  }
+
+  function fneParseVersionsPageHtmlFallback(doc) {
+    const entries = [];
+    const rows = doc.querySelectorAll('tr');
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const cells = row.querySelectorAll(':scope > td');
+      if (cells.length < 3) continue;
+      const firstText = fneStripHtml(cells[0].innerHTML).replace(/\s*View\s*$/i, '').trim();
+      const verMatch = firstText.match(/^(\d+\.\d+)/);
+      if (!verMatch || /^no\.?$/i.test(firstText)) continue;
+
+      const changes = [];
+      const nextRow = rows[i + 1];
+      if (nextRow) {
+        fneCollectVersionChanges(nextRow, changes, {});
+        i++;
+      }
+      entries.push({
+        versionLabel: verMatch[1],
+        created: fneStripHtml(cells[1].innerHTML),
+        editor: fneStripHtml(cells[2].innerHTML),
+        changes: changes,
+      });
+    }
+    entries.sort(function(a, b) { return parseFloat(b.versionLabel) - parseFloat(a.versionLabel); });
+    entries.forEach(function(e, idx) { e.isCurrent = idx === 0; });
+    return entries;
+  }
+
+  function fneParseVersionsPageHtml(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const entries = [];
+    const versionTable = doc.querySelector('table.ms-settingsframe') ||
+      doc.querySelector('table[id*="versions"]') ||
+      doc.querySelector('table.ms-formtable');
+
+    if (!versionTable) {
+      console.warn('[fneParseVersionsPageHtml] ms-settingsframe not found, using fallback scan');
+      return fneParseVersionsPageHtmlFallback(doc);
+    }
+
+    const rows = versionTable.querySelectorAll('tbody > tr, tr');
+    let dataStart = 0;
+    for (let h = 0; h < Math.min(rows.length, 6); h++) {
+      const ht = (rows[h].textContent || '').toLowerCase();
+      if (ht.indexOf('modified') >= 0 && ht.indexOf('no') >= 0) {
+        dataStart = h + 1;
+        break;
+      }
+    }
+
+    let current = null;
+    for (let i = dataStart; i < rows.length; i++) {
+      const row = rows[i];
+      const cells = row.querySelectorAll(':scope > td');
+      if (!cells.length) continue;
+
+      const versionRaw = fneStripHtml(cells[0].innerHTML).replace(/\s*View\s*$/i, '').trim();
+      const verMatch = versionRaw.match(/^(\d+\.\d+)/);
+
+      if (verMatch && cells.length >= 2) {
+        if (current) entries.push(current);
+        let modified = '';
+        let editor = '';
+        const dateEl = row.querySelector('table[ctxname="ctxVer"] a, table[ctxname="ctxVer"] td, .ms-vb-time');
+        if (dateEl) modified = fneStripHtml(dateEl.innerHTML);
+        const userEl = row.querySelector('.ms-imnSpan a:nth-child(2), .ms-imnSpan a, .ms-subtleLink');
+        if (userEl) editor = fneStripHtml(userEl.innerHTML);
+        if (!modified && cells[1]) modified = fneCellTextNoNestedTables(cells[1]);
+        if (!editor && cells[2]) editor = fneCellTextNoNestedTables(cells[2]);
+
+        current = {
+          versionLabel: verMatch[1],
+          versionNo: fneExtractVersionNoFromRow(row) || fneVersionLabelToNo(verMatch[1]),
+          viewUrl: fneExtractVersionViewUrl(row),
+          created: modified,
+          editor: editor,
+          changes: [],
+        };
+        fneCollectVersionChanges(row, current.changes, {});
+        continue;
+      }
+
+      if (current) {
+        fneCollectVersionChanges(row, current.changes, {});
+      }
+    }
+    if (current) entries.push(current);
+
+    entries.sort(function(a, b) { return parseFloat(b.versionLabel) - parseFloat(a.versionLabel); });
+    entries.forEach(function(e, idx) { e.isCurrent = idx === 0; });
+    return entries;
+  }
+
+  function fneFetchVersionsPageHtml(itemId) {
+    return fneGetListGuid().then(function(listGuid) {
+      const url = FNE_SP + '/_layouts/15/Versions.aspx?list=' + encodeURIComponent(listGuid) + '&ID=' + itemId;
+      return fetch(url, { credentials: 'include' }).then(function(res) {
+        if (!res.ok) throw new Error('Failed to load version history page (' + res.status + ')');
+        return res.text();
+      });
+    });
+  }
+
+  function fneFormatListGuid(guid) {
+    if (!guid) return guid;
+    let g = String(guid).trim();
+    if (g.charAt(0) !== '{') g = '{' + g;
+    if (g.charAt(g.length - 1) !== '}') g = g + '}';
+    return g;
+  }
+
+  function fneDecodeSoapInnerXml(text) {
+    if (!text) return '';
+    return String(text)
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+  }
+
+  function fneParseSoapVersionCollection(xmlText, fieldName) {
+    const versions = [];
+    const innerMatch = xmlText.match(/<GetVersionCollectionResult[^>]*>([\s\S]*?)<\/GetVersionCollectionResult>/i);
+    if (!innerMatch) return versions;
+    const inner = fneDecodeSoapInnerXml(innerMatch[1].trim());
+    if (!inner) return versions;
+
+    let doc;
+    try { doc = new DOMParser().parseFromString(inner, 'text/xml'); }
+    catch (e) { return versions; }
+    if (doc.querySelector('parsererror')) return versions;
+
+    doc.querySelectorAll('Version').forEach(function(v) {
+      let label = v.getAttribute('Version') || v.getAttribute('VersionLabel') || v.getAttribute('version') || '';
+      if (!label || !/\d/.test(label)) {
+        const verId = parseInt(v.getAttribute('VersionId') || v.getAttribute('versionid') || '0', 10);
+        if (verId) label = (verId / 512).toFixed(1);
+      }
+      const fieldEl = v.querySelector('Field[Name="' + fieldName + '"]') ||
+        v.querySelector('Field[name="' + fieldName + '"]') ||
+        v.querySelector('Field');
+      let val = '';
+      if (fieldEl) {
+        val = fieldEl.getAttribute('Value') || fieldEl.getAttribute('value') || fneStripHtml(fieldEl.textContent);
+      }
+      if (label && /\d/.test(String(label))) {
+        versions.push({ versionLabel: String(label).replace(',', '.').trim(), value: val, fieldName: fieldName });
+      }
+    });
+    return versions;
+  }
+
+  function fneSoapGetVersionCollection(listGuid, itemId, fieldName) {
+    const envelope = '<?xml version="1.0" encoding="utf-8"?>' +
+      '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
+      '<soap:Body><GetVersionCollection xmlns="http://schemas.microsoft.com/sharepoint/soap/">' +
+      '<strlistID>' + fneFormatListGuid(listGuid) + '</strlistID>' +
+      '<strlistItemID>' + itemId + '</strlistItemID>' +
+      '<strFieldName>' + fieldName.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</strFieldName>' +
+      '</GetVersionCollection></soap:Body></soap:Envelope>';
+
+    return fetch(FNE_SP + '/_vti_bin/lists.asmx', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': 'http://schemas.microsoft.com/sharepoint/soap/GetVersionCollection',
+      },
+      body: envelope,
+    }).then(function(res) {
+      if (!res.ok) return [];
+      return res.text().then(function(text) { return fneParseSoapVersionCollection(text, fieldName); });
+    }).catch(function() { return []; });
+  }
+
+  function fneSoapValueAtVersion(hist, versionLabel) {
+    if (!hist || !hist.length) return '';
+    const target = parseFloat(versionLabel);
+    for (let i = 0; i < hist.length; i++) {
+      if (parseFloat(hist[i].versionLabel) === target) return fneCleanSpHistoryValue(hist[i].value);
+    }
+    return '';
+  }
+
+  function fneResolveFieldValueAtVersion(fieldHistories, fieldKey, versionLabel, allLabels) {
+    const exact = fneSoapValueAtVersion(fieldHistories[fieldKey], versionLabel);
+    if (exact) return exact;
+    const target = parseFloat(versionLabel);
+    const labels = allLabels.slice().sort(function(a, b) { return parseFloat(b) - parseFloat(a); });
+    for (let i = 0; i < labels.length; i++) {
+      if (parseFloat(labels[i]) > target) continue;
+      const val = fneSoapValueAtVersion(fieldHistories[fieldKey], labels[i]);
+      if (val) return val;
+    }
+    return '';
+  }
+
+  function fneChangesFromSoapHistories(fieldHistories, versionLabel, olderVersionLabel, allLabels) {
+    const changes = [];
+    const seen = {};
+    Object.keys(fieldHistories).forEach(function(fieldKey) {
+      const newerVal = fneResolveFieldValueAtVersion(fieldHistories, fieldKey, versionLabel, allLabels);
+      if (!olderVersionLabel) {
+        if (newerVal) {
+          const lbl = FNE_HISTORY_FIELDS[fieldKey] || fneHistoryFieldLabel(fieldKey);
+          if (!seen[lbl]) { seen[lbl] = true; changes.push({ label: lbl, oldVal: '—', newVal: newerVal }); }
+        }
+        return;
+      }
+      const olderVal = fneResolveFieldValueAtVersion(fieldHistories, fieldKey, olderVersionLabel, allLabels);
+      if (newerVal !== olderVal) {
+        const label = FNE_HISTORY_FIELDS[fieldKey] || fneHistoryFieldLabel(fieldKey);
+        if (!seen[label]) { seen[label] = true; changes.push({ label: label, oldVal: olderVal || '—', newVal: newerVal || '—' }); }
+      }
+    });
+    return changes;
+  }
+
+  function fneBuildHistoryChangesViaSoap(itemId, entries) {
+    return fneGetListGuid().then(function(listGuid) {
+      const fieldKeys = Object.keys(FNE_HISTORY_FIELDS);
+      const fieldHistories = {};
+      const allLabels = entries.map(function(e) { return e.versionLabel; });
+
+      return Promise.all(fieldKeys.map(function(fieldKey) {
+        return fneSoapGetVersionCollection(listGuid, itemId, fieldKey).then(function(hist) {
+          if (hist.length) fieldHistories[fieldKey] = hist;
+        }).catch(function(e) { console.warn('[fneSoapGetVersionCollection]', fieldKey, e); });
+      })).then(function() {
+        if (!Object.keys(fieldHistories).length) {
+          console.warn('[fneBuildHistoryChangesViaSoap] No field histories returned from lists.asmx');
+          return null;
+        }
+        return entries.map(function(e, idx) {
+          const olderLabel = idx < entries.length - 1 ? entries[idx + 1].versionLabel : null;
+          const soapChanges = fneChangesFromSoapHistories(fieldHistories, e.versionLabel, olderLabel, allLabels);
+          const changes = soapChanges.length ? soapChanges : (e.changes || []);
+          return Object.assign({}, e, { changes: changes });
+        });
+      });
+    });
+  }
+
+  function fneEnrichVersionEntriesByCompare(itemId, entries) {
+    return fneBuildHistoryChangesViaSoap(itemId, entries).then(function(soapEntries) {
+      if (soapEntries && soapEntries.some(function(e) { return e.changes && e.changes.length; })) {
+        return soapEntries;
+      }
+      return entries;
+    }).catch(function(e) {
+      console.warn('[fneEnrichVersionEntriesByCompare] SOAP enrichment failed', e);
+      return entries;
+    });
+  }
+
+  function fneBuildItemHistoryFromVersionsPage(itemId) {
+    return fneFetchVersionsPageHtml(itemId).then(function(html) {
+      const entries = fneParseVersionsPageHtml(html);
+      if (!entries.length) throw new Error('No version history found on Versions.aspx');
+      return fneEnrichVersionEntriesByCompare(itemId, entries);
+    });
+  }
+
   function fneFetchVersionFields(itemId, versionId) {
     const textUrl = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items(" + itemId + ")/versions(" + versionId + ")/FieldValuesAsText";
     return fneHistoryFetch(textUrl).then(function(res) {
@@ -4018,24 +4433,32 @@ if (!fneIsAdmin()) {
   }
 
   function fneBuildItemHistoryEntries(itemId) {
-    return fneFetchItemVersions(itemId).then(function(versions) {
-      if (!versions.length) return [];
-      return Promise.all(versions.map(function(v) { return fneFetchVersionFields(itemId, v.ID); })).then(function(fieldSets) {
-        return versions.map(function(v, idx) {
-          const fields = fieldSets[idx] || {};
-          const olderFields = idx < versions.length - 1 ? (fieldSets[idx + 1] || {}) : null;
-          const changes = olderFields ? fneCompareVersionFields(fields, olderFields) : [];
-          let editor = fneEditorFromFields(fields);
-          if (!editor && v.Editor && typeof v.Editor === 'object' && v.Editor.Title) editor = v.Editor.Title;
-          return {
-            versionId: v.ID,
-            versionLabel: fneHistoryVersionLabel(v),
-            created: v.Created,
-            editor: editor,
-            changes: changes,
-            isCurrent: idx === 0,
-          };
+    // Primary: scrape the classic Versions.aspx page (always available, doesn't
+    // depend on the REST "/versions" endpoint that 404s on this SharePoint).
+    return fneBuildItemHistoryFromVersionsPage(itemId).catch(function(pageErr) {
+      console.warn('[fneBuildItemHistoryEntries] Versions.aspx approach failed, falling back to REST', pageErr);
+      return fneFetchItemVersions(itemId).then(function(versions) {
+        if (!versions.length) return [];
+        return Promise.all(versions.map(function(v) { return fneFetchVersionFields(itemId, v.ID); })).then(function(fieldSets) {
+          return versions.map(function(v, idx) {
+            const fields = fieldSets[idx] || {};
+            const olderFields = idx < versions.length - 1 ? (fieldSets[idx + 1] || {}) : null;
+            const changes = olderFields ? fneCompareVersionFields(fields, olderFields) : [];
+            let editor = fneEditorFromFields(fields);
+            if (!editor && v.Editor && typeof v.Editor === 'object' && v.Editor.Title) editor = v.Editor.Title;
+            return {
+              versionId: v.ID,
+              versionLabel: fneHistoryVersionLabel(v),
+              created: v.Created,
+              editor: editor,
+              changes: changes,
+              isCurrent: idx === 0,
+            };
+          });
         });
+      }).catch(function(restErr) {
+        console.warn('[fneBuildItemHistoryEntries] REST fallback also failed', restErr);
+        throw new Error('Could not load version history from SharePoint');
       });
     });
   }
