@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GKLA FNE Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/32.0.2/ag-grid-community.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-grid.css">
+<link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-theme-alpine.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+:root {
+  --bg-body: linear-gradient(145deg, #f0f7ff, #e6f0ff, #eef4ff);
+  --bg-card: #ffffff;
+  --bg-header: rgba(255,255,255,0.97);
+  --bg-sidebar: linear-gradient(180deg,#f0f7ff,#e8f0ff);
+  --bg-content: #f0f5ff;
+  --bg-input: rgba(37,99,235,0.06);
+  --bg-secondary: rgba(37,99,235,0.05);
+  --bg-hover: rgba(37,99,235,0.07);
+  --border: rgba(37,99,235,0.18);
+  --border-s: rgba(37,99,235,0.42);
+  --t1: #0f1e3e;
+  --t2: #2d4070;
+  --t3: #7a8fb8;
+  --acc: #2563eb;
+  --acc2: #0ea5e9;
+  --glow: rgba(37,99,235,0.26);
+  --grad: linear-gradient(135deg,#1d4ed8,#0ea5e9);
+  --nab: rgba(37,99,235,0.09);
+  --nab2: rgba(37,99,235,0.32);
+  --sc: #2563eb;
+  --cs: 0 1px 8px rgba(37,99,235,0.10);
+  --ch: 0 6px 20px rgba(37,99,235,0.18);
+}
+body[data-theme="dark"] {
+  --bg-body: linear-gradient(145deg,#070e1f,#0e1835,#09112a);
+  --bg-card: #0d1630;
+  --bg-header: rgba(7,14,31,0.98);
+  --bg-sidebar: linear-gradient(180deg,#10193a,#0b1328);
+  --bg-content: #090f25;
+  --bg-input: rgba(37,99,235,0.14);
+  --bg-secondary: rgba(37,99,235,0.09);
+  --bg-hover: rgba(37,99,235,0.13);
+  --border: rgba(37,99,235,0.2);
+  --border-s: rgba(37,99,235,0.48);
+  --t1: #e2eaff;
+  --t2: #a0b4d8;
+  --t3: #5a7099;
+  --acc: #60a5fa;
+  --acc2: #38bdf8;
+  --glow: rgba(96,165,250,0.32);
+  --grad: linear-gradient(135deg,#2563eb,#0ea5e9);
+  --nab: rgba(37,99,235,0.16);
+  --nab2: rgba(37,99,235,0.44);
+  --sc: #60a5fa;
+  --cs: 0 2px 16px rgba(0,0,0,0.5);
+  --ch: 0 6px 24px rgba(37,99,235,0.22);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-body);color:var(--t1);min-height:100vh;-webkit-font-smoothing:antialiased;line-height:1.5}
+select,input,textarea,button{font-family:inherit}
+.portal-shell{max-width:1800px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-body)}
+.header{background:var(--bg-header);border-bottom:1px solid var(--border);padding:0 1.25rem;height:56px;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:200;flex-shrink:0}
+.logo-section{display:flex;align-items:center;gap:.65rem}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px var(--glow);flex-shrink:0}
+.logo svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2}
+.header-title{font-size:1.05rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-center{display:flex;align-items:center;gap:.75rem;flex:1;padding-left:.75rem}
+.header-actions{display:flex;align-items:center;gap:.5rem}
+.live-badge-pill{display:inline-flex;align-items:center;gap:.3rem;padding:.22rem .65rem;border-radius:20px;background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.28);font-size:.73rem;font-weight:700;color:#16a34a}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#16a34a;animation:pulseDot 2s infinite}
+@keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.4)}50%{box-shadow:0 0 0 5px rgba(22,163,74,0)}}
+.date-badge{font-size:.75rem;color:var(--t3);display:flex;align-items:center;gap:.3rem}
+.color-scheme-selector,.theme-toggle{padding:.3rem .65rem;background:var(--bg-input);border:1px solid var(--border);border-radius:18px;color:var(--t1);font-size:.75rem;cursor:pointer}
+.theme-toggle{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.theme-toggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.main-container{display:flex;flex:1;min-height:0}
+.sidebar{width:210px;min-width:210px;background:var(--bg-sidebar);border-right:1px solid var(--border);padding:1rem 0;flex-shrink:0}
+.nav-items{display:flex;flex-direction:column;gap:2px;padding:0 .65rem}
+.nav-section-label{font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:.75rem .6rem .3rem}
+.nav-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .7rem;border-radius:9px;cursor:pointer;color:var(--t2);border:1px solid transparent;font-size:.84rem;font-weight:500;user-select:none}
+.nav-item .nav-icon svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2}
+.nav-item:hover{background:var(--bg-hover);color:var(--t1)}
+.nav-item.active{background:var(--nab);border-color:var(--nab2);color:var(--t1);font-weight:600}
+.content{flex:1;overflow-y:auto;min-width:0;background:var(--bg-content);padding:1.1rem 1.25rem}
+.dashboard-section{animation:fadeSection .25s ease;padding:.5rem 0}
+@keyframes fadeSection{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.filter-bar{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:.85rem 1rem;margin-bottom:1rem;box-shadow:var(--cs)}
+.filter-bar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem}
+.filter-bar-label{font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.filter-bar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.55rem .65rem}
+.fb-group{display:flex;flex-direction:column;gap:.2rem}
+.fb-group-label{font-size:.63rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.fb-select{padding:.38rem .65rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.8rem;width:100%}
+.reset-btn{padding:.45rem .9rem;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;background:var(--bg-input);color:var(--t1);border:1px solid var(--border)}
+.reset-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+.table-section{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;margin-bottom:1rem;box-shadow:var(--cs)}
+.table-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.65rem;margin-bottom:.85rem}
+.table-title{font-size:.9rem;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:.35rem;margin:0!important}
+.table-title svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.table-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.export-btn{padding:.5rem 1rem;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;border:none;background:var(--grad);color:#fff;box-shadow:0 2px 10px var(--glow)}
+.export-btn svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2}
+.search-box{padding:.45rem .75rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.82rem;min-width:180px}
+.status-badge{display:inline-block;padding:.18rem .55rem;border-radius:20px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.badge-success{background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.28)}
+.badge-warning{background:rgba(245,158,11,.12);color:#b45309;border:1px solid rgba(245,158,11,.28)}
+.badge-danger{background:rgba(220,38,38,.12);color:#dc2626;border:1px solid rgba(220,38,38,.28)}
+.badge-info{background:rgba(37,99,235,.12);color:#2563eb;border:1px solid rgba(37,99,235,.28)}
+.badge-neutral{background:rgba(100,116,139,.12);color:#64748b;border:1px solid rgba(100,116,139,.28)}
+.ag-theme-alpine .ag-root-wrapper{background:var(--bg-card)!important;border-color:var(--border)!important;border-radius:10px!important}
+.ag-theme-alpine .ag-header,.ag-theme-alpine .ag-header-row{background:var(--bg-secondary)!important;border-bottom:2px solid var(--border-s)!important}
+.ag-theme-alpine .ag-header-cell{background:var(--bg-secondary)!important;color:var(--t1)!important;font-weight:700!important;font-size:.71rem!important}
+.ag-theme-alpine .ag-row{background:var(--bg-card)!important;color:var(--t1)!important;border-bottom-color:var(--border)!important}
+.ag-theme-alpine .ag-row-odd{background:var(--bg-secondary)!important}
+.ag-theme-alpine .ag-row-hover{background:var(--bg-hover)!important}
+.ag-theme-alpine .ag-cell{color:var(--t1)!important}
+.loading-overlay{position:fixed;inset:0;z-index:9999;background:var(--bg-body);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem}
+.loading-logo{width:72px;height:72px;border-radius:18px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px var(--glow);animation:loadPulse 1.6s ease-in-out infinite}
+.loading-logo svg{width:38px;height:38px;stroke:#fff;fill:none;stroke-width:2}
+@keyframes loadPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.loading-title{font-size:1.25rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.loading-subtitle{font-size:.84rem;color:var(--t3)}
+.loading-step{font-size:.76rem;color:var(--t3);min-height:1.2em}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.dev-console{position:fixed;bottom:12px;right:12px;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:.65rem .9rem;display:none;align-items:center;gap:.5rem;box-shadow:var(--cs);font-size:.75rem}
+.dev-console input,.dev-console select{padding:.3rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.75rem}
+.dev-console button{padding:.3rem .7rem;border-radius:6px;background:var(--grad);color:#fff;border:none;font-size:.74rem;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="loading-logo"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+  <div class="loading-title">GKLA FNE Tracker</div>
+  <div class="loading-subtitle">Entry &amp; records view</div>
+  <div class="loading-step" id="loadingStep">Connecting to SharePoint...</div>
+</div>
+
+<div class="portal-shell" id="trackerContent" style="display:none;">
+  <div class="header">
+    <div class="logo-section">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <span class="header-title">GKLA FNE Tracker</span>
+    </div>
+    <div class="header-center">
+      <div class="live-badge-pill"><span class="status-dot"></span><span>Live</span></div>
+      <div class="date-badge"><span id="currentDate">—</span></div>
+      <div class="date-badge" id="dbUserBadge" style="color:var(--acc);font-weight:600;">—</div>
+    </div>
+    <div class="header-actions">
+      <select class="color-scheme-selector" id="colorSchemeSelector" onchange="changeTheme(event)"><option value="blue">Blue</option><option value="magenta">Magenta</option></select>
+      <div class="theme-toggle" onclick="toggleTheme()" title="Light/Dark"><svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
+    </div>
+  </div>
+  <div class="main-container">
+    <div class="sidebar">
+      <div class="nav-items"></div>
+    </div>
+    <div class="content"></div>
+  </div>
+</div>
+
+<div class="dev-console" id="devConsole">
+  <span>Dev Login</span>
+  <input type="text" id="devEmailInput" placeholder="email@example.com" onkeydown="if(event.key==='Enter')devLogin()">
+  <select id="devRoleInput"><option value="Admin">Admin</option><option value="FNE Manager">FNE Manager</option><option value="Viewer">Viewer</option></select>
+  <button type="button" onclick="devLogin()">Login As</button>
+</div>
+
+<script>
+const SP_SITE = 'http://sharedspaces:8081/sites/FGKA';
+const SP_ACCESS = 'FNE_ACCESS';
+window.USER = { email: '', name: '', role: '', IsAdmin: false };
+
+function spGet(url, cb) {
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try { cb(null, JSON.parse(xhr.responseText)); } catch (e) { cb(e, null); }
+    } else { cb(new Error('HTTP ' + xhr.status), null); }
+  };
+  xhr.onerror = function() { cb(new Error('Network error'), null); };
+  xhr.send();
+}
+
+function spPost(url, body, cb) {
+  getDigest(function(digest) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
+    xhr.setRequestHeader('Content-Type', 'application/json;odata=verbose');
+    if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { cb(null, JSON.parse(xhr.responseText)); } catch (e) { cb(null, {}); }
+      } else { cb(new Error('HTTP ' + xhr.status), null); }
+    };
+    xhr.onerror = function() { cb(new Error('Network error'), null); };
+    xhr.send(JSON.stringify(body));
+  });
+}
+
+let _digest = null, _digestExpiry = 0;
+function getDigest(cb) {
+  const now = Date.now();
+  if (_digest && now < _digestExpiry) { cb(_digest); return; }
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', SP_SITE + '/_api/contextinfo', true);
+  xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        const d = JSON.parse(xhr.responseText);
+        _digest = d.d.GetContextWebInformation.FormDigestValue;
+        _digestExpiry = now + (d.d.GetContextWebInformation.FormDigestTimeoutSeconds - 60) * 1000;
+        cb(_digest);
+      } catch (e) { cb(null); }
+    } else { cb(null); }
+  };
+  xhr.onerror = function() { cb(null); };
+  xhr.send();
+}
+
+function applyTheme(base, dark) {
+  if (base === 'magenta') document.body.setAttribute('data-theme', dark ? 'magenta-dark' : 'magenta');
+  else document.body.setAttribute('data-theme', dark ? 'dark' : '');
+  const icon = document.getElementById('themeIcon');
+  if (icon) icon.innerHTML = dark
+    ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+    : '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+}
+
+function changeTheme(e) {
+  const base = e.target.value;
+  const cur = document.body.getAttribute('data-theme') || '';
+  const isDark = cur === 'dark' || cur === 'magenta-dark';
+  applyTheme(base, isDark);
+  try { localStorage.setItem('fne_base_theme', base); } catch (err) {}
+}
+
+function toggleTheme() {
+  const cur = document.body.getAttribute('data-theme') || '';
+  const isDark = cur === 'dark' || cur === 'magenta-dark';
+  const isMag = cur === 'magenta' || cur === 'magenta-dark';
+  applyTheme(isMag ? 'magenta' : 'blue', !isDark);
+  try { localStorage.setItem('fne_dark_mode', String(!isDark)); } catch (err) {}
+}
+</script>
+<script src="fne.js"></script>
+<script src="fne-tracker.js"></script>
+</body>
+</html>
