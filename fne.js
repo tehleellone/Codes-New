@@ -156,6 +156,12 @@
   let FNE_GRID_API       = null;
   let FNE_CAME_FROM_LIST = false;
   let FNE_LIST_ITEM_TYPE = '';   // fetched dynamically on init
+  let FNE_LIST_LOADED    = false;
+  let FNE_LIST_LOADING   = false;
+  let FNE_MAX_LIST_ID    = 0;
+  let FNE_LAST_SYNC_ISO  = null;
+  let FNE_LIVE_POLL_TIMER = null;
+  const FNE_LIVE_POLL_MS = 45000;
   
   // One-time lock state: tracks which fields are locked for this item
   // key = itemId, value = { expRfsLocked, implStartLocked }
@@ -639,6 +645,7 @@ function fneApplyCriticalProjectsAccess() {
   //  NAV INJECTION
   // ══════════════════════════════════════════════════════════════════
   function fneInjectNav() {
+    if (window.FNE_STANDALONE) return fneInjectStandaloneNav();
     const navItems = document.querySelector('.nav-items');
     if (!navItems || document.getElementById('navFneForm')) return;
   
@@ -669,8 +676,42 @@ if (fneIsAdmin()) {
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
       </div>
       <div class="nav-label">Tracker List</div>`;
-    navList.onclick = () => { fneEnsurePowerUserUi(); fneLoadList(); showFneView('list', navList); };
+    navList.onclick = () => { fneEnsurePowerUserUi(); fneEnsureList(); showFneView('list', navList); };
     navItems.appendChild(navList);
+  }
+
+  function fneInjectStandaloneNav() {
+    const navItems = document.querySelector('.nav-items');
+    if (!navItems || document.getElementById('navFneList')) return;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'nav-section-label';
+    lbl.textContent = 'FNE Tracker';
+    navItems.appendChild(lbl);
+
+    const navList = document.createElement('div');
+    navList.className = 'nav-item active';
+    navList.id = 'navFneList';
+    navList.innerHTML = `
+      <div class="nav-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      </div>
+      <div class="nav-label">Tracker List</div>`;
+    navList.onclick = () => { fneEnsurePowerUserUi(); fneEnsureList(); showFneView('list', navList); };
+    navItems.appendChild(navList);
+
+    if (fneIsAdmin()) {
+      const navForm = document.createElement('div');
+      navForm.className = 'nav-item';
+      navForm.id = 'navFneForm';
+      navForm.innerHTML = `
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <div class="nav-label">New Entry</div>`;
+      navForm.onclick = () => { fneOpenForm(null); showFneView('form', navForm); };
+      navItems.appendChild(navForm);
+    }
   }
   
   // ══════════════════════════════════════════════════════════════════
@@ -1605,6 +1646,10 @@ if (fneIsAdmin()) {
         <span id="fneListCount">Loading...</span>
       </h3>
       <div class="table-actions">
+        <button type="button" class="export-btn" onclick="fneRefreshList()" title="Reload all records from SharePoint">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
         <button type="button" class="export-btn" onclick="fneExportExcel()">
           <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export Excel
@@ -2183,9 +2228,9 @@ if (!fneIsAdmin()) {
         fneUploadAttachments(savedId, function() {
           if (saveBtn) saveBtn.textContent = FNE_EDIT_ID ? 'Update Entry' : 'Save Entry';
           if (saveBtnEl) saveBtnEl.disabled = false;
-          fneLoadList();
-          const countEl = document.getElementById('fneBannerCount');
-          if (countEl) countEl.textContent = FNE_LIST_DATA.length + ' records';
+          fneFetchAndUpsertItem(savedId, function() {
+            fneUpdateListCounts();
+          });
         });
       };
   
@@ -2230,7 +2275,7 @@ if (!fneIsAdmin()) {
           fneSetLockState('exp_rfs', false);
           fneSetLockState('impl_start', false);
           if (newId) afterSave(newId);
-          else { fneLoadList(); if (saveBtnEl) saveBtnEl.disabled = false; }
+          else { if (saveBtnEl) saveBtnEl.disabled = false; }
         });
       }
     }
@@ -2288,6 +2333,7 @@ if (!fneIsAdmin()) {
         if (xhr.readyState !== 4) return;
         if (xhr.status >= 200 && xhr.status < 300) {
           fneToast('Record deleted', 'success');
+          const deletedId = FNE_EDIT_ID;
           FNE_EDIT_ID = null;
           FNE_PENDING_ATTACH = [];
           FNE_EXISTING_ATTACH = [];
@@ -2299,7 +2345,7 @@ if (!fneIsAdmin()) {
           document.getElementById('fneBannerMode').innerHTML     = `<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>New Entry</span>`;
           fneSetLockState('exp_rfs',   false);
           fneSetLockState('impl_start', false);
-          fneLoadList();
+          if (deletedId) fneRemoveListItems([deletedId]);
         } else {
           fneToast('Delete failed: HTTP ' + xhr.status, 'error');
         }
@@ -2311,15 +2357,8 @@ if (!fneIsAdmin()) {
   // ══════════════════════════════════════════════════════════════════
   //  LOAD LIST DATA
   // ══════════════════════════════════════════════════════════════════
-  function fneLoadList() {
-    const countEl   = document.getElementById('fneListCount');
-    const spinner   = document.getElementById('fneListSpinner');
-    const gridEl    = document.getElementById('fneGrid');
-    if (countEl) countEl.textContent = 'Loading...';
-    if (spinner) spinner.style.display = 'block';
-    if (gridEl)  gridEl.style.display  = 'none';
-  
-    const select = [
+  function fneGetListSelect() {
+    return [
       'Id', FNE_F.SUB_REQ, FNE_F.IMPL_TYPE, FNE_F.START_DATE,
       FNE_F.SLA, FNE_F.EXP_RFS, FNE_F.BUILD_STATUS, FNE_F.CUST_NAME,
       FNE_F.SOF, FNE_F.MRC, FNE_F.EST_COST, FNE_F.VERTICAL, FNE_F.COMMENTS,
@@ -2331,33 +2370,180 @@ if (!fneIsAdmin()) {
       FNE_F.SPI, FNE_F.TEMP_CONN, FNE_F.TARGET_MIG, FNE_F.BLOCKER, FNE_F.PM_MAN_DAYS,
       'Account_x0020_Manager/Id', 'Account_x0020_Manager/Title', 'Account_x0020_Manager/EMail'
     ].join(',');
-  
+  }
+
+  function fneRecalcMaxListId() {
+    FNE_MAX_LIST_ID = FNE_LIST_DATA.reduce(function(max, item) {
+      return item.id > max ? item.id : max;
+    }, 0);
+  }
+
+  function fneUpdateListCounts() {
+    const countBanner = document.getElementById('fneBannerCount');
+    if (countBanner) countBanner.textContent = FNE_LIST_DATA.length + ' records';
+  }
+
+  function fneUpsertItemsInCache(mappedItems) {
+    if (!mappedItems || !mappedItems.length) return false;
+    mappedItems.forEach(function(item) {
+      const idx = FNE_LIST_DATA.findIndex(function(x) { return x.id === item.id; });
+      if (idx >= 0) FNE_LIST_DATA[idx] = item;
+      else FNE_LIST_DATA.unshift(item);
+      if (item.id > FNE_MAX_LIST_ID) FNE_MAX_LIST_ID = item.id;
+    });
+    fneListBuildAllFilters();
+    fneListApplyFilter();
+    fneUpdateListCounts();
+    return true;
+  }
+
+  function fneRemoveListItems(ids) {
+    const idSet = new Set((ids || []).map(Number));
+    if (!idSet.size) return;
+    FNE_LIST_DATA = FNE_LIST_DATA.filter(function(x) { return !idSet.has(x.id); });
+    fneRecalcMaxListId();
+    fneListBuildAllFilters();
+    fneListApplyFilter();
+    fneUpdateListCounts();
+  }
+
+  function fneFetchAndUpsertItem(id, cb) {
+    if (!id) { if (cb) cb(null); return; }
+    fneFetchAndUpsertItems([id], cb);
+  }
+
+  function fneFetchAndUpsertItems(ids, cb) {
+    const unique = [...new Set((ids || []).filter(Boolean).map(Number))];
+    if (!unique.length) { if (cb) cb(null); return; }
+    const select = fneGetListSelect();
+    const filter = unique.map(function(id) { return 'Id eq ' + id; }).join(' or ');
+    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
+      "')/items?$select=" + encodeURIComponent(select) +
+      "&$expand=Account_x0020_Manager&$filter=" + encodeURIComponent(filter);
+    spGet(url, function(err, data) {
+      if (err || !data || !data.d) { if (cb) cb(err); return; }
+      fneUpsertItemsInCache(data.d.results.map(fneMapItem));
+      if (cb) cb(null);
+    });
+  }
+
+  function fneEnsureList() {
+    fneLoadList(false);
+  }
+
+  function fneRefreshList() {
+    fneLoadList(true);
+  }
+
+  function fneLoadList(force, onComplete) {
+    if (FNE_LIST_LOADING) return;
+    if (!force && FNE_LIST_LOADED) {
+      fneListApplyFilter();
+      if (onComplete) onComplete();
+      return;
+    }
+
+    const countEl   = document.getElementById('fneListCount');
+    const spinner   = document.getElementById('fneListSpinner');
+    const gridEl    = document.getElementById('fneGrid');
+    if (countEl) countEl.textContent = 'Loading...';
+    if (spinner) spinner.style.display = 'block';
+    if (gridEl)  gridEl.style.display  = 'none';
+
+    FNE_LIST_LOADING = true;
+    const select = fneGetListSelect();
     let all = [];
+
+    function finishLoad(err) {
+      FNE_LIST_LOADING = false;
+      if (err) {
+        if (countEl) countEl.textContent = '0 records';
+        if (spinner) spinner.style.display = 'none';
+        if (gridEl)  gridEl.style.display  = 'block';
+        if (onComplete) onComplete(err);
+        return;
+      }
+      FNE_LIST_DATA = all.map(fneMapItem);
+      FNE_LIST_LOADED = true;
+      fneRecalcMaxListId();
+      FNE_LAST_SYNC_ISO = new Date().toISOString();
+      fneListBuildAllFilters();
+      fneListApplyFilter();
+      if (spinner) spinner.style.display = 'none';
+      if (gridEl)  gridEl.style.display  = 'block';
+      fneUpdateListCounts();
+      if (onComplete) onComplete(null);
+    }
+
     function fetchPage(url) {
       spGet(url, function(err, data) {
         if (err) {
           fneToast('Failed to load list: ' + err.message, 'error');
-          if (countEl) countEl.textContent = '0 records';
-          if (spinner) spinner.style.display = 'none';
-          if (gridEl)  gridEl.style.display  = 'block';
+          finishLoad(err);
           return;
         }
         all = all.concat(data.d.results);
         if (data.d.__next) { fetchPage(data.d.__next); return; }
-        FNE_LIST_DATA = all.map(fneMapItem);
-        fneListBuildAllFilters();
-        fneListApplyFilter();
-        if (spinner) spinner.style.display = 'none';
-        if (gridEl)  gridEl.style.display  = 'block';
-        const countBanner = document.getElementById('fneBannerCount');
-        if (countBanner) countBanner.textContent = FNE_LIST_DATA.length + ' records';
+        finishLoad(null);
       });
     }
-  
+
     const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
       "')/items?$select=" + encodeURIComponent(select) +
       "&$expand=Account_x0020_Manager&$top=5000&$orderby=Id desc";
     fetchPage(url);
+  }
+
+  function fneStartLivePoll() {
+    if (FNE_LIVE_POLL_TIMER) return;
+    FNE_LIVE_POLL_TIMER = setInterval(fnePollLiveChanges, FNE_LIVE_POLL_MS);
+  }
+
+  function fneStopLivePoll() {
+    if (FNE_LIVE_POLL_TIMER) {
+      clearInterval(FNE_LIVE_POLL_TIMER);
+      FNE_LIVE_POLL_TIMER = null;
+    }
+  }
+
+  function fnePollLiveChanges() {
+    if (!FNE_LIST_LOADED || FNE_LIST_LOADING) return;
+    const pollStarted = new Date().toISOString();
+    const select = fneGetListSelect();
+    const base = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
+      "')/items?$select=" + encodeURIComponent(select) + "&$expand=Account_x0020_Manager&$top=500";
+    let pending = 0;
+    let changed = false;
+
+    function finishPoll() {
+      pending--;
+      if (pending <= 0) FNE_LAST_SYNC_ISO = pollStarted;
+    }
+
+    if (FNE_MAX_LIST_ID > 0) {
+      pending++;
+      const newUrl = base + "&$filter=Id gt " + FNE_MAX_LIST_ID + "&$orderby=Id asc";
+      spGet(newUrl, function(err, data) {
+        if (!err && data && data.d && data.d.results.length) {
+          if (fneUpsertItemsInCache(data.d.results.map(fneMapItem))) changed = true;
+        }
+        finishPoll();
+      });
+    }
+
+    if (FNE_LAST_SYNC_ISO) {
+      pending++;
+      const modUrl = base + "&$filter=Modified ge datetime'" + FNE_LAST_SYNC_ISO + "'&$orderby=Modified asc";
+      spGet(modUrl, function(err, data) {
+        if (!err && data && data.d && data.d.results.length) {
+          if (fneUpsertItemsInCache(data.d.results.map(fneMapItem))) changed = true;
+        }
+        finishPoll();
+      });
+    }
+
+    if (!pending) FNE_LAST_SYNC_ISO = pollStarted;
+    if (changed && typeof window.fneOnLiveUpdate === 'function') window.fneOnLiveUpdate();
   }
   
   function fneMapItem(it) {
@@ -2614,15 +2800,20 @@ if (!fneIsAdmin()) {
 
     let done = 0, failed = 0;
     const total = rows.length;
+    const deletedIds = [];
 
     function deleteNext(i) {
       if (i >= total) {
         fneToast('Deleted ' + done + ' record(s)' + (failed ? ', ' + failed + ' failed' : ''), failed ? 'error' : 'success');
-        fneLoadList();
+        if (deletedIds.length) fneRemoveListItems(deletedIds);
         return;
       }
       fneDeleteSpItem(rows[i].id, function(err) {
-        if (err) failed++; else done++;
+        if (err) failed++;
+        else {
+          done++;
+          deletedIds.push(rows[i].id);
+        }
         deleteNext(i + 1);
       });
     }
@@ -3116,13 +3307,14 @@ if (!fneIsAdmin()) {
 
     const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items";
     let done = 0, failed = 0;
+    const savedIds = [];
 
     function createNext(i) {
       if (i >= valid.length) {
         const msg = 'Uploaded ' + done + ' record(s)' + (failed ? ', ' + failed + ' failed' : '');
         if (st) st.textContent = msg;
         fneToast(msg, failed ? 'error' : 'success');
-        fneLoadList();
+        if (savedIds.length) fneFetchAndUpsertItems(savedIds);
         if (done > 0) fneBulkClearTable();
         return;
       }
@@ -3131,8 +3323,12 @@ if (!fneIsAdmin()) {
       const body = fneBuildImportSpBody(rec);
       fneEnsureUserId(rec.amEmail, function(amUserId) {
         if (amUserId) body['Account_x0020_ManagerId'] = amUserId;
-        spPost(url, body, function(err) {
-          if (err) failed++; else done++;
+        spPost(url, body, function(err, data) {
+          if (err) failed++;
+          else {
+            done++;
+            if (data && data.d && data.d.Id) savedIds.push(data.d.Id);
+          }
           createNext(i + 1);
         });
       });
@@ -3211,13 +3407,14 @@ if (!fneIsAdmin()) {
     if (!confirm('Update ' + valid.length + ' record(s)?' + (invalid ? ' (' + invalid + ' row(s) skipped due to errors)' : ''))) return;
 
     let done = 0, failed = 0;
+    const updatedIds = [];
 
     function updateNext(i) {
       if (i >= valid.length) {
         const msg = 'Updated ' + done + ' record(s)' + (failed ? ', ' + failed + ' failed' : '');
         if (st) st.textContent = msg;
         fneToast(msg, failed ? 'error' : 'success');
-        fneLoadList();
+        if (updatedIds.length) fneFetchAndUpsertItems(updatedIds);
         if (done > 0) fneBulkEditClose();
         return;
       }
@@ -3227,7 +3424,11 @@ if (!fneIsAdmin()) {
       fneEnsureUserId(rec.amEmail, function(amUserId) {
         if (amUserId) body['Account_x0020_ManagerId'] = amUserId;
         fneMergeSpItem(rec._id, body, function(err) {
-          if (err) failed++; else done++;
+          if (err) failed++;
+          else {
+            done++;
+            updatedIds.push(rec._id);
+          }
           updateNext(i + 1);
         });
       });
@@ -3587,6 +3788,17 @@ if (!fneIsAdmin()) {
         if (el) el.addEventListener('change', fneCalcHealth);
       });
     }, 500);
+
+    if (window.FNE_STANDALONE) {
+      fneLoadList(false, function() {
+        fneStartLivePoll();
+        const navList = document.getElementById('navFneList');
+        showFneView('list', navList);
+        if (typeof window.fneOnStandaloneReady === 'function') window.fneOnStandaloneReady();
+      });
+    } else {
+      fneStartLivePoll();
+    }
   }
   
   // ── Expose globals ──────────────────────────────────────────────
@@ -3596,6 +3808,10 @@ if (!fneIsAdmin()) {
   window.fneSave            = fneSave;
   window.fneDeleteItem      = fneDeleteItem;
   window.fneLoadList        = fneLoadList;
+  window.fneEnsureList      = fneEnsureList;
+  window.fneRefreshList     = fneRefreshList;
+  window.fneStartLivePoll   = fneStartLivePoll;
+  window.fneStopLivePoll    = fneStopLivePoll;
   window.fneListApplyFilter = fneListApplyFilter;
   window.fneListReset       = fneListReset;
   window.fneExportExcel     = fneExportExcel;
