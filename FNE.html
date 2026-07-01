@@ -821,6 +821,11 @@ const F = {
   COMMENTS_NEW: 'Comments_New',
   SPI:          'SPI',
   PROJ_HEALTH:  'Project_x0020_Health',
+  IMPL_START:   'Implementation_Start_Date',
+  TEMP_CONN:    'Current_x0020_Temporary_x0020_Co',
+  TARGET_MIG:   'Target_x0020_Migration_x0020_Dat',
+  BLOCKER:      'Current_x0020_Blocker',
+  PM_MAN_DAYS:  'PM_x0020_Man_x0020_days_x002f_Ac',
 };
 
 // ══ CONSOLE HELPER ══
@@ -1448,14 +1453,18 @@ el('viewAnalytics').style.display = view==='analytics' ? 'block' : 'none';
 // ══════════════════════════════════════════════════════════════════
 
 function dashGetSelect(){
+  // Superset that also covers everything the FNE Tracker list view needs
+  // (fneMapItem in fne.js), so the raw rows fetched here can be reused
+  // for the Tracker List instead of triggering a second full load.
   return [
     'Id',F.SUB_REQ,F.IMPL_TYPE,F.START_DATE,F.SLA,F.EXP_RFS,
     F.BUILD_STATUS,F.CUST_NAME,F.SOF,F.MRC,F.EST_COST,F.VERTICAL,
     F.COMMENTS,F.REQ_STATUS,F.CUST_ADDR,F.ACC_CODE,F.ASSIGNED_BY,
     F.PROJ_TYPE,F.UNIT_NO,F.OTC,F.TCV,F.OSP_REQ,F.OSP_ET,
     F.FES_REF,F.SURVEY_REF,F.GAID,F.BID_REF,F.WO_NUM,F.ACC_DIR,
-    F.CONTRACT_DUR,F.FNE_MGR,F.RFS_BASELINE,F.CRITICAL_PROJ,F.COMMENTS_NEW,F.SPI,F.PROJ_HEALTH,
-    'Account_x0020_Manager/Title','Account_x0020_Manager/EMail'
+    F.CONTRACT_DUR,F.FNE_MGR,F.RFS_BASELINE,F.CRITICAL_PROJ,F.COMMENTS_NEW,
+    F.IMPL_START,F.PROJ_HEALTH,F.SPI,F.TEMP_CONN,F.TARGET_MIG,F.BLOCKER,F.PM_MAN_DAYS,
+    'Account_x0020_Manager/Id','Account_x0020_Manager/Title','Account_x0020_Manager/EMail'
   ].join(',');
 }
 
@@ -1474,6 +1483,16 @@ function dashUpsertItems(mappedItems){
   buildAllFilters();
   applyAll();
   return true;
+}
+
+function dashUpsertRawItems(rawItems){
+  if(!rawItems||!rawItems.length)return;
+  if(!Array.isArray(window.FNE_RAW_ITEMS))window.FNE_RAW_ITEMS=[];
+  rawItems.forEach(function(raw){
+    const idx=window.FNE_RAW_ITEMS.findIndex(function(x){return x.Id===raw.Id;});
+    if(idx>=0)window.FNE_RAW_ITEMS[idx]=raw;
+    else window.FNE_RAW_ITEMS.push(raw);
+  });
 }
 
 function loadData(onComplete,force){
@@ -1510,6 +1529,9 @@ function loadData(onComplete,force){
       else{
         console.log('[FNE] Loaded:',allResults.length,'records');
         ALL_ITEMS=allResults.map(mapItem);
+        // Stash the raw (un-mapped) rows so the Tracker List (fne.js) can
+        // reuse this same data instead of fetching the whole list again.
+        window.FNE_RAW_ITEMS=allResults.slice();
         buildAllFilters();
         applyAll();
         finishLoad();
@@ -1537,6 +1559,7 @@ function dashPollLiveChanges(){
     spGet(base+"&$filter=Id gt "+DASH_MAX_ID+"&$orderby=Id asc",function(err,data){
       if(!err&&data&&data.d&&data.d.results.length){
         dashUpsertItems(data.d.results.map(mapItem));
+        dashUpsertRawItems(data.d.results);
       }
       finishPoll();
     });
@@ -1547,6 +1570,7 @@ function dashPollLiveChanges(){
     spGet(base+"&$filter=Modified ge datetime'"+DASH_LAST_SYNC_ISO+"'&$orderby=Modified asc",function(err,data){
       if(!err&&data&&data.d&&data.d.results.length){
         dashUpsertItems(data.d.results.map(mapItem));
+        dashUpsertRawItems(data.d.results);
       }
       finishPoll();
     });
