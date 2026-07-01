@@ -1477,7 +1477,7 @@ function dashUpsertItems(mappedItems){
   mappedItems.forEach(function(item){
     const idx=ALL_ITEMS.findIndex(function(x){return x.id===item.id;});
     if(idx>=0)ALL_ITEMS[idx]=item;
-    else ALL_ITEMS.push(item);
+    else ALL_ITEMS.unshift(item);
     if(item.id>DASH_MAX_ID)DASH_MAX_ID=item.id;
   });
   buildAllFilters();
@@ -1528,7 +1528,7 @@ function loadData(onComplete,force){
       if(data.d.__next){fetchPage(data.d.__next);}
       else{
         console.log('[FNE] Loaded:',allResults.length,'records');
-        ALL_ITEMS=allResults.map(mapItem);
+        ALL_ITEMS=allResults.map(mapItem).sort((a,b)=>b.id-a.id);
         // Stash the raw (un-mapped) rows so the Tracker List (fne.js) can
         // reuse this same data instead of fetching the whole list again.
         window.FNE_RAW_ITEMS=allResults.slice();
