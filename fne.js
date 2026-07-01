@@ -1,4225 +1,2054 @@
-  // ══════════════════════════════════════════════════════════════════
-  //  fnetracker.js  —  FNE Tracker Form + List module  (v2)
-  //  Depends on: SP_SITE constant, USER object, spGet, spPost,
-  //              getDigest, fmt, fmtDate, num  (all from dashboard.js)
-  // ══════════════════════════════════════════════════════════════════
-  
-  const FNE_LIST = 'FNE Tracker GKLA 23-24';
-  const FNE_SP   = window.SP_SITE || 'http://sharedspaces:8081/sites/FGKA';
-  
-  // ─── Choice values (fallback hardcoded; also fetched from SP dynamically) ──
-  const FNE_CHOICES = {
-    subRequest:      ['Site Feasibility Check','Activation Survey','Wireless Survey','Wireless Implementation','Fiber Implementation'],
-    implType:        ['Shortfall','FNE','Site Office','Wireless Implementation'],
-    buildingStatus:  ['RFS','Partial RFS','Not Connected'],
-    sof:             ['Yes','No'],
-    vertical:        [],
-    requestStatus:   ['In Progress','Completed','Cancelled','On Hold'],
-    assignedBy:      ['Service Manager','Account Manager','Solution Manager','Project Manager'],
-    projectType:     ['FNE','PIS','Rollout','Taawun','Site Office','Wireless'],
-    ospCivil:        ['Yes','No'],
-    accountDirector: [],
-    fneManager:      ['Arafat Wanchoo','Husham Salih','Jamal Sattar','Ishfaq Deen'],
-    tempConnType:    ['Wireless','Fibre'],
-    blocker:         ['Customer','Infra'],
-    criticalProjects:['Yes','No'],
-   projectHealth: [
-  'Green',
-  'Amber',
-  'Red',
-  'No Expected RFS to calculate Project Health'
-],
-  };
-
-  // Vertical → Account Director (auto-select on form & bulk tables)
-  // Keys are normalized (lowercase, no spaces/dashes) — SP uses KeyA, KeyB, HUNT, F-NE, etc.
-  const FNE_VERTICAL_DIRECTOR_MAP = {
-    'auh':     'Fatma Almheiri',
-    'dxb':     'Mohamad Amer Sibai',
-    'keya':    'Hany Jawee',
-    'keyb':    'Mazen Adem',
-    'le':      'Muhammad Shahzad Hasan',
-    'hunt':    'Khalid Karmastaji',
-    'hunting': 'Khalid Karmastaji',
-    'fne':     'Majd Nairoukh',
-    'nef':     'Majd Nairoukh',
-    // legacy vertical codes still in some records
-    'fogh':    'Hany Jawee',
-    'tre':     'Hany Jawee',
-    'trm':     'Mazen Adem',
-  };
-
-  const FNE_POWER_EMAILS = ['husham.salih@du.ae', 'tehleel.lone@du.ae'];
-  const FNE_STATUS_COMPLETED = ['Completed'];
-
-  const FNE_MGR_EMAIL_MAP = {
-    'husham salih': 'husham.salih@du.ae',
-    'tehleel lone': 'tehleel.lone@du.ae',
-    'jamal sattar': 'jamal.sattar@du.ae',
-    'arafat wanchoo': 'arafat.wanchoo@du.ae',
-    'ishfaq deen': 'ishfaq.deen@du.ae',
-  };
-
-  const FNE_LIST_MS_STATE = {
-    status: new Set(), implType: new Set(), vertical: new Set(),
-    fneManager: new Set(), buildStatus: new Set(), projType: new Set(),
-    subReq: new Set(), assignedBy: new Set(), accDir: new Set(),
-    osp: new Set(), sof: new Set(), health: new Set(), blocker: new Set(),
-    critical: new Set(), year: new Set(),
-  };
-
-  const FNE_LIST_MS_CFG = {
-    status:     { field: 'requestStatus',   txtId: 'fne-mstxt-status',     dropId: 'fne-msd-status',     mstId: 'fne-mst-status' },
-    implType:   { field: 'implType',        txtId: 'fne-mstxt-implType',   dropId: 'fne-msd-implType',   mstId: 'fne-mst-implType' },
-    vertical:   { field: 'vertical',        txtId: 'fne-mstxt-vertical',   dropId: 'fne-msd-vertical',   mstId: 'fne-mst-vertical' },
-    fneManager: { field: 'fneManager',      txtId: 'fne-mstxt-fneManager', dropId: 'fne-msd-fneManager', mstId: 'fne-mst-fneManager' },
-    buildStatus:{ field: 'buildingStatus',  txtId: 'fne-mstxt-buildStatus',dropId: 'fne-msd-buildStatus',mstId: 'fne-mst-buildStatus' },
-    projType:   { field: 'projectType',     txtId: 'fne-mstxt-projType',   dropId: 'fne-msd-projType',   mstId: 'fne-mst-projType' },
-    subReq:     { field: 'subRequest',      txtId: 'fne-mstxt-subReq',     dropId: 'fne-msd-subReq',     mstId: 'fne-mst-subReq' },
-    assignedBy: { field: 'assignedBy',      txtId: 'fne-mstxt-assignedBy', dropId: 'fne-msd-assignedBy', mstId: 'fne-mst-assignedBy' },
-    accDir:     { field: 'accountDirector', txtId: 'fne-mstxt-accDir',     dropId: 'fne-msd-accDir',     mstId: 'fne-mst-accDir' },
-    osp:        { field: 'ospRequired',     txtId: 'fne-mstxt-osp',        dropId: 'fne-msd-osp',        mstId: 'fne-mst-osp' },
-    sof:        { field: 'sof',             txtId: 'fne-mstxt-sof',        dropId: 'fne-msd-sof',        mstId: 'fne-mst-sof' },
-    health:     { field: 'projectHealth',   txtId: 'fne-mstxt-health',     dropId: 'fne-msd-health',     mstId: 'fne-mst-health' },
-    blocker:    { field: 'blocker',         txtId: 'fne-mstxt-blocker',    dropId: 'fne-msd-blocker',    mstId: 'fne-mst-blocker' },
-    critical:   { field: 'criticalProjects',txtId: 'fne-mstxt-critical',   dropId: 'fne-msd-critical',   mstId: 'fne-mst-critical' },
-    year:       { field: 'year',            txtId: 'fne-mstxt-year',       dropId: 'fne-msd-year',       mstId: 'fne-mst-year', numeric: true },
-  };
-
-  const FNE_FORM_SEL_MAP = {
-    subRequest: 'fne_sub_req', implType: 'fne_impl_type',
-    buildingStatus: 'fne_build_status', sof: 'fne_sof',
-    vertical: 'fne_vertical', requestStatus: 'fne_req_status',
-    assignedBy: 'fne_assigned_by', projectType: 'fne_proj_type',
-    ospCivil: 'fne_osp', accountDirector: 'fne_acc_dir',
-    fneManager: 'fne_fne_mgr', tempConnType: 'fne_temp_conn',
-    blocker: 'fne_blocker', criticalProjects: 'fne_critical_projects',
-  };
-
-  const FNE_FILTER_SEL_MAP = {
-    status: 'requestStatus', implType: 'implType', vertical: 'vertical',
-    fneManager: 'fneManager', buildStatus: 'buildingStatus', projType: 'projectType',
-    subReq: 'subRequest', assignedBy: 'assignedBy', accDir: 'accountDirector',
-    osp: 'ospCivil', sof: 'sof', health: 'projectHealth', blocker: 'blocker',
-    critical: 'criticalProjects',
-  };
-
-  // ─── SP Field internal name map ────────────────────────────────────
-  const FNE_F = {
-    FES:          'Title',
-    SUB_REQ:      'Sub_x0020_Request_x0020_',
-    IMPL_TYPE:    'Implementation_x0020_Type',
-    START_DATE:   'Recived_x0020_Date',
-    SLA:          'SAL',
-    EXP_RFS:      'Expected_x0020_RSF_x0020_Date',
-    BUILD_STATUS: 'Building_x0020_Connectivity',
-    CUST_NAME:    'Customer_x0020_Name',
-    SOF:          'SOF_x0020_',
-    MRC:          'MRC',
-    EST_COST:     'Estimated_x0020_Cost',
-    VERTICAL:     'Vertical',
-    COMMENTS:     'Comments',
-    REQ_STATUS:   'Request_x0020_Status',
-    CUST_ADDR:    'CustomerAddress',
-    ACC_CODE:     'AccountCode',
-    ASSIGNED_BY:  'AssignedBy',
-    PROJ_TYPE:    'ProjectType',
-    UNIT_NO:      'UnitNo',
-    OTC:          'OTC',
-    TCV:          'TCV0',
-    OSP_REQ:      'OSPandCivilRequired',
-    OSP_ET:       'OSPCivilET',
-    FES_REF:      'FESShortfalReference',
-    SURVEY_REF:   'SiteSurveyReference',
-    GAID:         'GAID0',
-    BID_REF:      'BidRef',
-    WO_NUM:       'WONumber',
-    ACC_DIR:      'AccountDirector',
-    CONTRACT_DUR: 'ContractDuration0',
-    FNE_MGR:      'FNEManager',
-    RFS_BASELINE: 'RFS_x0020_Baseline',
-    CRITICAL_PROJ:'Critical_x0020_Projects',
-    COMMENTS_NEW: 'Comments_New',
-    IMPL_START:   'Implementation_Start_Date',
-    PROJ_HEALTH:  'Project_x0020_Health',
-    SPI:          'SPI',
-    TEMP_CONN:    'Current_x0020_Temporary_x0020_Co',
-    TARGET_MIG:   'Target_x0020_Migration_x0020_Dat',
-    BLOCKER:      'Current_x0020_Blocker',
-    PM_MAN_DAYS:  'PM_x0020_Man_x0020_days_x002f_Ac', // display: Project Duration
-  };
-  
-  // ─── State ─────────────────────────────────────────────────────────
-  let FNE_EDIT_ID        = null;
-  let FNE_EDIT_CRITICAL_PREV = '';
-  let FNE_LIST_DATA      = [];
-  let FNE_GRID_API       = null;
-  let FNE_CAME_FROM_LIST = false;
-  let FNE_LIST_ITEM_TYPE = '';   // fetched dynamically on init
-  let FNE_LIST_LOADED    = false;
-  let FNE_LIST_LOADING   = false;
-  let FNE_MAX_LIST_ID    = 0;
-  let FNE_LAST_SYNC_ISO  = null;
-  let FNE_LIVE_POLL_TIMER = null;
-  const FNE_LIVE_POLL_MS = 45000;
-  
-  // One-time lock state: tracks which fields are locked for this item
-  // key = itemId, value = { expRfsLocked, implStartLocked }
-  let FNE_LOCK_STATE = {};
-  
-  // Pending attachments for new/edit
-  let FNE_PENDING_ATTACH  = [];   // { file, name } to upload
-  let FNE_EXISTING_ATTACH = [];   // { FileName, ServerRelativeUrl } from SP
-
-  function fneTodayDateStr() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return y + '-' + m + '-' + day;
-  }
-
-  function fneIsFutureDate(dateStr) {
-    if (!dateStr) return false;
-    return dateStr > fneTodayDateStr();
-  }
-
-  function fneSetActualRfsMaxDate() {
-    const el = document.getElementById('fne_rfs_baseline');
-    if (el) el.max = fneTodayDateStr();
-  }
-
-  // SharePoint rich-text fields (Comments_New, etc.) are stored as HTML
-  function fneHtmlToPlain(html) {
-    if (html === null || html === undefined || html === '' || html === '—') return '';
-    const s = String(html);
-    if (!s.includes('<')) return s.trim();
-    const el = document.createElement('div');
-    el.innerHTML = s;
-    return (el.textContent || el.innerText || '')
-      .replace(/\u00a0/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-function fneIsAdmin() {
-  const role = (USER && USER.role ? String(USER.role) : '').toLowerCase();
-  return !!(
-    USER &&
-    (
-      USER.IsAdmin === true ||
-      role === 'admin' ||
-      role === 'director'
-    )
-  );
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GKLA FNE Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/32.0.2/ag-grid-community.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-grid.css">
+<link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-theme-alpine.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+:root {
+  --bg-body: linear-gradient(145deg, #f0f7ff, #e6f0ff, #eef4ff);
+  --bg-card: #ffffff;
+  --bg-header: rgba(255,255,255,0.97);
+  --bg-sidebar: linear-gradient(180deg,#f0f7ff,#e8f0ff);
+  --bg-content: #f0f5ff;
+  --bg-input: rgba(37,99,235,0.06);
+  --bg-secondary: rgba(37,99,235,0.05);
+  --bg-hover: rgba(37,99,235,0.07);
+  --border: rgba(37,99,235,0.18);
+  --border-s: rgba(37,99,235,0.42);
+  --t1: #0f1e3e;
+  --t2: #2d4070;
+  --t3: #7a8fb8;
+  --acc: #2563eb;
+  --acc2: #0ea5e9;
+  --glow: rgba(37,99,235,0.26);
+  --grad: linear-gradient(135deg,#1d4ed8,#0ea5e9);
+  --nab: rgba(37,99,235,0.09);
+  --nab2: rgba(37,99,235,0.32);
+  --sc: #2563eb;
+  --cs: 0 1px 8px rgba(37,99,235,0.10);
+  --ch: 0 6px 20px rgba(37,99,235,0.18);
+  --chip: rgba(37,99,235,0.08);
+  --green: #16a34a;
+  --amber: #d97706;
+  --red: #dc2626;
 }
-
-function fneNormEmail(email) {
-  return String(email || '').trim().toLowerCase();
+body[data-theme="dark"] {
+  --bg-body: linear-gradient(145deg,#070e1f,#0e1835,#09112a);
+  --bg-card: #0d1630;
+  --bg-header: rgba(7,14,31,0.98);
+  --bg-sidebar: linear-gradient(180deg,#10193a,#0b1328);
+  --bg-content: #090f25;
+  --bg-input: rgba(37,99,235,0.14);
+  --bg-secondary: rgba(37,99,235,0.09);
+  --bg-hover: rgba(37,99,235,0.13);
+  --border: rgba(37,99,235,0.2);
+  --border-s: rgba(37,99,235,0.48);
+  --t1: #e2eaff;
+  --t2: #a0b4d8;
+  --t3: #5a7099;
+  --acc: #60a5fa;
+  --acc2: #38bdf8;
+  --glow: rgba(96,165,250,0.32);
+  --grad: linear-gradient(135deg,#2563eb,#0ea5e9);
+  --nab: rgba(37,99,235,0.16);
+  --nab2: rgba(37,99,235,0.44);
+  --sc: #60a5fa;
+  --cs: 0 2px 16px rgba(0,0,0,0.5);
+  --ch: 0 6px 24px rgba(37,99,235,0.22);
+  --chip: rgba(37,99,235,0.15);
 }
-
-function fneCurrentUser() {
-  return window.USER || (typeof USER !== 'undefined' ? USER : null);
+body[data-theme="magenta"] {
+  --bg-body: linear-gradient(145deg,#f9f0ff,#fce7ff,#f5eeff);
+  --bg-card: #ffffff;
+  --bg-header: rgba(255,255,255,0.97);
+  --bg-sidebar: linear-gradient(180deg,#fdf4ff,#f8ecff);
+  --bg-content: #f9f3ff;
+  --bg-input: rgba(168,85,247,0.06);
+  --bg-secondary: rgba(168,85,247,0.05);
+  --bg-hover: rgba(168,85,247,0.07);
+  --border: rgba(168,85,247,0.2);
+  --border-s: rgba(168,85,247,0.45);
+  --t1: #1e1133;
+  --t2: #4b3f6b;
+  --t3: #8b7aad;
+  --acc: #a855f7;
+  --acc2: #c724b1;
+  --glow: rgba(168,85,247,0.28);
+  --grad: linear-gradient(135deg,#9248b9,#c724b1);
+  --nab: rgba(168,85,247,0.1);
+  --nab2: rgba(168,85,247,0.35);
+  --sc: #a855f7;
+  --cs: 0 1px 8px rgba(168,85,247,0.12);
+  --ch: 0 6px 20px rgba(168,85,247,0.2);
+  --chip: rgba(168,85,247,0.08);
 }
-
-function fneIsPowerUser() {
-  const u = fneCurrentUser();
-  const email = fneNormEmail(u && u.email);
-  if (FNE_POWER_EMAILS.indexOf(email) >= 0) return true;
-  const name = fneNormStr(u && u.name);
-  if (name.indexOf('husham') >= 0 && name.indexOf('salih') >= 0) return true;
-  if (name.indexOf('tehleel') >= 0 && name.indexOf('lone') >= 0) return true;
-  return false;
+body[data-theme="magenta-dark"] {
+  --bg-body: linear-gradient(145deg,#120820,#1e0d33,#160a28);
+  --bg-card: #1f0d38;
+  --bg-header: rgba(18,8,32,0.98);
+  --bg-sidebar: linear-gradient(180deg,#230f3d,#1a0a2e);
+  --bg-content: #160a28;
+  --bg-input: rgba(168,85,247,0.12);
+  --bg-secondary: rgba(168,85,247,0.08);
+  --bg-hover: rgba(168,85,247,0.12);
+  --border: rgba(168,85,247,0.2);
+  --border-s: rgba(168,85,247,0.5);
+  --t1: #f3e8ff;
+  --t2: #c4b5fd;
+  --t3: #8b5cf6;
+  --acc: #c084fc;
+  --acc2: #e879f9;
+  --glow: rgba(192,132,252,0.35);
+  --grad: linear-gradient(135deg,#9248b9,#c724b1);
+  --nab: rgba(168,85,247,0.16);
+  --nab2: rgba(168,85,247,0.45);
+  --sc: #e879f9;
+  --cs: 0 2px 16px rgba(0,0,0,0.5);
+  --ch: 0 6px 24px rgba(168,85,247,0.25);
+  --chip: rgba(168,85,247,0.15);
 }
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+h1,h2,h3,h4,h5,h6{margin:0!important;padding:0!important;font-weight:inherit}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-body);color:var(--t1);min-height:100vh;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s;line-height:1.5;}
+select,input,textarea,button{font-family:inherit}
+.portal-shell{max-width:1800px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-body);}
+.header{background:var(--bg-header);border-bottom:1px solid var(--border);backdrop-filter:blur(16px);padding:0 1.25rem;height:56px;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:200;flex-shrink:0;}
+.logo-section{display:flex;align-items:center;gap:.65rem;min-width:0}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px var(--glow);flex-shrink:0;}
+.logo svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2}
+.header-title{font-size:1.05rem;font-weight:800;white-space:nowrap;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.header-center{display:flex;align-items:center;gap:.75rem;flex:1;justify-content:flex-start;padding-left:.75rem}
+.header-actions{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.live-badge-pill{display:inline-flex;align-items:center;gap:.3rem;padding:.22rem .65rem;border-radius:20px;background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.28);font-size:.73rem;font-weight:700;color:#16a34a;white-space:nowrap;}
+body[data-theme="dark"] .live-badge-pill,body[data-theme="magenta-dark"] .live-badge-pill{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.25);color:#22c55e;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#16a34a;animation:pulseDot 2s infinite;}
+body[data-theme="dark"] .status-dot,body[data-theme="magenta-dark"] .status-dot{background:#22c55e}
+@keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.4)}50%{box-shadow:0 0 0 5px rgba(22,163,74,0)}}
+.date-badge{font-size:.75rem;color:var(--t3);display:flex;align-items:center;gap:.3rem;white-space:nowrap}
+.color-scheme-selector{padding:.3rem .65rem;background:var(--bg-input);border:1px solid var(--border);border-radius:18px;color:var(--t1);font-size:.75rem;cursor:pointer;transition:border-color .2s;}
+.color-scheme-selector:hover{border-color:var(--border-s)}
+.theme-toggle{width:34px;height:34px;border-radius:50%;background:var(--bg-input);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t1);transition:all .2s;}
+.theme-toggle:hover{border-color:var(--border-s)}
+.theme-toggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.sidebar-toggle-btn{position:absolute;right:-14px;top:20px;z-index:300;width:28px;height:28px;border-radius:50%;background:var(--bg-card);border:1px solid var(--border);box-shadow:var(--cs);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t1);transition:all .2s;}
+.sidebar-toggle-btn:hover{border-color:var(--border-s);background:var(--bg-hover)}
+.sidebar-toggle-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.main-container{display:flex;flex:1;min-height:0;position:relative}
+.sidebar{width:210px;min-width:210px;background:var(--bg-sidebar);border-right:1px solid var(--border);padding:1rem 0;overflow:visible;flex-shrink:0;transition:width .26s ease,min-width .26s ease,opacity .22s,padding .25s;}
+.sidebar.collapsed{width:0;min-width:0;padding:0;border:none;overflow:visible!important}
+.sidebar.collapsed .nav-items{opacity:0;pointer-events:none}
+.sidebar.collapsed .sidebar-toggle-btn{opacity:1!important;pointer-events:all!important;right:-28px;background:var(--bg-card);box-shadow:var(--cs)}
+.nav-items{display:flex;flex-direction:column;gap:2px;padding:0 .65rem}
+.nav-section-label{font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:.75rem .6rem .3rem;white-space:nowrap;overflow:hidden;}
+.nav-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .7rem;border-radius:9px;cursor:pointer;color:var(--t2);border:1px solid transparent;transition:all .17s;white-space:nowrap;overflow:hidden;font-size:.84rem;font-weight:500;user-select:none;}
+.nav-item .nav-icon{display:flex;align-items:center;flex-shrink:0;width:17px;height:17px}
+.nav-item .nav-icon svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2}
+.nav-item:hover{background:var(--bg-hover);color:var(--t1)}
+.nav-item.active{background:var(--nab);border-color:var(--nab2);color:var(--t1);font-weight:600}
+.nav-admin-only{display:none;}
+.content{flex:1;overflow-y:auto;min-width:0;background:var(--bg-content);padding:1.1rem 1.25rem}
+.dashboard-section{animation:fadeSection .25s ease;padding:.5rem 0}
+@keyframes fadeSection{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.section-title{font-size:1rem;font-weight:800;margin:.85rem 0!important;display:flex;align-items:center;gap:.45rem;color:var(--acc);}
+.section-title svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
+.top-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:.85rem;margin-bottom:1rem}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;box-shadow:var(--cs);position:relative;overflow:visible;transition:transform .18s,box-shadow .18s;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);border-radius:12px 12px 0 0}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--ch)}
+.stat-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);font-weight:700;margin-bottom:.35rem}
+.stat-value{font-size:1.9rem;font-weight:900;line-height:1;color:var(--sc);margin-bottom:.25rem}
+.stat-subtitle{font-size:.76rem;font-weight:600;color:var(--t2)}
+.stat-card.tile-active{box-shadow:0 0 0 2px var(--acc),var(--ch)!important;transform:translateY(-2px)}
+.stat-card.tile-dimmed{opacity:.38;transform:none!important;box-shadow:var(--cs)!important}
+.stat-card.tile-active::after{content:'✓';position:absolute;top:6px;right:8px;font-size:.7rem;font-weight:900;color:var(--acc);}
+.health-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.85rem;margin-bottom:1rem}
+.health-tile{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;box-shadow:var(--cs);position:relative;overflow:hidden;}
+.health-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;}
+.health-tile.green::before{background:#16a34a}
+.health-tile.amber::before{background:#d97706}
+.health-tile.red::before{background:#dc2626}
+.health-tile .health-count{font-size:2.2rem;font-weight:900;line-height:1}
+.health-tile.green .health-count{color:#16a34a}
+.health-tile.amber .health-count{color:#d97706}
+.health-tile.red .health-count{color:#dc2626}
+.health-tile .health-label{font-size:.78rem;font-weight:700;color:var(--t2);margin-top:.2rem}
+.health-tile .health-meta{font-size:.7rem;color:var(--t3);margin-top:.4rem}
 
-function fneParseSpDateLocal(val) {
-  if (val === null || val === undefined || val === '') return null;
-  let raw = val;
-  if (typeof raw === 'string' && raw.indexOf('/Date(') >= 0) {
-    const m = raw.match(/\/Date\((-?\d+)\)\//);
-    if (m) raw = new Date(parseInt(m[1], 10)).toISOString();
-  }
-  const d = new Date(raw);
-  if (isNaN(d)) return null;
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0');
-}
+/* FILTER BAR */
+.filter-bar{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:.85rem 1rem;margin-bottom:1rem;box-shadow:var(--cs);}
+.filter-bar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;}
+.filter-bar-label{font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+.filter-bar-sep{display:none;}
+.filter-bar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.55rem .65rem;align-items:end;}
+.fb-group{display:flex;flex-direction:column;gap:.2rem;min-width:0;}
+.fb-group-label{font-size:.63rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;}
+.fb-select{padding:.38rem .65rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.8rem;cursor:pointer;width:100%;transition:border-color .18s;}
+.fb-select:focus{outline:none;border-color:var(--border-s)}
 
-function fneGetRfsMigrationFilter() {
-  const listEl = document.getElementById('fnel_rfsMigration');
-  if (listEl) return listEl.value || '';
-  const dashEl = document.getElementById('dashRfsMigration');
-  return dashEl ? (dashEl.value || '') : '';
-}
+/* Multi-select dropdown */
+.ms-wrap{position:relative;z-index:auto}
+.ms-trigger{padding:.38rem .7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:.5rem;transition:border-color .18s,box-shadow .18s;user-select:none;width:100%;}
+.ms-trigger:hover,.ms-trigger.open{border-color:var(--border-s);box-shadow:0 0 0 3px var(--glow)}
+.ms-trigger.has-sel{border-color:var(--acc);background:var(--nab);color:var(--acc);font-weight:600;}
+.ms-trigger svg{width:13px;height:13px;stroke:var(--t3);fill:none;stroke-width:2;transition:transform .2s;flex-shrink:0}
+.ms-trigger.open svg{transform:rotate(180deg)}
+.ms-dropdown{position:fixed;background:var(--bg-card);border:1px solid var(--border-s);border-radius:8px;max-height:230px;overflow-y:auto;z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,.28);display:none;min-width:180px;}
+.ms-dropdown.open{display:block}
+.ms-option{padding:8px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;transition:background .15s;}
+.ms-option:hover{background:var(--bg-hover)}
+.ms-option input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--acc)}
+.ms-option label{cursor:pointer;flex:1;color:var(--t1)}
 
-function fneIsActiveRfsStatus(status) {
-  const s = String(status || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  return s !== 'completed' && s !== 'cancelled';
-}
+.reset-btn{padding:.45rem .9rem;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;background:var(--bg-input);color:var(--t1);border:1px solid var(--border);white-space:nowrap;transition:all .2s;}
+.reset-btn:hover{border-color:var(--border-s)}
+.reset-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+.export-btn{padding:.5rem 1rem;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;transition:all .2s;border:none;background:var(--grad);color:#fff;box-shadow:0 2px 10px var(--glow);white-space:nowrap;}
+.export-btn:hover{box-shadow:0 4px 16px var(--glow);transform:translateY(-1px)}
+.export-btn svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2}
 
-function fneHeaderMinWidth(headerName) {
-  return Math.max(100, Math.ceil(String(headerName || '').length * 7.5) + 36);
-}
+.mgr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.85rem}
+.mgr-tile{background:var(--bg-card);border:1px solid var(--border);border-radius:13px;padding:.9rem 1rem;cursor:pointer;transition:all .2s;box-shadow:var(--cs);position:relative;overflow:hidden;}
+.mgr-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad)}
+.mgr-tile:hover{transform:translateY(-2px);box-shadow:var(--ch);border-color:var(--border-s)}
+.mgr-tile.selected{border-color:var(--nab2);background:var(--nab);box-shadow:0 0 0 2px var(--acc),var(--ch);}
+.mgr-tile.dimmed{opacity:.3;pointer-events:none;}
+.mgr-header{display:flex;flex-direction:column;gap:.15rem;margin-bottom:.6rem}
+.mgr-header h3{font-size:.88rem;font-weight:700;color:var(--t1);line-height:1.2}
+.mgr-meta{font-size:.68rem;color:var(--t3)}
+.mgr-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.6rem}
+.mgr-stat-box{background:var(--bg-secondary);border-radius:7px;padding:.5rem .6rem;border:1px solid var(--border)}
+.mgr-stat-label{font-size:.65rem;text-transform:uppercase;color:var(--t3);margin-bottom:.12rem;font-weight:600}
+.mgr-stat-value{font-size:1.05rem;font-weight:800;color:var(--sc)}
+.mgr-health{border-radius:8px;padding:.55rem .7rem;background:var(--grad);color:#fff;margin-bottom:.55rem}
+.mgr-health-label{font-size:.65rem;text-transform:uppercase;opacity:.82;font-weight:700;margin-bottom:.15rem}
+.progress-bar{background:var(--bg-secondary);border-radius:20px;height:5px;overflow:hidden;margin-bottom:.4rem}
+.progress-fill{height:100%;border-radius:20px;background:var(--grad);transition:width .5s ease}
+.lm-progress-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.12rem}
+.lm-progress-label,.lm-progress-value{font-size:.68rem;color:var(--t3)}
+.lm-progress-value{font-weight:700}
+.chart-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem;box-shadow:var(--cs)}
+.chart-title{font-size:.8rem;font-weight:700;color:var(--t2);margin-bottom:.65rem;display:flex;align-items:center;gap:.35rem;justify-content:space-between;}
+.chart-title svg{width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:2;flex-shrink:0}
+.chart-container{position:relative;height:260px}
+.table-section{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;margin-bottom:1rem;box-shadow:var(--cs);}
+.table-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.65rem;margin-bottom:.85rem;}
+.table-title{font-size:.9rem;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:.35rem;margin:0!important}
+.table-title svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.table-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.search-box{padding:.45rem .75rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.82rem;min-width:180px;transition:border-color .18s;}
+.search-box:focus{outline:none;border-color:var(--border-s)}
+.search-box::placeholder{color:var(--t3)}
+.status-badge{display:inline-block;padding:.18rem .55rem;border-radius:20px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.badge-success{background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.28)}
+.badge-warning{background:rgba(245,158,11,.12);color:#b45309;border:1px solid rgba(245,158,11,.28)}
+.badge-danger{background:rgba(220,38,38,.12);color:#dc2626;border:1px solid rgba(220,38,38,.28)}
+.badge-info{background:rgba(37,99,235,.12);color:#2563eb;border:1px solid rgba(37,99,235,.28)}
+.badge-neutral{background:rgba(100,116,139,.12);color:#64748b;border:1px solid rgba(100,116,139,.28)}
+body[data-theme="dark"] .badge-success,body[data-theme="magenta-dark"] .badge-success{background:rgba(34,197,94,.12);color:#22c55e;border-color:rgba(34,197,94,.25)}
+body[data-theme="dark"] .badge-warning,body[data-theme="magenta-dark"] .badge-warning{background:rgba(251,191,36,.12);color:#fbbf24;border-color:rgba(251,191,36,.25)}
+.ag-theme-alpine .ag-root-wrapper{background:var(--bg-card)!important;border-color:var(--border)!important;border-radius:10px!important;overflow:hidden!important}
+.ag-theme-alpine .ag-header,.ag-theme-alpine .ag-header-row,.ag-theme-alpine .ag-header-viewport{background:var(--bg-secondary)!important;border-bottom:2px solid var(--border-s)!important}
+.ag-theme-alpine .ag-header-cell{background:var(--bg-secondary)!important;color:var(--t1)!important;font-weight:700!important;font-size:.71rem!important;text-transform:uppercase!important;letter-spacing:.04em!important}
+.ag-theme-alpine .ag-header-cell-text,.ag-theme-alpine .ag-header-cell-label{color:var(--t1)!important;font-weight:700!important}
+.ag-theme-alpine .ag-icon{color:var(--t3)!important}
+.ag-theme-alpine .ag-body-viewport,.ag-theme-alpine .ag-center-cols-viewport{background:var(--bg-card)!important}
+.ag-theme-alpine .ag-row{background:var(--bg-card)!important;color:var(--t1)!important;border-bottom-color:var(--border)!important}
+.ag-theme-alpine .ag-row-odd{background:var(--bg-secondary)!important}
+.ag-theme-alpine .ag-row-hover,.ag-theme-alpine .ag-row-hover.ag-row-even,.ag-theme-alpine .ag-row-hover.ag-row-odd{background:var(--bg-hover)!important}
+.ag-theme-alpine .ag-cell{color:var(--t1)!important}
+.ag-theme-alpine .ag-paging-panel{background:var(--bg-card)!important;color:var(--t1)!important;border-top-color:var(--border)!important}
+.ag-theme-alpine .ag-menu,.ag-theme-alpine .ag-filter{background:var(--bg-card)!important;color:var(--t1)!important;border-color:var(--border)!important}
+.ag-theme-alpine input.ag-input-field-input{background:var(--bg-input)!important;color:var(--t1)!important;border-color:var(--border)!important}
 
-function fneApplyHeaderSizing(col) {
-  if (col.headerName && col.colId !== 'fne_select' && col.colId !== 'fne_reminder') {
-    col.wrapHeaderText = true;
-    col.autoHeaderHeight = true;
-    const mw = fneHeaderMinWidth(col.headerName);
-    if (!col.minWidth || col.minWidth < mw) col.minWidth = mw;
-  }
-  return col;
-}
+/* LANDING */
+.landing-page{min-height:100vh;display:flex!important;flex-direction:row!important;background:var(--bg-body)}
+.landing-left,.landing-right{flex:1!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:2rem!important;min-width:0!important}
+.landing-container{width:100%;max-width:420px}
+.landing-card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:1.4rem;box-shadow:var(--cs);margin-bottom:1rem}
+.landing-header{text-align:center;margin-bottom:1.4rem}
+.landing-logo{display:flex;justify-content:center;margin-bottom:.85rem}
+.logo-icon{width:60px;height:60px;border-radius:15px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px var(--glow)}
+.logo-icon svg{width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2}
+.landing-title{font-size:1.4rem;font-weight:800;color:var(--t1);margin-bottom:.25rem}
+.landing-subtitle{font-size:.82rem;color:var(--t3)}
+.welcome-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .7rem;border-radius:20px;background:var(--nab);border:1px solid var(--nab2);font-size:.75rem;font-weight:600;color:var(--acc);margin-bottom:.75rem;}
+.badge-pulse{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:pulseDot 2s infinite}
+.landing-user-info{display:flex;align-items:center;gap:.8rem}
+.landing-avatar{position:relative;width:48px;height:48px;flex-shrink:0}
+.avatar-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--acc);opacity:.5}
+.avatar-placeholder{width:48px;height:48px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:#fff}
+.landing-details h3{font-size:.95rem;font-weight:700;color:var(--t1)}
+.landing-details p{font-size:.77rem;color:var(--t3)}
+.landing-role{display:inline-block;margin-top:.25rem;padding:.17rem .55rem;border-radius:5px;font-size:.7rem;font-weight:600;background:var(--chip);color:var(--acc);border:1px solid var(--border)}
+.landing-stats-container{margin:.9rem 0}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem}
+.landing-stat-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:.7rem;display:flex;gap:.55rem;align-items:center}
+.stat-icon-wrapper{position:relative;width:34px;height:34px;flex-shrink:0}
+.stat-icon-bg{position:absolute;inset:0;border-radius:7px;background:var(--grad);opacity:.15}
+.stat-icon{width:18px;height:18px;position:relative;margin:8px;stroke:var(--acc);fill:none;stroke-width:2}
+.stat-content{flex:1;min-width:0}
+.stat-mini{display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--t3)}
+.stats-secondary{display:flex;justify-content:center;gap:1.25rem;margin-top:.65rem}
+.landing-actions{margin-top:.9rem}
+.landing-btn{width:100%;padding:.72rem;border-radius:11px;font-size:.88rem;font-weight:700;cursor:pointer;border:none;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.45rem;position:relative;overflow:hidden;}
+.btn-primary-enhanced{background:var(--grad);color:#fff;box-shadow:0 3px 14px var(--glow)}
+.btn-primary-enhanced:hover{box-shadow:0 5px 20px var(--glow);transform:translateY(-1px)}
+.btn-primary-enhanced:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-shine{position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);transition:left .5s}
+.landing-btn:hover .btn-shine{left:100%}
+.btn-icon svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2}
+.landing-note{display:flex;align-items:flex-start;gap:.35rem;margin-top:.6rem;font-size:.74rem;color:var(--t3)}
+.landing-note svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;margin-top:1px}
+.landing-footer{text-align:center;font-size:.72rem;color:var(--t3);margin-top:.4rem}
+.landing-branding{max-width:420px}
+.landing-brand-title{font-size:1.9rem;font-weight:900;color:var(--t1)}
+.landing-brand-title span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.landing-brand-subtitle{font-size:.86rem;color:var(--t3);margin-top:.4rem}
+.landing-features{margin-top:1.3rem;display:flex;flex-direction:column;gap:.7rem}
+.landing-feature{display:flex;align-items:flex-start;gap:.65rem}
+.landing-feature-icon{width:34px;height:34px;border-radius:9px;flex-shrink:0;background:var(--nab);border:1px solid var(--nab2);display:flex;align-items:center;justify-content:center;color:var(--acc);}
+.landing-feature-icon svg{width:18px;height:18px;stroke:var(--acc);fill:none;stroke-width:2}
+.landing-feature-title{font-weight:700;font-size:.86rem;color:var(--t1)}
+.landing-feature-desc{font-size:.76rem;color:var(--t3);margin-top:.12rem}
 
-function fneDaysUntilExpectedRfs(iso) {
-  const expStr = fneParseSpDateLocal(iso);
-  if (!expStr) return null;
-  const todayStr = fneTodayDateStr();
-  const exp = new Date(expStr + 'T12:00:00');
-  const today = new Date(todayStr + 'T12:00:00');
-  return Math.round((exp - today) / 86400000);
-}
+/* LOADING OVERLAY */
+.loading-overlay{position:fixed;inset:0;z-index:9999;background:var(--bg-body);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;}
+.loading-logo{width:72px;height:72px;border-radius:18px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px var(--glow);animation:loadPulse 1.6s ease-in-out infinite;}
+.loading-logo svg{width:38px;height:38px;stroke:#fff;fill:none;stroke-width:2}
+@keyframes loadPulse{0%,100%{transform:scale(1);box-shadow:0 0 30px var(--glow)}50%{transform:scale(1.06);box-shadow:0 0 60px var(--glow)}}
+.loading-title{font-size:1.25rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.loading-subtitle{font-size:.84rem;color:var(--t3);margin-top:-.8rem}
+.loading-bar-wrap{width:260px;height:4px;background:var(--border);border-radius:99px;overflow:hidden}
+.loading-bar-fill{height:100%;border-radius:99px;background:var(--grad);animation:loadBar 2s ease-in-out infinite;}
+@keyframes loadBar{0%{width:0%;margin-left:0}50%{width:70%;margin-left:0}100%{width:0%;margin-left:100%}}
+.loading-step{font-size:.76rem;color:var(--t3);min-height:1.2em;transition:opacity .3s}
 
-function fneIsApproachingRfs(item) {
-  if (!item || !fneIsActiveRfsStatus(item.requestStatus)) return false;
-  const d = fneDaysUntilExpectedRfs(item.expectedRFS);
-  return d !== null && d >= 0 && d <= 4;
-}
+/* DEV CONSOLE */
+.dev-console{position:fixed;bottom:12px;right:12px;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:.65rem .9rem;display:flex;align-items:center;gap:.5rem;box-shadow:var(--cs);font-size:.75rem;}
+.dev-console input{padding:.3rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.75rem;width:180px;}
+.dev-console select{padding:.3rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.75rem;}
+.dev-console button{padding:.3rem .7rem;border-radius:6px;background:var(--grad);color:#fff;border:none;font-size:.74rem;font-weight:700;cursor:pointer;}
+.dev-console-label{font-size:.68rem;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 
-function fneIsOverdueRfs(item) {
-  if (!item || !fneIsActiveRfsStatus(item.requestStatus)) return false;
-  const d = fneDaysUntilExpectedRfs(item.expectedRFS);
-  return d !== null && d < 0;
-}
+/* Active filter chip */
+.active-filter-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.65rem;min-height:0}
+.filter-chip{display:inline-flex;align-items:center;gap:.3rem;padding:.22rem .6rem;border-radius:20px;background:var(--nab);border:1px solid var(--nab2);font-size:.72rem;font-weight:600;color:var(--acc);}
+.filter-chip button{background:none;border:none;cursor:pointer;color:var(--acc);font-size:.8rem;line-height:1;padding:0;margin-left:.15rem;}
 
-function fneRfsAlertKind(item) {
-  if (fneIsOverdueRfs(item)) return 'overdue';
-  if (fneIsApproachingRfs(item)) return 'approaching';
-  return null;
-}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.animate-fade-in{animation:fadeIn .55s ease forwards}
+.animate-slide-up{animation:slideUp .7s ease forwards}
+@media(max-width:900px){.health-tiles{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.sidebar{width:180px;min-width:180px}.landing-page{flex-direction:column!important}}
+</style>
+</head>
+<body>
 
-function fneFmtDateShort(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return isNaN(d) ? '—' : d.toLocaleDateString('en-GB');
-}
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none;">
+  <div class="loading-logo"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+  <div class="loading-title">GKLA FNE Tracker</div>
+  <div class="loading-subtitle">Loading tracker workspace...</div>
+  <div class="loading-bar-wrap"><div class="loading-bar-fill"></div></div>
+  <div class="loading-step" id="loadingStep">Connecting to SharePoint...</div>
+</div>
 
-function fneMgrMailto(name) {
-  const key = String(name || '').toLowerCase().trim();
-  return FNE_MGR_EMAIL_MAP[key] || '';
-}
-
-function fneOpenOutlookMail(to, subject, body, highPriority) {
-  let href = 'mailto:';
-  if (to) href += encodeURIComponent(to);
-  href += '?subject=' + encodeURIComponent(subject);
-  href += '&body=' + encodeURIComponent(body);
-  if (highPriority) href += '&X-Priority=1';
-  const link = document.createElement('a');
-  link.href = href;
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-function fneNormCriticalVal(v) {
-  return String(v || '').trim().toLowerCase();
-}
-
-function fneIsCriticalYes(v) {
-  return fneNormCriticalVal(v) === 'yes';
-}
-
-function fneOpenRfsReminder(row, kind) {
-  if (!row) return;
-  kind = kind || fneRfsAlertKind(row);
-  if (!kind) return;
-  const mgr = row.fneManager && row.fneManager !== '—' ? row.fneManager : 'FNE Manager';
-  const to = fneMgrMailto(mgr);
-  const cust = row.customerName && row.customerName !== '—' ? row.customerName : 'Customer';
-  const exp = fneFmtDateShort(row.expectedRFS);
-  const status = row.requestStatus || '—';
-  const refLine = row.fesRef && row.fesRef !== '—' ? 'FES / Shortfall Ref: ' + row.fesRef + '\n' : '';
-  const idLine = row.id ? 'Record ID: ' + row.id + '\n' : '';
-  if (kind === 'approaching') {
-    const days = fneDaysUntilExpectedRfs(row.expectedRFS);
-    fneOpenOutlookMail(to,
-      '[Reminder] Expected RFS approaching — ' + cust,
-      'Dear ' + mgr + ',\n\nThis is a reminder that the Expected RFS date is approaching for the following project:\n\n' +
-      idLine + 'Customer: ' + cust + '\nExpected RFS: ' + exp + ' (' + days + ' day(s) remaining)\nStatus: ' + status + '\n' +
-      refLine + '\nPlease review and take necessary action.\n\nThank you.',
-      false);
-  } else {
-    const daysOver = Math.abs(fneDaysUntilExpectedRfs(row.expectedRFS));
-    fneOpenOutlookMail(to,
-      '[Overdue] Expected RFS date passed — ' + cust,
-      'Dear ' + mgr + ',\n\nThe Expected RFS date has passed and the project is not yet completed:\n\n' +
-      idLine + 'Customer: ' + cust + '\nExpected RFS: ' + exp + ' (' + daysOver + ' day(s) overdue)\nStatus: ' + status + '\n' +
-      refLine + '\nPlease urgently follow up and update the tracker.\n\nThank you.',
-      true);
-  }
-}
-
-function fneNotifyCriticalProjectYes(row) {
-  if (!row) return;
-  const mgr = row.fneManager && row.fneManager !== '—' ? row.fneManager : 'FNE Manager';
-  const to = fneMgrMailto(mgr);
-  const cust = row.customerName && row.customerName !== '—' ? row.customerName : 'Customer';
-  const refLine = row.fesRef && row.fesRef !== '—' ? 'FES / Shortfall Ref: ' + row.fesRef + '\n' : '';
-  fneOpenOutlookMail(to,
-    '[HIGH PRIORITY] Critical Project — ' + cust,
-    'Dear ' + mgr + ',\n\nA project has been flagged as CRITICAL and requires your immediate attention:\n\n' +
-    (row.id ? 'Record ID: ' + row.id + '\n' : '') +
-    'Customer: ' + cust + '\nCritical Project: Yes\nStatus: ' + (row.requestStatus || '—') + '\n' +
-    refLine + '\nPlease prioritize review and action.\n\nThank you.',
-    true);
-}
-
-function fneReminderCellRenderer(params) {
-  if (!params || !params.data) return document.createTextNode('—');
-  const filter = fneGetRfsMigrationFilter();
-  let kind = null;
-  if (filter === 'approaching' || filter === 'overdue') {
-    kind = filter;
-  } else {
-    kind = fneRfsAlertKind(params.data);
-  }
-  if (!kind) return document.createTextNode('—');
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'fne-btn fne-btn-secondary';
-  btn.style.cssText = 'padding:.22rem .55rem;font-size:.68rem;white-space:nowrap;';
-  btn.textContent = 'Send Reminder';
-  btn.title = kind === 'approaching'
-    ? 'Send approaching Expected RFS reminder to FNE Manager'
-    : 'Send overdue Expected RFS reminder to FNE Manager';
-  btn.onclick = function(e) {
-    e.stopPropagation();
-    fneOpenRfsReminder(params.data, kind);
-  };
-  return btn;
-}
-
-function fneEnsurePowerUserUi() {
-  if (!fneIsPowerUser()) return;
-
-  const dashMig = document.getElementById('fbRfsMigration');
-  if (dashMig) dashMig.style.display = 'block';
-
-  const grid = document.querySelector('#viewFneList .filter-bar-grid');
-  if (grid && !document.getElementById('fnel_rfsMigration')) {
-    const wrap = document.createElement('div');
-    wrap.className = 'fb-group';
-    wrap.innerHTML =
-      '<div class="fb-group-label">Target Migration</div>' +
-      '<select id="fnel_rfsMigration" class="fb-select" onchange="fneListApplyFilter()">' +
-      '<option value="">All</option>' +
-      '<option value="approaching">Approaching (≤4 days)</option>' +
-      '<option value="overdue">Overdue (past Expected RFS)</option>' +
-      '</select>';
-    grid.appendChild(wrap);
-  }
-}
-
-function fneNormStr(s) {
-  return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-}
-
-function fneNormVerticalKey(vertical) {
-  return String(vertical || '').toLowerCase().replace(/[\s\-_]/g, '');
-}
-
-function fneResolveDirectorForVertical(vertical) {
-  const key = fneNormVerticalKey(vertical);
-  return key ? (FNE_VERTICAL_DIRECTOR_MAP[key] || null) : null;
-}
-
-function fneMatchSelectOption(selectEl, targetName) {
-  if (!selectEl || !targetName) return false;
-  const t = fneNormStr(targetName);
-  const tTokens = t.split(' ').filter(Boolean);
-
-  for (let i = 0; i < selectEl.options.length; i++) {
-    const opt = selectEl.options[i];
-    if (!opt.value) continue;
-    const v = fneNormStr(opt.value);
-    if (v === t || v.includes(t) || t.includes(v)) {
-      selectEl.value = opt.value;
-      return true;
-    }
-  }
-
-  // Match by last name or first name (handles Mazen Adem vs Mazen Adam, etc.)
-  for (let i = 0; i < selectEl.options.length; i++) {
-    const opt = selectEl.options[i];
-    if (!opt.value) continue;
-    const vTokens = fneNormStr(opt.value).split(' ').filter(Boolean);
-    if (!vTokens.length || !tTokens.length) continue;
-    const tLast = tTokens[tTokens.length - 1];
-    const vLast = vTokens[vTokens.length - 1];
-    if (tLast.length >= 3 && vLast.length >= 3 &&
-        (tLast === vLast || tLast.indexOf(vLast) >= 0 || vLast.indexOf(tLast) >= 0)) {
-      selectEl.value = opt.value;
-      return true;
-    }
-    if (tTokens[0].length >= 4 && vTokens[0] === tTokens[0]) {
-      selectEl.value = opt.value;
-      return true;
-    }
-  }
-  return false;
-}
-
-function fneSetDirectorForVertical(vertical, directorEl) {
-  if (!directorEl || !vertical) return;
-  const director = fneResolveDirectorForVertical(vertical);
-  if (!director) return;
-  if (fneMatchSelectOption(directorEl, director)) return;
-  // Short-name fallback for Key A / Key B directors
-  const vk = fneNormVerticalKey(vertical);
-  if (vk === 'keya' || vk === 'fogh' || vk === 'tre') fneMatchSelectOption(directorEl, 'Hany');
-  else if (vk === 'keyb' || vk === 'trm') fneMatchSelectOption(directorEl, 'Mazen');
-}
-
-function fneWireVerticalDirector() {
-  const vEl = document.getElementById('fne_vertical');
-  const dEl = document.getElementById('fne_acc_dir');
-  if (!vEl || !dEl || vEl.dataset.vdWired) return;
-  vEl.dataset.vdWired = '1';
-  vEl.addEventListener('change', function() {
-    fneSetDirectorForVertical(vEl.value, dEl);
-  });
-  if (vEl.value) fneSetDirectorForVertical(vEl.value, dEl);
-}
-
-function fneReapplyVerticalDirectors() {
-  const vEl = document.getElementById('fne_vertical');
-  const dEl = document.getElementById('fne_acc_dir');
-  if (vEl && dEl && vEl.value) fneSetDirectorForVertical(vEl.value, dEl);
-  ['fneBulkTableBody', 'fneBulkEditTableBody'].forEach(function(bodyId) {
-    const body = document.getElementById(bodyId);
-    if (!body) return;
-    [...body.rows].forEach(function(tr) {
-      const v = tr.querySelector('[data-key="vertical"]');
-      const d = tr.querySelector('[data-key="accountDirector"]');
-      if (v && d && v.value) fneSetDirectorForVertical(v.value, d);
-    });
-  });
-}
-
-function fneRefreshSelectOptions(selEl, choices) {
-  if (!selEl || !choices || !choices.length) return;
-  const cur = selEl.value;
-  const isFilter = selEl.id.indexOf('fnel_') === 0;
-  selEl.innerHTML = '<option value="">' + (isFilter ? 'All' : '— Select —') + '</option>' +
-    choices.map(c => '<option value="' + c + '">' + c + '</option>').join('');
-  if (cur && choices.indexOf(cur) >= 0) selEl.value = cur;
-}
-
-function fneRefreshBulkTableChoiceSelects() {
-  ['fneBulkTableBody', 'fneBulkEditTableBody'].forEach(function(bodyId) {
-    const body = document.getElementById(bodyId);
-    if (!body) return;
-    fneBulkTableCols().forEach(function(col) {
-      if (col.type !== 'choice' || !col.choicesKey) return;
-      const choices = FNE_CHOICES[col.choicesKey];
-      if (!choices || !choices.length) return;
-      body.querySelectorAll('[data-key="' + col.key + '"]').forEach(function(sel) {
-        const cur = sel.value;
-        sel.innerHTML = '<option value=""></option>' +
-          choices.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
-        if (cur && choices.indexOf(cur) >= 0) sel.value = cur;
-      });
-    });
-  });
-}
-
-function fneRefreshAllChoiceDropdowns() {
-  Object.keys(FNE_FORM_SEL_MAP).forEach(function(key) {
-    const id = FNE_FORM_SEL_MAP[key];
-    const choices = FNE_CHOICES[key];
-    if (choices && choices.length) fneRefreshSelectOptions(document.getElementById(id), choices);
-  });
-  fneListBuildAllFilters();
-  fneRefreshBulkTableChoiceSelects();
-  fneReapplyVerticalDirectors();
-}
-
-function fneListMsHtml(key, label) {
-  return `
-      <div class="fb-group">
-        <div class="fb-group-label">${label}</div>
-        <div class="ms-wrap" id="fne-ms-${key}">
-          <div class="ms-trigger" id="fne-mst-${key}" onclick="fneToggleListMs('${key}')">
-            <span id="fne-mstxt-${key}">All</span>
-            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="ms-dropdown" id="fne-msd-${key}"></div>
+<!-- LANDING -->
+<div id="landingPage" class="landing-page" style="display:none;">
+  <div class="landing-left animate-fade-in">
+    <div class="landing-branding">
+      <div style="margin-bottom:.85rem"><div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div></div>
+      <h1 class="landing-brand-title">GKLA FNE<br><span>Tracker</span></h1>
+      <p class="landing-brand-subtitle">Create entries and view all FNE tracker records — live updates from SharePoint.</p>
+      <div class="landing-features">
+        <div class="landing-feature"><div class="landing-feature-icon"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div><div><div class="landing-feature-title">Live SLA Tracking</div><div class="landing-feature-desc">Monitor SPI, RFS dates and project health in real time</div></div></div>
+        <div class="landing-feature"><div class="landing-feature-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="landing-feature-title">Role-Based Access</div><div class="landing-feature-desc">Admin → FNE Manager → Viewer hierarchy</div></div></div>
+        <div class="landing-feature"><div class="landing-feature-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div><div><div class="landing-feature-title">Project Health Analytics</div><div class="landing-feature-desc">Green / Amber / Red breakdown with SPI and completion metrics</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="landing-right">
+    <div class="landing-container">
+      <div class="landing-header animate-slide-up">
+        <div class="landing-logo"><div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div></div>
+        <h1 class="landing-title">Welcome Back</h1>
+        <p class="landing-subtitle">Sign in to access the FNE Tracker</p>
+      </div>
+      <div class="landing-card animate-slide-up" style="animation-delay:.2s;">
+        <div class="welcome-badge"><span class="badge-pulse"></span><span>FNE Tracker Portal</span></div>
+        <div class="landing-user-info">
+          <div class="landing-avatar"><div class="avatar-ring"></div><div class="avatar-placeholder" id="lAvatar">?</div></div>
+          <div class="landing-details"><h3 id="lName">Loading...</h3><p id="lEmail">Verifying access...</p><p id="lRole" class="landing-role">—</p></div>
         </div>
-      </div>`;
+        <div class="landing-stats-container">
+          <div class="stats-grid">
+            <div class="landing-stat-card"><div class="stat-icon-wrapper"><div class="stat-icon-bg"></div><svg class="stat-icon" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div><div class="stat-content"><div class="stat-label" style="font-size:.72rem;color:var(--t3)">Total Visits</div><div id="lVisits" style="font-size:1.1rem;font-weight:800;color:var(--sc)">--</div></div></div>
+            <div class="landing-stat-card"><div class="stat-icon-wrapper"><div class="stat-icon-bg"></div><svg class="stat-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="stat-content"><div class="stat-label" style="font-size:.72rem;color:var(--t3)">Last Visit</div><div id="lLastVisit" style="font-size:.85rem;font-weight:800;color:var(--sc)">--</div></div></div>
+          </div>
+          <div class="stats-secondary">
+            <div class="stat-mini"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Secure Session</span></div>
+            <div class="stat-mini"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Live SharePoint</span></div>
+          </div>
+        </div>
+        <div class="landing-actions">
+          <button type="button" id="launchBtn" class="landing-btn btn-primary-enhanced" disabled>
+            <span class="btn-icon"><svg viewBox="0 0 24 24"><polyline points="5 12 19 12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+            <span class="btn-text">Verifying Access...</span>
+            <span class="btn-shine"></span>
+          </button>
+          <p class="landing-note" id="accessNote"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Please wait while we verify your permissions...</span></p>
+        </div>
+      </div>
+      <div class="landing-footer animate-fade-in" style="animation-delay:.6s;"><p>GKLA FNE Tracker · Powered by SharePoint</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div class="portal-shell" id="dashboardContent" style="display:none;">
+  <div class="header">
+    <div class="logo-section">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <span class="header-title">GKLA FNE Tracker</span>
+    </div>
+    <div class="header-center">
+      <div class="live-badge-pill"><span class="status-dot"></span><span>Live</span></div>
+      <div class="date-badge"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span id="currentDate">Loading...</span></div>
+      <div class="date-badge" id="dbUserBadge" style="color:var(--acc);font-weight:600;">—</div>
+      <div class="date-badge" id="selectionBadge" style="color:var(--acc2);font-weight:600;display:none;"></div>
+    </div>
+    <div class="header-actions">
+      <select class="color-scheme-selector" id="colorSchemeSelector" onchange="changeTheme(event)"><option value="blue">&#9670; Blue</option><option value="magenta">&#9670; Magenta</option></select>
+      <div class="theme-toggle" onclick="toggleTheme()" title="Light/Dark"><svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar" style="position:relative;">
+      <div class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Toggle Sidebar">
+        <svg id="sidebarToggleIcon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/><polyline points="9 18 3 12 9 6"/></svg>
+      </div>
+      <div class="nav-items"></div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- FNE tracker views injected by fnetracker.js -->
+
+    </div><!-- end content -->
+  </div><!-- end main-container -->
+</div><!-- end portal-shell -->
+
+<!-- Dev Console (Ctrl+Shift+D) -->
+<div class="dev-console" id="devConsole" style="display:none;">
+  <span class="dev-console-label">Dev Login</span>
+  <input type="text" id="devEmailInput" placeholder="email@example.com" onkeydown="if(event.key==='Enter')devLogin()">
+  <select id="devRoleInput"><option value="Admin">Admin</option><option value="FNE Manager">FNE Manager</option><option value="Viewer">Viewer</option></select>
+  <button type="button" onclick="devLogin()">Login As</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════════════
+const SP_SITE   = 'http://sharedspaces:8081/sites/FGKA';
+const SP_LIST   = 'FNE Tracker GKLA 23-24';
+const SP_ACCESS = 'FNE_ACCESS';
+const SP_ANA    = 'FNE_ANALYTICS';
+
+const STATUS_COMPLETED  = ['Completed'];
+const STATUS_INPROGRESS = ['Inprogress','In Progress'];
+const STATUS_ONHOLD     = ['On hold','On Hold'];
+const STATUS_CANCELLED  = ['Cancelled'];
+const HEALTH_GREEN = 'Green';
+const HEALTH_AMBER = 'Amber';
+const HEALTH_RED   = 'Red';
+const HEALTH_NO_RFS = 'No Expected RFS to calculate Project Health';
+
+const F = {
+  FES:          'Title',
+  SUB_REQ:      'Sub_x0020_Request_x0020_',
+  IMPL_TYPE:    'Implementation_x0020_Type',
+  START_DATE:   'Recived_x0020_Date',
+  SLA:          'SAL',
+  EXP_RFS:      'Expected_x0020_RSF_x0020_Date',
+  BUILD_STATUS: 'Building_x0020_Connectivity',
+  CUST_NAME:    'Customer_x0020_Name',
+  SOF:          'SOF_x0020_',
+  MRC:          'MRC',
+  EST_COST:     'Estimated_x0020_Cost',
+  VERTICAL:     'Vertical',
+  COMMENTS:     'Comments',
+  REQ_STATUS:   'Request_x0020_Status',
+  CUST_ADDR:    'CustomerAddress',
+  ACC_CODE:     'AccountCode',
+  ASSIGNED_BY:  'AssignedBy',
+  PROJ_TYPE:    'ProjectType',
+  UNIT_NO:      'UnitNo',
+  OTC:          'OTC',
+  TCV:          'TCV0',
+  OSP_REQ:      'OSPandCivilRequired',
+  OSP_ET:       'OSPCivilET',
+  FES_REF:      'FESShortfalReference',
+  SURVEY_REF:   'SiteSurveyReference',
+  GAID:         'GAID0',
+  BID_REF:      'BidRef',
+  WO_NUM:       'WONumber',
+  ACC_DIR:      'AccountDirector',
+  CONTRACT_DUR: 'ContractDuration0',
+  FNE_MGR:      'FNEManager',
+  RFS_BASELINE: 'RFS_x0020_Baseline',
+  CRITICAL_PROJ:'Critical_x0020_Projects',
+  COMMENTS_NEW: 'Comments_New',
+  SPI:          'SPI',
+  PROJ_HEALTH:  'Project_x0020_Health',
+};
+
+// ══ CONSOLE HELPER ══
+window.fneGetFields = function(listName) {
+  listName = listName || SP_LIST;
+  fetch(SP_SITE+"/_api/web/lists/getbytitle('"+encodeURIComponent(listName)+"')/fields?$select=Title,InternalName,TypeAsString&$filter=Hidden eq false and ReadOnlyField eq false",
+    {headers:{Accept:'application/json;odata=verbose'}})
+    .then(r=>r.json())
+    .then(d=>{console.table(d.d.results.map((f,i)=>({i,Title:f.Title,InternalName:f.InternalName,Type:f.TypeAsString})));});
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════════
+window.USER = {email:'',name:'',role:'',IsAdmin:false};
+let ALL_ITEMS=[], FILTERED=[], ANA_ITEMS=[], CHARTS={}, GRID_API=null, ANA_GRID=null;
+let DASH_DATA_LOADED=false, DASH_DATA_LOADING=false, DASH_MAX_ID=0, DASH_LAST_SYNC_ISO=null, DASH_LIVE_POLL_TIMER=null;
+const DASH_LIVE_POLL_MS=45000;
+let chartsVisible=false, selMgr=null, selStatusTile=null;
+let trendPeriod='M', trendMetric='tcv', spiPeriod='M', vertMetric='tcv', lbMetric='tcv';
+let healthView='mgr', statusMgrMetric='count', slaView='mgr', spiView='trend';
+
+// Multi-select filter state: key → Set of selected values
+const MS_STATE = {
+  vertical: new Set(),
+  subreq: new Set(),
+  impl: new Set(),
+  ptype: new Set(),
+  status: new Set(),
+  building: new Set(),
+  health: new Set(),
+  acdir: new Set(),
+  assigned: new Set(),
+  year: new Set(),
+  quarter: new Set(),
+  month: new Set(),
+  critical: new Set(),
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  UTILITIES
+// ══════════════════════════════════════════════════════════════════
+const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
+function fmt(v){const n=num(v);if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed(0);}
+const fmtDate=iso=>{if(!iso)return'—';const d=new Date(iso);return isNaN(d)?'—':d.toLocaleDateString('en-GB');};
+function getInitials(name){if(!name)return'?';const p=name.trim().split(' ');return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():name[0].toUpperCase();}
+function getWeekOfYear(date){const d=new Date(date);d.setHours(0,0,0,0);d.setDate(d.getDate()+3-(d.getDay()+6)%7);const w1=new Date(d.getFullYear(),0,4);return 1+Math.round(((d-w1)/864e5-3+(w1.getDay()+6)%7)/7);}
+function getVisitCount(){try{return parseInt(localStorage.getItem('fne_vc_'+USER.email)||'0');}catch(e){return 0;}}
+function incVisit(){try{const c=getVisitCount()+1;localStorage.setItem('fne_vc_'+USER.email,c);return c;}catch(e){return 1;}}
+function getLastVisit(){try{const lv=localStorage.getItem('fne_lv_'+USER.email);if(!lv)return'First visit';const diff=Date.now()-new Date(lv).getTime();const m=Math.floor(diff/6e4),h=Math.floor(diff/36e5),day=Math.floor(diff/864e5);if(m<60)return m+'m ago';if(h<24)return h+'h ago';if(day<7)return day+'d ago';return new Date(lv).toLocaleDateString('en-GB');}catch(e){return'—';}}
+function saveLastVisit(){try{localStorage.setItem('fne_lv_'+USER.email,new Date().toISOString());}catch(e){}}
+const el=id=>document.getElementById(id);
+function set(id,val){const e=el(id);if(e)e.textContent=val;}
+function setLoadingStep(msg){const e=el('loadingStep');if(e)e.textContent=msg;}
+
+// ══════════════════════════════════════════════════════════════════
+//  SP FETCH
+// ══════════════════════════════════════════════════════════════════
+function spGet(url,cb){
+  const xhr=new XMLHttpRequest();xhr.open('GET',url,true);xhr.setRequestHeader('Accept','application/json;odata=verbose');
+  xhr.onreadystatechange=function(){if(xhr.readyState!==4)return;if(xhr.status>=200&&xhr.status<300){try{cb(null,JSON.parse(xhr.responseText));}catch(e){cb(e,null);}}else{cb(new Error('HTTP '+xhr.status),null);}};
+  xhr.onerror=function(){cb(new Error('Network error'),null);};xhr.send();
 }
 
-function fneListBuildMsDropdown(key) {
-  const cfg = FNE_LIST_MS_CFG[key];
-  if (!cfg) return;
-  const drop = document.getElementById(cfg.dropId);
-  if (!drop) return;
-  const vals = [...new Set(FNE_LIST_DATA.map(function(i) { return i[cfg.field]; })
-    .filter(function(v) { return v !== null && v !== undefined && v !== '' && v !== '—'; }))];
-  vals.sort(function(a, b) {
-    if (cfg.numeric) return parseFloat(a) - parseFloat(b);
+// ══════════════════════════════════════════════════════════════════
+//  ACCESS CONTROL
+// ══════════════════════════════════════════════════════════════════
+function initAccess(){
+  spGet(SP_SITE+'/_api/web/currentuser?$select=Title,Email',function(err,data){
+    if(err){showDenied('Cannot reach SharePoint');return;}
+    USER.email=data.d.Email;USER.name=data.d.Title;
+    spGet(SP_SITE+"/_api/web/lists/getbytitle('"+SP_ACCESS+"')/items?$select=UserEmailID,Role&$filter=UserEmailID eq '"+USER.email+"'",function(err2,data2){
+      if(err2||!data2.d.results.length){showDenied('No access record found');return;}
+      USER.role=data2.d.results[0].Role||'Viewer';
+      USER.IsAdmin=['Admin','Director'].includes(USER.role);
+      populateLanding();
+    });
+  });
+}
+
+function showDenied(msg){
+  set('lName','Access Denied');set('lEmail',msg);set('lRole','No Access');
+  el('accessNote').innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#dc2626;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg><span style="color:#dc2626;">'+msg+'</span>';
+}
+
+function populateLanding(){
+  el('lAvatar').textContent=getInitials(USER.name);
+  set('lName',USER.name);set('lEmail',USER.email);set('lRole',USER.role);
+  set('lVisits',getVisitCount());set('lLastVisit',getLastVisit());
+  const btn=el('launchBtn');btn.disabled=false;
+  btn.innerHTML='<span class="btn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><span class="btn-text">Launch FNE Tracker</span><span class="btn-shine"></span>';
+  btn.onclick=launchTracker;
+  el('accessNote').innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#16a34a;fill:none;stroke-width:2"><polyline points="20 6 9 17 4 12"/></svg><span style="color:#16a34a;font-weight:600;">Access granted — click above to proceed</span>';
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  LAUNCH DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+function launchTracker(){
+  incVisit(); saveLastVisit();
+  el('landingPage').style.cssText='display:none!important';
+  el('loadingOverlay').style.display='flex';
+  setLoadingStep('Loading tracker records...');
+  set('dbUserBadge', USER.name+' · '+USER.role);
+  el('currentDate').textContent=new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+  try{const bt=localStorage.getItem('fne_base_theme')||'blue';const dm=localStorage.getItem('fne_dark_mode')==='true';const sel=el('colorSchemeSelector');if(sel)sel.value=bt;applyTheme(bt,dm);}catch(e){}
+  window.FNE_STANDALONE = true;
+  window.fneOnStandaloneReady = function(){
+    el('loadingOverlay').style.display='none';
+    el('dashboardContent').style.display='flex';
+    el('dashboardContent').style.flexDirection='column';
+  };
+  fneInit();
+  if (typeof fneEnsurePowerUserUi === 'function') fneEnsurePowerUserUi();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DEV CONSOLE
+// ══════════════════════════════════════════════════════════════════
+document.addEventListener('keydown',function(e){if(e.ctrlKey&&e.shiftKey&&e.key==='D'){const dc=el('devConsole');dc.style.display=dc.style.display==='none'?'flex':'none';}});
+function devLogin(){
+  const email=el('devEmailInput').value.trim();if(!email){alert('Enter an email');return;}
+  USER.email=email;USER.name=email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());USER.role=el('devRoleInput').value.trim()||'Admin';
+  USER.IsAdmin=['Admin','Director'].includes(USER.role);
+  el('devConsole').style.display='none';
+  el('lAvatar').textContent=getInitials(USER.name);
+  set('lName',USER.name);set('lEmail',USER.email);set('lRole',USER.role+' (Dev)');
+  set('lVisits',getVisitCount());set('lLastVisit',getLastVisit());
+  const btn=el('launchBtn');btn.disabled=false;
+  btn.innerHTML='<span class="btn-text">Launch FNE Tracker (Dev)</span>';
+  btn.onclick=launchTracker;
+  el('landingPage').style.display='flex';
+}
+window.loginAs=function(email,role){el('devEmailInput').value=email;if(role)el('devRoleInput').value=role;devLogin();};
+
+// ══════════════════════════════════════════════════════════════════
+//  SESSION TRACKING + IDLE DETECTION
+// ══════════════════════════════════════════════════════════════════
+let SESSION_ID = null;
+let SESSION_START = null;
+let _idleTimer = null;
+let _idleModalTimer = null;
+let _heartbeatTimer = null;
+let _idleModalCountdown = null;
+let _anaTrendPeriod = 'M';
+const IDLE_TIMEOUT = 5 * 60 * 1000;   // 5 min → show modal
+const MODAL_TIMEOUT = 2 * 60 * 1000;  // 2 min → auto logout
+const HEARTBEAT_INTERVAL = 2 * 60 * 1000; // 2 min heartbeat
+
+// Activity events that reset idle timer
+const ACTIVITY_EVENTS = ['mousemove','mousedown','keydown','scroll','touchstart','click'];
+
+function initIdleTracking(){
+  ACTIVITY_EVENTS.forEach(evt => document.addEventListener(evt, onUserActivity, {passive:true}));
+  resetIdleTimer();
+  _heartbeatTimer = setInterval(heartbeat, HEARTBEAT_INTERVAL);
+}
+
+function onUserActivity(){
+  if(el('idleModal').style.display === 'flex') return; // modal open, don't reset
+  resetIdleTimer();
+}
+
+function resetIdleTimer(){
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(showIdleModal, IDLE_TIMEOUT);
+}
+
+function showIdleModal(){
+  const modal = el('idleModal');
+  modal.style.display = 'flex';
+  let secondsLeft = MODAL_TIMEOUT / 1000;
+  const totalSecs = secondsLeft;
+  updateIdleCountdown(secondsLeft);
+  _idleModalCountdown = setInterval(function(){
+    secondsLeft--;
+    updateIdleCountdown(secondsLeft);
+    // Update progress bar
+    const bar = el('idleProgressBar');
+    if(bar) bar.style.width = ((secondsLeft / totalSecs) * 100) + '%';
+    if(secondsLeft <= 0){
+      clearInterval(_idleModalCountdown);
+      doIdleLogout();
+    }
+  }, 1000);
+}
+
+function updateIdleCountdown(secs){
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  set('idleCountdown', m + ':' + String(s).padStart(2,'0'));
+  // Color shifts to red as time runs out
+  const cd = el('idleCountdown');
+  if(cd) cd.style.color = secs <= 30 ? '#dc2626' : secs <= 60 ? '#d97706' : 'var(--acc)';
+}
+
+function resumeSession(){
+  clearInterval(_idleModalCountdown);
+  el('idleModal').style.display = 'none';
+  // Reset progress bar
+  const bar = el('idleProgressBar');
+  if(bar){ bar.style.transition = 'none'; bar.style.width = '100%'; setTimeout(()=>{ bar.style.transition = 'width 1s linear'; }, 50); }
+  resetIdleTimer();
+}
+
+function doIdleLogout(){
+  clearInterval(_idleModalCountdown);
+  clearTimeout(_idleTimer);
+  clearInterval(_heartbeatTimer);
+  ACTIVITY_EVENTS.forEach(evt => document.removeEventListener(evt, onUserActivity));
+  // Log session end with accurate duration
+  logSessionEnd(function(){
+    // Go back to landing page
+    el('idleModal').style.display = 'none';
+    el('dashboardContent').style.cssText = 'display:none!important';
+    // Reset session state
+    SESSION_ID = null; SESSION_START = null;
+    // Show landing with "Session expired" message
+    el('landingPage').style.display = 'flex';
+    set('lName', USER.name);
+    set('lEmail', 'Session ended due to inactivity');
+    set('lRole', USER.role);
+    el('lAvatar').textContent = getInitials(USER.name);
+    const btn = el('launchBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-text">Re-Launch Tracker</span>';
+    btn.onclick = function(){
+      launchTracker();
+      initIdleTracking(); // restart idle tracking on re-launch
+    };
+    el('accessNote').innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#d97706;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span style="color:#d97706;font-weight:600;">Session ended — idle for 7+ minutes</span>';
+  });
+}
+
+function heartbeat(){
+  if(!SESSION_ID || !SESSION_START) return;
+  const duration = Math.round((Date.now() - SESSION_START.getTime()) / 60000);
+  const body = {
+    '__metadata':{'type':'SP.Data.FNE_x005f_ANALYTICSListItem'},
+    'SessionDuration': duration
+  };
+  const url = SP_SITE + "/_api/web/lists/getbytitle('" + SP_ANA + "')/items(" + SESSION_ID + ")";
+  getDigest(function(digest){
+    if(!digest) return;
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Accept','application/json;odata=verbose');
+    xhr.setRequestHeader('Content-Type','application/json;odata=verbose');
+    xhr.setRequestHeader('X-HTTP-Method','MERGE');
+    xhr.setRequestHeader('IF-MATCH','*');
+    xhr.setRequestHeader('X-RequestDigest', digest);
+    xhr.send(JSON.stringify(body));
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SP POST / DIGEST HELPERS
+// ══════════════════════════════════════════════════════════════════
+function spPost(url, body, cb){
+  getDigest(function(digest){
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Accept','application/json;odata=verbose');
+    xhr.setRequestHeader('Content-Type','application/json;odata=verbose');
+    if(digest) xhr.setRequestHeader('X-RequestDigest', digest);
+    xhr.onreadystatechange = function(){
+      if(xhr.readyState !== 4) return;
+      if(xhr.status >= 200 && xhr.status < 300){ try{ cb(null, JSON.parse(xhr.responseText)); }catch(e){ cb(null,{}); } }
+      else { cb(new Error('HTTP ' + xhr.status), null); }
+    };
+    xhr.onerror = function(){ cb(new Error('Network error'), null); };
+    xhr.send(JSON.stringify(body));
+  });
+}
+
+let _digest = null, _digestExpiry = 0;
+function getDigest(cb){
+  const now = Date.now();
+  if(_digest && now < _digestExpiry){ cb(_digest); return; }
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', SP_SITE + '/_api/contextinfo', true);
+  xhr.setRequestHeader('Accept','application/json;odata=verbose');
+  xhr.onreadystatechange = function(){
+    if(xhr.readyState !== 4) return;
+    if(xhr.status >= 200 && xhr.status < 300){
+      try{
+        const d = JSON.parse(xhr.responseText);
+        _digest = d.d.GetContextWebInformation.FormDigestValue;
+        _digestExpiry = now + (d.d.GetContextWebInformation.FormDigestTimeoutSeconds - 60) * 1000;
+        cb(_digest);
+      }catch(e){ cb(null); }
+    } else { cb(null); }
+  };
+  xhr.onerror = function(){ cb(null); };
+  xhr.send();
+}
+
+function logSessionStart(){
+  SESSION_START = new Date();
+  const now = SESSION_START;
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const body = {
+    '__metadata':{'type':'SP.Data.FNE_x005f_ANALYTICSListItem'},
+    'Title': USER.name || USER.email,
+    'UserEmail': USER.email,
+    'UserRole': USER.role,
+    'SessionStart': now.toISOString(),
+    'DayOfWeek': days[now.getDay()],
+    'WeekNumber': getWeekOfYear(now),
+    'Month': months[now.getMonth()],
+    'SessionDuration': 0
+  };
+  spPost(SP_SITE + "/_api/web/lists/getbytitle('" + SP_ANA + "')/items", body, function(err, data){
+    if(err){ console.warn('[Session] Log start failed:', err); return; }
+    if(data && data.d) SESSION_ID = data.d.Id;
+    console.log('[Session] Logged start, ID:', SESSION_ID);
+    initIdleTracking();
+  });
+}
+
+function logSessionEnd(callback){
+  if(!SESSION_ID || !SESSION_START){ if(callback) callback(); return; }
+  const duration = Math.round((Date.now() - SESSION_START.getTime()) / 60000);
+  const body = {
+    '__metadata':{'type':'SP.Data.FNE_x005f_ANALYTICSListItem'},
+    'SessionEnd': new Date().toISOString(),
+    'SessionDuration': duration
+  };
+  const url = SP_SITE + "/_api/web/lists/getbytitle('" + SP_ANA + "')/items(" + SESSION_ID + ")";
+  getDigest(function(digest){
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Accept','application/json;odata=verbose');
+    xhr.setRequestHeader('Content-Type','application/json;odata=verbose');
+    xhr.setRequestHeader('X-HTTP-Method','MERGE');
+    xhr.setRequestHeader('IF-MATCH','*');
+    if(digest) xhr.setRequestHeader('X-RequestDigest', digest);
+    xhr.onreadystatechange = function(){ if(xhr.readyState === 4 && callback) callback(); };
+    xhr.send(JSON.stringify(body));
+    SESSION_ID = null;
+  });
+}
+
+window.addEventListener('beforeunload', function(){ logSessionEnd(); });
+
+// ══════════════════════════════════════════════════════════════════
+//  LOAD ANALYTICS
+// ══════════════════════════════════════════════════════════════════
+function loadAnalytics(){
+  const loadMsg = el('anaLoadMsg');
+  if(loadMsg) loadMsg.style.display = 'block';
+  const select = 'Id,Title,UserEmail,UserRole,SessionStart,SessionEnd,SessionDuration,DayOfWeek,WeekNumber,Month';
+  const url = SP_SITE + "/_api/web/lists/getbytitle('" + encodeURIComponent(SP_ANA) + "')/items?$select=" + encodeURIComponent(select) + "&$top=5000&$orderby=Id desc";
+  spGet(url, function(err, data){
+    if(loadMsg) loadMsg.style.display = 'none';
+    if(err){ console.warn('[Analytics] Load failed:', err); renderAnalytics(); return; }
+    ANA_ITEMS = data.d.results || [];
+    console.log('[Analytics] Loaded:', ANA_ITEMS.length, 'sessions');
+    if(el('viewAnalytics').style.display !== 'none'){
+      renderAnalytics();
+      setTimeout(()=>{ Object.keys(CHARTS).filter(k=>k.startsWith('ana')).forEach(k=>{ if(CHARTS[k]) CHARTS[k].resize(); }); }, 200);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RENDER ANALYTICS — full dashboard
+// ══════════════════════════════════════════════════════════════════
+function renderAnalytics(){
+  const c = getChartColors();
+  renderAnaStatTiles(c);
+  renderAnaMonthTrend(c);
+  renderAnaDow(c);
+  renderAnaRole(c);
+  renderAnaHour(c);
+  renderAnaDur(c);
+  renderAnaWeek(c);
+  renderAnaTopUsers(c);
+  renderAnaGrid(ANA_ITEMS);
+}
+
+function renderAnaStatTiles(c){
+  const container = el('anaStatTiles'); if(!container) return;
+  container.innerHTML = '';
+  const total = ANA_ITEMS.length;
+  const uniqueUsers = [...new Set(ANA_ITEMS.map(r=>r.UserEmail).filter(Boolean))].length;
+  const withDur = ANA_ITEMS.filter(r=>num(r.SessionDuration)>0);
+  const avgDur = withDur.length ? Math.round(withDur.reduce((s,r)=>s+num(r.SessionDuration),0)/withDur.length) : 0;
+  const today = new Date().toDateString();
+  const todaySess = ANA_ITEMS.filter(r=>r.SessionStart && new Date(r.SessionStart).toDateString()===today).length;
+  const thisWeek = ANA_ITEMS.filter(r=>{
+    if(!r.SessionStart) return false;
+    const d = new Date(r.SessionStart);
+    const now = new Date();
+    const diff = (now - d) / 864e5;
+    return diff <= 7;
+  }).length;
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dowCnt = days.map(dy=>ANA_ITEMS.filter(r=>r.DayOfWeek===dy).length);
+  const peakDayIdx = dowCnt.indexOf(Math.max(...dowCnt));
+  const peakDay = days[peakDayIdx] || '—';
+
+  const tiles = [
+    {label:'Total Sessions', value:total, sub:'All time', color:'var(--sc)'},
+    {label:'Unique Users', value:uniqueUsers, sub:'Distinct emails', color:'var(--acc)'},
+    {label:'Avg Duration', value:avgDur+'m', sub:'Active sessions only', color:'#10b981'},
+    {label:'Today', value:todaySess, sub:'Sessions today', color:'#f59e0b'},
+    {label:'This Week', value:thisWeek, sub:'Last 7 days', color:'var(--acc2)'},
+    {label:'Peak Day', value:peakDay, sub:dowCnt[peakDayIdx]+' sessions', color:'#8b5cf6'},
+  ];
+  tiles.forEach(t=>{
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+    card.innerHTML = `<div class="stat-label">${t.label}</div><div class="stat-value" style="font-size:1.6rem;color:${t.color}">${t.value}</div><div class="stat-subtitle">${t.sub}</div>`;
+    container.appendChild(card);
+  });
+}
+
+function renderAnaMonthTrend(c){
+  destroyChart('anaMonthTrend');
+  const periods = _anaTrendPeriod === 'W' ? 12 : _anaTrendPeriod === 'M' ? 12 : 8;
+  const now = new Date();
+  const labels = [], buckets = [];
+  for(let i = periods-1; i >= 0; i--){
+    let label, bucket;
+    if(_anaTrendPeriod === 'W'){
+      const d = new Date(now); d.setDate(d.getDate()-i*7);
+      bucket = d.getFullYear()+'-W'+String(getWeekOfYear(d)).padStart(2,'0');
+      label = 'W'+getWeekOfYear(d);
+    } else if(_anaTrendPeriod === 'M'){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      bucket = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      label = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+    } else {
+      const totalQ = now.getFullYear()*4+Math.ceil((now.getMonth()+1)/3)-1-i;
+      const yr = Math.floor(totalQ/4); const q = (totalQ%4)+1;
+      bucket = yr+'-Q'+q; label = 'Q'+q+' '+String(yr).slice(2);
+    }
+    labels.push(label); buckets.push(bucket);
+  }
+  const getBucket = (iso) => {
+    if(!iso) return null; const d = new Date(iso);
+    if(_anaTrendPeriod==='W') return d.getFullYear()+'-W'+String(getWeekOfYear(d)).padStart(2,'0');
+    if(_anaTrendPeriod==='M') return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    return d.getFullYear()+'-Q'+Math.ceil((d.getMonth()+1)/3);
+  };
+  const counts = buckets.map(bkt => ANA_ITEMS.filter(r=>getBucket(r.SessionStart)===bkt).length);
+  const canvas = el('chartAnaMonthTrend'); if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,220); grad.addColorStop(0,c.p1a+'0.35)'); grad.addColorStop(1,c.p1a+'0.02)');
+  CHARTS.anaMonthTrend = new Chart(canvas,{type:'line',data:{labels,datasets:[{label:'Sessions',data:counts,borderColor:c.p1,backgroundColor:grad,fill:true,tension:.4,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:c.p1,pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:10,cornerRadius:8,callbacks:{label:ctx=>ctx.parsed.y+' sessions'}}},scales:{x:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{color:c.grid},border:{dash:[4,4]}},y:{ticks:{color:c.text,stepSize:1,precision:0,callback:v=>Number.isInteger(v)?v:''},grid:{color:c.grid},beginAtZero:true}}}});
+  // Period buttons
+  const wrap = el('anaMonthPeriodBtns'); if(!wrap) return;
+  wrap.innerHTML = ['W','M','Q'].map(p=>`<button type="button" onclick="_anaTrendPeriod='${p}';renderAnaMonthTrend(getChartColors())" style="padding:.2rem .55rem;border-radius:6px;font-size:.7rem;font-weight:700;border:1px solid var(--border);cursor:pointer;background:${_anaTrendPeriod===p?'var(--grad)':'var(--bg-secondary)'};color:${_anaTrendPeriod===p?'#fff':'var(--t3)'};">${p==='W'?'Week':p==='M'?'Month':'Quarter'}</button>`).join('');
+}
+
+function renderAnaDow(c){
+  destroyChart('anaDow');
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const counts = days.map(dy=>ANA_ITEMS.filter(r=>r.DayOfWeek===dy).length);
+  const colors = days.map((_,i)=>i<5?c.p1+'cc':'rgba(14,165,233,.6)');
+  const canvas = el('chartAnaDow'); if(!canvas) return;
+  CHARTS.anaDow = new Chart(canvas,{type:'bar',data:{labels:days.map(d=>d.slice(0,3)),datasets:[{label:'Sessions',data:counts,backgroundColor:colors,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:10,cornerRadius:8,callbacks:{label:ctx=>ctx.parsed.y+' sessions'}}},scales:{x:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}},y:{ticks:{color:c.text,stepSize:1,precision:0,callback:v=>Number.isInteger(v)?v:''},grid:{color:c.grid},beginAtZero:true}}}});
+}
+
+function renderAnaRole(c){
+  destroyChart('anaRole');
+  const roleGrp = {}; ANA_ITEMS.forEach(r=>{ const k=r.UserRole||'Unknown'; roleGrp[k]=(roleGrp[k]||0)+1; });
+  const roleKeys = Object.keys(roleGrp).sort((a,b)=>roleGrp[b]-roleGrp[a]);
+  if(!roleKeys.length) return;
+  const total = roleKeys.reduce((s,k)=>s+roleGrp[k],0);
+  const palette = ['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+  const centerPlugin = {id:'rc',beforeDraw(chart){
+    const{ctx,chartArea:{width,height,left,top}}=chart;
+    ctx.save(); ctx.font='bold 22px Inter'; ctx.fillStyle=c.text==='rgba(255,255,255,0.6)'?'rgba(255,255,255,0.9)':'rgba(15,30,62,0.9)';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(total,left+width/2,top+height/2-10);
+    ctx.font='600 10px Inter'; ctx.fillStyle=c.text;
+    ctx.fillText('Total',left+width/2,top+height/2+10); ctx.restore();
+  }};
+  const canvas = el('chartAnaRole'); if(!canvas) return;
+  CHARTS.anaRole = new Chart(canvas,{type:'doughnut',plugins:[centerPlugin],data:{labels:roleKeys,datasets:[{data:roleKeys.map(k=>roleGrp[k]),backgroundColor:palette.slice(0,roleKeys.length),borderWidth:4,borderColor:'var(--bg-card)',hoverOffset:10}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{color:c.text,font:{size:11,weight:'600'},usePointStyle:true,padding:10}},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:10,cornerRadius:8,callbacks:{label:ctx=>ctx.label+': '+ctx.parsed+' ('+(ctx.parsed/total*100).toFixed(1)+'%)'}}}}}); 
+}
+
+function renderAnaHour(c){
+  destroyChart('anaHour');
+  const hourCnt = Array(24).fill(0);
+  ANA_ITEMS.forEach(r=>{ if(!r.SessionStart) return; const h=new Date(r.SessionStart).getHours(); hourCnt[h]++; });
+  const labels = Array.from({length:24},(_,i)=>i<12?(i===0?'12am':i+'am'):(i===12?'12pm':(i-12)+'pm'));
+  const colors = hourCnt.map((v,i)=>{
+    const isWork = i>=8&&i<=18;
+    const maxV = Math.max(...hourCnt,1);
+    const intensity = v/maxV;
+    return isWork ? `rgba(37,99,235,${0.3+intensity*0.7})` : `rgba(14,165,233,${0.2+intensity*0.5})`;
+  });
+  const canvas = el('chartAnaHour'); if(!canvas) return;
+  CHARTS.anaHour = new Chart(canvas,{type:'bar',data:{labels,datasets:[{label:'Sessions',data:hourCnt,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:10,cornerRadius:8,callbacks:{label:ctx=>ctx.parsed.y+' sessions'}}},scales:{x:{ticks:{color:c.text,font:{size:9,weight:'600'},maxRotation:0},grid:{display:false}},y:{ticks:{color:c.text,stepSize:1,precision:0,callback:v=>Number.isInteger(v)?v:''},grid:{color:c.grid},beginAtZero:true}}}});
+}
+
+function renderAnaDur(c){
+  destroyChart('anaDur');
+  const roleGrp = {}; ANA_ITEMS.forEach(r=>{ const k=r.UserRole||'Unknown'; if(!roleGrp[k]) roleGrp[k]=[]; if(num(r.SessionDuration)>0) roleGrp[k].push(num(r.SessionDuration)); });
+  const roleKeys = Object.keys(roleGrp).sort();
+  const avgDurs = roleKeys.map(k=>roleGrp[k].length?Math.round(roleGrp[k].reduce((s,v)=>s+v,0)/roleGrp[k].length):0);
+  const palette = ['rgba(37,99,235,.8)','rgba(16,185,129,.8)','rgba(245,158,11,.8)','rgba(239,68,68,.8)','rgba(139,92,246,.8)'];
+  const canvas = el('chartAnaDur'); if(!canvas) return;
+  CHARTS.anaDur = new Chart(canvas,{type:'bar',data:{labels:roleKeys,datasets:[{label:'Avg Duration (min)',data:avgDurs,backgroundColor:palette.slice(0,roleKeys.length),borderRadius:8,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:10,cornerRadius:8,callbacks:{label:ctx=>ctx.parsed.y+' min avg'}}},scales:{x:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}},y:{ticks:{color:c.text,stepSize:1,precision:0,callback:v=>Number.isInteger(v)?v:''},grid:{color:c.grid},beginAtZero:true}}}});
+}
+
+function renderAnaWeek(c){
+  destroyChart('anaWeek');
+  const weekGrp = {};
+  ANA_ITEMS.forEach(r=>{ if(!r.SessionStart) return; const d=new Date(r.SessionStart); const wk=d.getFullYear()+'-W'+String(getWeekOfYear(d)).padStart(2,'0'); weekGrp[wk]=(weekGrp[wk]||0)+1; });
+  const wKeys = Object.keys(weekGrp).sort().slice(-16);
+  if(!wKeys.length) return;
+  const canvas = el('chartAnaWeek'); if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,220); grad.addColorStop(0,c.p2a+'0.3)'); grad.addColorStop(1,c.p2a+'0.02)');
+  CHARTS.anaWeek = new Chart(canvas,{type:'line',data:{labels:wKeys.map(w=>w.replace(/-/g,' ')),datasets:[{label:'Sessions',data:wKeys.map(k=>weekGrp[k]),borderColor:c.p2,backgroundColor:grad,fill:true,tension:.4,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:c.p2,pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:10,cornerRadius:8}},scales:{x:{ticks:{color:c.text,font:{size:10}},grid:{color:c.grid}},y:{ticks:{color:c.text,stepSize:1,precision:0,callback:v=>Number.isInteger(v)?v:''},grid:{color:c.grid},beginAtZero:true}}}});
+}
+
+function renderAnaTopUsers(c){
+  destroyChart('anaTopUsers');
+  const userMap = {};
+  ANA_ITEMS.forEach(r=>{ const k=r.UserEmail||r.Title||'Unknown'; if(!userMap[k]) userMap[k]={count:0,totalDur:0,role:r.UserRole||'—'}; userMap[k].count++; userMap[k].totalDur+=num(r.SessionDuration); });
+  const sorted = Object.entries(userMap).sort((a,b)=>b[1].count-a[1].count).slice(0,10);
+  if(!sorted.length) return;
+  const palette = ['#2563eb','#3b82f6','#60a5fa','#0ea5e9','#06b6d4','#10b981','#f59e0b','#8b5cf6','#ec4899','#ef4444'];
+  const canvas = el('chartAnaTopUsers'); if(!canvas) return;
+  const shortLabels = sorted.map(([k])=>k.includes('@')?k.split('@')[0]:k);
+  CHARTS.anaTopUsers = new Chart(canvas,{type:'bar',data:{labels:shortLabels,datasets:[{label:'Sessions',data:sorted.map(([,v])=>v.count),backgroundColor:palette.slice(0,sorted.length),borderRadius:6,borderSkipped:false,barThickness:18}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:10,cornerRadius:8,callbacks:{label:ctx=>{const d=sorted[ctx.dataIndex][1];return[ctx.parsed.x+' sessions','Avg: '+Math.round(d.totalDur/Math.max(d.count,1))+'m','Role: '+d.role];}}}},scales:{x:{ticks:{color:c.text,font:{size:11},stepSize:1,precision:0,callback:v=>Number.isInteger(v)?v:''},grid:{color:c.grid},border:{dash:[4,4]},beginAtZero:true},y:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}}}}});
+}
+
+function renderAnaGrid(data){
+  // Summary stat bar
+  let statsBar = el('anaStatsBar2');
+  if(!statsBar){
+    statsBar = document.createElement('div');
+    statsBar.id = 'anaStatsBar2';
+    statsBar.style.cssText = 'display:flex;gap:.85rem;flex-wrap:wrap;margin-bottom:.85rem;';
+    const tableSection = el('anaGrid') ? el('anaGrid').closest('.table-section') : null;
+    if(tableSection) tableSection.insertBefore(statsBar, tableSection.querySelector('.table-header').nextSibling);
+  }
+  if(data.length){
+    const totalSess = data.length;
+    const unique = [...new Set(data.map(r=>r.UserEmail).filter(Boolean))].length;
+    const withDur = data.filter(r=>num(r.SessionDuration)>0);
+    const avgDur = withDur.length ? Math.round(withDur.reduce((s,r)=>s+num(r.SessionDuration),0)/withDur.length) : 0;
+    const today = new Date().toDateString();
+    const todaySess = data.filter(r=>r.SessionStart&&new Date(r.SessionStart).toDateString()===today).length;
+    statsBar.innerHTML = [{l:'Total Sessions',v:totalSess,c:'var(--sc)'},{l:'Unique Users',v:unique,c:'var(--acc)'},{l:'Avg Duration',v:avgDur+'m',c:'#10b981'},{l:'Today',v:todaySess,c:'#f59e0b'}].map(s=>`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:.65rem .9rem;flex:1;min-width:120px;box-shadow:var(--cs)"><div style="font-size:.65rem;text-transform:uppercase;font-weight:700;color:var(--t3);margin-bottom:.2rem">${s.l}</div><div style="font-size:1.4rem;font-weight:900;color:${s.c}">${s.v}</div></div>`).join('');
+    statsBar.style.display = 'flex';
+  } else { statsBar.style.display = 'none'; }
+
+  const anaCols = [
+    {headerName:'#',valueGetter:p=>p.node.rowIndex+1,width:55,sortable:false,filter:false},
+    {field:'UserEmail',headerName:'Email',width:220,valueGetter:p=>p.data.UserEmail||'—'},
+    {field:'UserRole',headerName:'Role',width:130,valueGetter:p=>p.data.UserRole||'—'},
+    {field:'SessionStart',headerName:'Session Start',width:175,valueGetter:p=>p.data.SessionStart?new Date(p.data.SessionStart).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'},
+    {field:'SessionEnd',headerName:'Session End',width:175,valueGetter:p=>p.data.SessionEnd?new Date(p.data.SessionEnd).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'Active'},
+    {field:'SessionDuration',headerName:'Duration (min)',width:130,type:'numericColumn',valueGetter:p=>num(p.data.SessionDuration)||0,cellRenderer:p=>{const v=p.value;const col=v>=30?'#16a34a':v>=10?'#d97706':'var(--t3)';return v>0?`<span style="font-weight:700;color:${col}">${v}m</span>`:'<span style="color:var(--t3)">—</span>';}},
+    {field:'DayOfWeek',headerName:'Day',width:110,valueGetter:p=>p.data.DayOfWeek||'—'},
+    {field:'Month',headerName:'Month',width:110,valueGetter:p=>p.data.Month||'—'},
+    {field:'WeekNumber',headerName:'Week #',width:90,type:'numericColumn',valueGetter:p=>p.data.WeekNumber||'—'},
+  ];
+  if(ANA_GRID){try{ANA_GRID.destroy();}catch(e){}ANA_GRID=null;}
+  el('anaGrid').innerHTML='';
+  ANA_GRID = agGrid.createGrid(el('anaGrid'),{
+    columnDefs:anaCols,rowData:data,
+    defaultColDef:{sortable:true,filter:true,resizable:true,flex:1,minWidth:90},
+    pagination:true,paginationPageSize:50,paginationPageSizeSelector:[25,50,100],
+    rowHeight:42,headerHeight:44,
+    overlayNoRowsTemplate:'<span style="padding:20px;color:var(--t3);font-size:.84rem;">No sessions logged yet. They are recorded automatically on each login.</span>',
+    onGridReady:p=>{ setTimeout(()=>p.api.sizeColumnsToFit(), 100); }
+  });
+}
+
+function exportAnaGrid(){if(ANA_GRID)ANA_GRID.exportDataAsCsv({fileName:'fne_portal_analytics_'+new Date().toISOString().split('T')[0]+'.csv'});}
+
+
+// ══════════════════════════════════════════════════════════════════
+//  VIEW NAVIGATION — Dashboard vs Portal Analytics (separate views)
+// ══════════════════════════════════════════════════════════════════
+function showView(view, navEl){
+  // Update nav active state
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(navEl) navEl.classList.add('active');
+
+  // Show/hide views
+['viewDashboard','viewAnalytics','viewFneForm','viewFneList'].forEach(id=>{
+  const e=document.getElementById(id); if(e) e.style.display='none';
+});
+el('viewDashboard').style.display = view==='dashboard' ? 'block' : 'none';
+el('viewAnalytics').style.display = view==='analytics' ? 'block' : 'none';
+
+  // Render analytics charts when switching to analytics view
+  if(view==='analytics'){
+    // Make view visible first, THEN render charts (Chart.js needs visible container)
+    requestAnimationFrame(()=>{ setTimeout(()=>{
+      if(ANA_ITEMS.length){
+        renderAnalytics();
+        // Force resize all analytics charts after render
+        setTimeout(()=>{ Object.keys(CHARTS).filter(k=>k.startsWith('ana')).forEach(k=>{ if(CHARTS[k]) CHARTS[k].resize(); }); }, 150);
+      } else {
+        const isPriv=['Admin','Director'].includes(USER.role);
+        if(isPriv) loadAnalytics();
+        else renderAnalytics();
+      }
+    }, 200); });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════════════════════════
+
+function dashGetSelect(){
+  return [
+    'Id',F.SUB_REQ,F.IMPL_TYPE,F.START_DATE,F.SLA,F.EXP_RFS,
+    F.BUILD_STATUS,F.CUST_NAME,F.SOF,F.MRC,F.EST_COST,F.VERTICAL,
+    F.COMMENTS,F.REQ_STATUS,F.CUST_ADDR,F.ACC_CODE,F.ASSIGNED_BY,
+    F.PROJ_TYPE,F.UNIT_NO,F.OTC,F.TCV,F.OSP_REQ,F.OSP_ET,
+    F.FES_REF,F.SURVEY_REF,F.GAID,F.BID_REF,F.WO_NUM,F.ACC_DIR,
+    F.CONTRACT_DUR,F.FNE_MGR,F.RFS_BASELINE,F.CRITICAL_PROJ,F.COMMENTS_NEW,F.SPI,F.PROJ_HEALTH,
+    'Account_x0020_Manager/Title','Account_x0020_Manager/EMail'
+  ].join(',');
+}
+
+function dashRecalcMaxId(){
+  DASH_MAX_ID=ALL_ITEMS.reduce(function(max,item){return item.id>max?item.id:max;},0);
+}
+
+function dashUpsertItems(mappedItems){
+  if(!mappedItems||!mappedItems.length)return false;
+  mappedItems.forEach(function(item){
+    const idx=ALL_ITEMS.findIndex(function(x){return x.id===item.id;});
+    if(idx>=0)ALL_ITEMS[idx]=item;
+    else ALL_ITEMS.push(item);
+    if(item.id>DASH_MAX_ID)DASH_MAX_ID=item.id;
+  });
+  buildAllFilters();
+  applyAll();
+  return true;
+}
+
+function loadData(onComplete,force){
+  if(DASH_DATA_LOADING)return;
+  if(!force&&DASH_DATA_LOADED){
+    if(onComplete)onComplete();
+    return;
+  }
+  setLoadingStep('Fetching project records...');
+  DASH_DATA_LOADING=true;
+  const select=dashGetSelect();
+  let allResults=[];
+  function finishLoad(){
+    DASH_DATA_LOADING=false;
+    DASH_DATA_LOADED=true;
+    dashRecalcMaxId();
+    DASH_LAST_SYNC_ISO=new Date().toISOString();
+    if(onComplete)onComplete();
+  }
+  function fetchPage(url){
+    spGet(url,function(err,data){
+      if(err){
+        console.error('Data load error:',err);
+        ALL_ITEMS=[];
+        buildAllFilters();
+        applyAll();
+        DASH_DATA_LOADING=false;
+        if(onComplete)onComplete();
+        return;
+      }
+      allResults=allResults.concat(data.d.results);
+      setLoadingStep('Loaded '+allResults.length+' records...');
+      if(data.d.__next){fetchPage(data.d.__next);}
+      else{
+        console.log('[FNE] Loaded:',allResults.length,'records');
+        ALL_ITEMS=allResults.map(mapItem);
+        buildAllFilters();
+        applyAll();
+        finishLoad();
+      }
+    });
+  }
+  const url=SP_SITE+"/_api/web/lists/getbytitle('"+encodeURIComponent(SP_LIST)+"')/items?$select="+encodeURIComponent(select)+"&$expand=Account_x0020_Manager&$top=5000&$orderby=Id asc";
+  fetchPage(url);
+}
+
+function dashPollLiveChanges(){
+  if(!DASH_DATA_LOADED||DASH_DATA_LOADING)return;
+  const pollStarted=new Date().toISOString();
+  const select=dashGetSelect();
+  const base=SP_SITE+"/_api/web/lists/getbytitle('"+encodeURIComponent(SP_LIST)+"')/items?$select="+encodeURIComponent(select)+"&$expand=Account_x0020_Manager&$top=500";
+  let pending=0;
+
+  function finishPoll(){
+    pending--;
+    if(pending<=0)DASH_LAST_SYNC_ISO=pollStarted;
+  }
+
+  if(DASH_MAX_ID>0){
+    pending++;
+    spGet(base+"&$filter=Id gt "+DASH_MAX_ID+"&$orderby=Id asc",function(err,data){
+      if(!err&&data&&data.d&&data.d.results.length){
+        dashUpsertItems(data.d.results.map(mapItem));
+      }
+      finishPoll();
+    });
+  }
+
+  if(DASH_LAST_SYNC_ISO){
+    pending++;
+    spGet(base+"&$filter=Modified ge datetime'"+DASH_LAST_SYNC_ISO+"'&$orderby=Modified asc",function(err,data){
+      if(!err&&data&&data.d&&data.d.results.length){
+        dashUpsertItems(data.d.results.map(mapItem));
+      }
+      finishPoll();
+    });
+  }
+
+  if(!pending)DASH_LAST_SYNC_ISO=pollStarted;
+}
+
+function startDashLivePoll(){
+  if(DASH_LIVE_POLL_TIMER)return;
+  DASH_LIVE_POLL_TIMER=setInterval(dashPollLiveChanges,DASH_LIVE_POLL_MS);
+}
+
+function mapItem(it){
+  const sd = it[F.START_DATE]||null;
+  const yr = sd ? new Date(sd).getFullYear() : null;
+  const mo = sd ? new Date(sd).getMonth()+1 : null;
+  const qt = mo ? Math.ceil(mo/3) : null;
+  return {
+    id:          it.Id,
+    subRequest:  it[F.SUB_REQ]||'—',
+    implType:    it[F.IMPL_TYPE]||'—',
+    startDate:   sd,
+    year:        yr,
+    quarter:     qt ? 'Q'+qt : null,
+    month:       mo ? String(mo).padStart(2,'0') : null,
+    sla:         num(it[F.SLA]),
+    expectedRFS: it[F.EXP_RFS]||null,
+    buildingStatus: it[F.BUILD_STATUS]||'—',
+    customerName: it[F.CUST_NAME]||'—',
+    sof:         it[F.SOF]||'—',
+    mrc:         num(it[F.MRC]),
+    estimatedCost: num(it[F.EST_COST]),
+    vertical:    it[F.VERTICAL]||'—',
+    comments:    it[F.COMMENTS]||'—',
+    requestStatus: it[F.REQ_STATUS]||'—',
+    amName:      it.Account_x0020_Manager?(it.Account_x0020_Manager.Title||'—'):'—',
+    amEmail:     it.Account_x0020_Manager?(it.Account_x0020_Manager.EMail||''):'',
+    customerAddress: it[F.CUST_ADDR]||'—',
+    accountCode: it[F.ACC_CODE]||'—',
+    assignedBy:  it[F.ASSIGNED_BY]||'—',
+    projectType: it[F.PROJ_TYPE]||'—',
+    unitNo:      it[F.UNIT_NO]||'—',
+    otc:         num(it[F.OTC]),
+    tcv:         num(it[F.TCV]),
+    ospRequired: it[F.OSP_REQ]||'—',
+    ospCivilET:  num(it[F.OSP_ET]),
+    fesRef:      it[F.FES_REF]||'—',
+    siteRef:     it[F.SURVEY_REF]||'—',
+    gaid:        it[F.GAID]||'—',
+    bidRef:      it[F.BID_REF]||'—',
+    woNumber:    it[F.WO_NUM]||'—',
+    accountDirector: it[F.ACC_DIR]||'—',
+    contractDuration: num(it[F.CONTRACT_DUR]),
+    fneManager:  it[F.FNE_MGR]||'—',
+    rfsBaseline: it[F.RFS_BASELINE]||null,
+    criticalProjects: it[F.CRITICAL_PROJ]||'—',
+    commentsNew: (typeof fneHtmlToPlain==='function'?fneHtmlToPlain(it[F.COMMENTS_NEW]):String(it[F.COMMENTS_NEW]||'').replace(/<[^>]*>/g,'').trim())||'—',
+    spi:         num(it[F.SPI]),
+    projectHealth: it[F.PROJ_HEALTH]||'—',
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FILTER HELPERS — dynamic multi-select build
+// ══════════════════════════════════════════════════════════════════
+// Config: key → { field, label, txtId, dropId }
+const MS_CFG = {
+  vertical: { field:'vertical',    txtId:'mstxt-vertical', dropId:'msd-vertical' },
+  subreq: { field:'subRequest', txtId:'mstxt-subreq', dropId:'msd-subreq' },
+  impl:     { field:'implType',    txtId:'mstxt-impl',     dropId:'msd-impl' },
+  ptype:    { field:'projectType', txtId:'mstxt-ptype',    dropId:'msd-ptype' },
+  status:   { field:'requestStatus', txtId:'mstxt-status',  dropId:'msd-status' },
+  building: { field:'buildingStatus',txtId:'mstxt-building',dropId:'msd-building' },
+  health:   { field:'projectHealth', txtId:'mstxt-health',  dropId:'msd-health' },
+  acdir:    { field:'accountDirector',txtId:'mstxt-acdir', dropId:'msd-acdir' },
+  assigned: { field:'assignedBy',  txtId:'mstxt-assigned', dropId:'msd-assigned' },
+  year:     { field:'year',        txtId:'mstxt-year',     dropId:'msd-year' },
+  quarter:  { field:'quarter',     txtId:'mstxt-quarter',  dropId:'msd-quarter' },
+  month:    { field:'month',       txtId:'mstxt-month',    dropId:'msd-month' },
+  critical: { field:'criticalProjects', txtId:'mstxt-critical', dropId:'msd-critical' },
+};
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function getDisplayVal(key, raw) {
+  if (key === 'month') return raw ? MONTH_NAMES[parseInt(raw)-1] : raw;
+  if (key === 'year') return raw ? String(raw) : raw;
+  return raw;
+}
+
+function buildDropdown(key){
+  const cfg = MS_CFG[key];
+  const vals = [...new Set(ALL_ITEMS.map(i=>i[cfg.field]).filter(v=>v!==null&&v!==undefined&&v!=='—'))].sort((a,b)=>{
+    if(key==='year') return num(a)-num(b);
+    if(key==='month') return num(a)-num(b);
+    if(key==='quarter') return a<b?-1:1;
     return String(a).localeCompare(String(b));
   });
-  drop.innerHTML = '';
-  vals.forEach(function(v) {
-    const opt = document.createElement('div');
-    opt.className = 'ms-option';
-    const cid = 'fne_cb_' + key + '_' + String(v).replace(/[^a-zA-Z0-9]/g, '_');
-    opt.innerHTML = '<input type="checkbox" id="' + cid + '" value="' + String(v).replace(/"/g, '&quot;') +
-      '" onchange="fneOnListMsChange(\'' + key + '\',this)"><label for="' + cid + '">' + v + '</label>';
+  const drop = el(cfg.dropId); drop.innerHTML='';
+  vals.forEach(v=>{
+    const opt=document.createElement('div'); opt.className='ms-option';
+    const cid='cb_'+key+'_'+String(v).replace(/[^a-zA-Z0-9]/g,'_');
+    const dispVal = getDisplayVal(key, v);
+    opt.innerHTML='<input type="checkbox" id="'+cid+'" value="'+v+'" onchange="onMsChange(\''+key+'\',this)"><label for="'+cid+'">'+dispVal+'</label>';
     drop.appendChild(opt);
   });
 }
 
-function fneListBuildAllFilters() {
-  Object.keys(FNE_LIST_MS_CFG).forEach(function(k) { fneListBuildMsDropdown(k); });
+function buildAllFilters(){
+  Object.keys(MS_CFG).forEach(k=>buildDropdown(k));
 }
 
-function fneUpdateListMsLabel(key) {
-  const cfg = FNE_LIST_MS_CFG[key];
-  const sel = FNE_LIST_MS_STATE[key];
-  const trig = document.getElementById(cfg.mstId);
-  const txt = document.getElementById(cfg.txtId);
-  if (!txt || !trig) return;
-  if (!sel.size) {
-    txt.textContent = 'All';
-    trig.classList.remove('has-sel');
-  } else if (sel.size === 1) {
-    txt.textContent = [...sel][0];
+function onMsChange(key, cb){
+  if(cb.checked) MS_STATE[key].add(cb.value);
+  else MS_STATE[key].delete(cb.value);
+  updateMsTriggerLabel(key);
+  applyAll();
+}
+
+function updateMsTriggerLabel(key){
+  const cfg = MS_CFG[key];
+  const sel = MS_STATE[key];
+  const trig = el('mst-'+key);
+  const txt = el(cfg.txtId);
+  if(!sel.size){ txt.textContent='All'; trig.classList.remove('has-sel'); }
+  else if(sel.size===1){
+    const v = [...sel][0];
+    txt.textContent = getDisplayVal(key, v);
     trig.classList.add('has-sel');
   } else {
-    txt.textContent = sel.size + ' selected';
+    txt.textContent = sel.size+' selected';
     trig.classList.add('has-sel');
   }
 }
 
-function fneToggleListMs(key) {
-  const cfg = FNE_LIST_MS_CFG[key];
-  const drop = document.getElementById(cfg.dropId);
-  const trig = document.getElementById(cfg.mstId);
-  if (!drop || !trig) return;
-  const isOpen = drop.classList.contains('open');
-  document.querySelectorAll('.ms-dropdown.open').forEach(function(d) { d.classList.remove('open'); });
-  document.querySelectorAll('.ms-trigger.open').forEach(function(t) { t.classList.remove('open'); });
-  if (!isOpen) {
-    const rect = trig.getBoundingClientRect();
-    drop.style.top = (rect.bottom + 4) + 'px';
-    drop.style.left = rect.left + 'px';
-    drop.style.width = Math.max(rect.width, 180) + 'px';
-    drop.classList.add('open');
-    trig.classList.add('open');
+function toggleMsFilter(key){
+  const drop=el('msd-'+key), trig=el('mst-'+key);
+  const isOpen=drop.classList.contains('open');
+  document.querySelectorAll('.ms-dropdown.open').forEach(d=>d.classList.remove('open'));
+  document.querySelectorAll('.ms-trigger.open').forEach(t=>t.classList.remove('open'));
+  if(!isOpen){
+    const rect=trig.getBoundingClientRect();
+    drop.style.top=(rect.bottom+4)+'px'; drop.style.left=rect.left+'px'; drop.style.width=Math.max(rect.width,180)+'px';
+    drop.classList.add('open'); trig.classList.add('open');
   }
 }
 
-function fneOnListMsChange(key, cb) {
-  if (cb.checked) FNE_LIST_MS_STATE[key].add(cb.value);
-  else FNE_LIST_MS_STATE[key].delete(cb.value);
-  fneUpdateListMsLabel(key);
-  fneListApplyFilter();
-}
-
-function fneApplyCriticalProjectsAccess() {
-  const el = document.getElementById('fne_critical_projects');
-  if (!el) return;
-  if (fneIsPowerUser()) {
-    el.removeAttribute('readonly');
-    el.removeAttribute('tabindex');
-  } else {
-    el.setAttribute('readonly', 'readonly');
-    el.setAttribute('tabindex', '-1');
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.ms-wrap')){
+    document.querySelectorAll('.ms-dropdown.open').forEach(d=>d.classList.remove('open'));
+    document.querySelectorAll('.ms-trigger.open').forEach(t=>t.classList.remove('open'));
   }
-}
-  // ══════════════════════════════════════════════════════════════════
-  //  NAV INJECTION
-  // ══════════════════════════════════════════════════════════════════
-  function fneInjectNav() {
-    if (window.FNE_STANDALONE) return fneInjectStandaloneNav();
-    const navItems = document.querySelector('.nav-items');
-    if (!navItems || document.getElementById('navFneForm')) return;
-  
-    const lbl = document.createElement('div');
-    lbl.className = 'nav-section-label';
-    lbl.textContent = 'FNE Tracker';
-    navItems.appendChild(lbl);
-  
-if (fneIsAdmin()) {
-  const navForm = document.createElement('div');
-  navForm.className = 'nav-item';
-  navForm.id = 'navFneForm';
-  navForm.innerHTML = `
-    <div class="nav-icon">
-      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-    </div>
-    <div class="nav-label">New Entry</div>`;
-  navForm.onclick = () => { fneOpenForm(null); showFneView('form', navForm); };
-  navItems.appendChild(navForm);
-}
+});
 
-  
-    const navList = document.createElement('div');
-    navList.className = 'nav-item';
-    navList.id = 'navFneList';
-    navList.innerHTML = `
-      <div class="nav-icon">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-      </div>
-      <div class="nav-label">Tracker List</div>`;
-    navList.onclick = () => { fneEnsurePowerUserUi(); fneEnsureList(); showFneView('list', navList); };
-    navItems.appendChild(navList);
+function getRefDate(item){return item.startDate||item.expectedRFS;}
+
+function dashTodayStr(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function dashParseDateLocal(val){
+  if(val===null||val===undefined||val==='')return null;
+  let raw=val;
+  if(typeof raw==='string'&&raw.indexOf('/Date(')>=0){
+    const m=raw.match(/\/Date\((-?\d+)\)\//);
+    if(m) raw=new Date(parseInt(m[1],10)).toISOString();
   }
+  const d=new Date(raw);
+  if(isNaN(d))return null;
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function dashDaysUntilExp(iso){
+  const exp=dashParseDateLocal(iso);
+  if(!exp)return null;
+  const a=new Date(exp+'T12:00:00'), b=new Date(dashTodayStr()+'T12:00:00');
+  return Math.round((a-b)/86400000);
+}
+function dashIsActiveRfsStatus(status){
+  const s=String(status||'').trim().toLowerCase().replace(/\s+/g,' ');
+  return s!=='completed'&&s!=='cancelled';
+}
+function dashIsApproachingRfs(item){
+  if(!item||!dashIsActiveRfsStatus(item.requestStatus))return false;
+  const d=dashDaysUntilExp(item.expectedRFS);
+  return d!==null&&d>=0&&d<=4;
+}
+function dashIsOverdueRfs(item){
+  if(!item||!dashIsActiveRfsStatus(item.requestStatus))return false;
+  const d=dashDaysUntilExp(item.expectedRFS);
+  return d!==null&&d<0;
+}
+function dashIsPowerUser(){
+  if(typeof fneIsPowerUser==='function') return fneIsPowerUser();
+  const email=String((USER&&USER.email)||'').trim().toLowerCase();
+  if(['husham.salih@du.ae','tehleel.lone@du.ae'].indexOf(email)>=0) return true;
+  const name=String((USER&&USER.name)||'').toLowerCase();
+  return (name.indexOf('husham')>=0&&name.indexOf('salih')>=0)||(name.indexOf('tehleel')>=0&&name.indexOf('lone')>=0);
+}
+function dashGetRfsMigrationFilter(){
+  const dashEl=el('dashRfsMigration');
+  if(dashEl) return dashEl.value||'';
+  const listEl=el('fnel_rfsMigration');
+  return listEl?(listEl.value||''):'';
+}
 
-  function fneInjectStandaloneNav() {
-    const navItems = document.querySelector('.nav-items');
-    if (!navItems || document.getElementById('navFneList')) return;
-
-    const lbl = document.createElement('div');
-    lbl.className = 'nav-section-label';
-    lbl.textContent = 'FNE Tracker';
-    navItems.appendChild(lbl);
-
-    const navList = document.createElement('div');
-    navList.className = 'nav-item active';
-    navList.id = 'navFneList';
-    navList.innerHTML = `
-      <div class="nav-icon">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-      </div>
-      <div class="nav-label">Tracker List</div>`;
-    navList.onclick = () => { fneEnsurePowerUserUi(); fneEnsureList(); showFneView('list', navList); };
-    navItems.appendChild(navList);
-
-    if (fneIsAdmin()) {
-      const navForm = document.createElement('div');
-      navForm.className = 'nav-item';
-      navForm.id = 'navFneForm';
-      navForm.innerHTML = `
-        <div class="nav-icon">
-          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        </div>
-        <div class="nav-label">New Entry</div>`;
-      navForm.onclick = () => { fneOpenForm(null); showFneView('form', navForm); };
-      navItems.appendChild(navForm);
+// ══════════════════════════════════════════════════════════════════
+//  APPLY ALL — filter + render
+// ══════════════════════════════════════════════════════════════════
+function applyAll(){
+  FILTERED=ALL_ITEMS.filter(function(item){
+    for(const [key, cfg] of Object.entries(MS_CFG)){
+      const sel = MS_STATE[key];
+      if(sel.size===0) continue;
+      const val = item[cfg.field];
+      if(!sel.has(val) && !sel.has(String(val))) return false;
     }
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  VIEW SWITCHING
-  // ══════════════════════════════════════════════════════════════════
-  function showFneView(view, navEl) {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    if (navEl) navEl.classList.add('active');
-    ['viewDashboard','viewAnalytics','viewFneForm','viewFneList'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
-    });
-    if (view === 'form') document.getElementById('viewFneForm').style.display = 'block';
-    if (view === 'list') document.getElementById('viewFneList').style.display = 'block';
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  INJECT VIEW CONTAINERS
-  // ══════════════════════════════════════════════════════════════════
-  function fneInjectViews() {
-    const content = document.querySelector('.content');
-    if (!content || document.getElementById('viewFneForm')) return;
-  
-    const formView = document.createElement('div');
-    formView.id = 'viewFneForm';
-    formView.className = 'dashboard-section';
-    formView.style.display = 'none';
-    formView.innerHTML = fneFormHTML();
-    content.appendChild(formView);
-  
-    const listView = document.createElement('div');
-    listView.id = 'viewFneList';
-    listView.className = 'dashboard-section';
-    listView.style.display = 'none';
-    listView.innerHTML = fneListHTML();
-    content.appendChild(listView);
+    if(selStatusTile && item.requestStatus!==selStatusTile) return false;
+    const rfsMig = dashGetRfsMigrationFilter();
+    if (rfsMig === 'approaching' && !dashIsApproachingRfs(item)) return false;
+    if (rfsMig === 'overdue' && !dashIsOverdueRfs(item)) return false;
+    return true;
+  });
 
-    fneInjectHistoryModal();
-  
-    // Wire TCV auto-calc
-    ['fne_mrc','fne_otc','fne_contract_dur'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('input', fneTcvCalc);
-    });
-  
-    // Wire attachment input
-    const attachInput = document.getElementById('fneAttachInput');
-    if (attachInput) attachInput.addEventListener('change', fneHandleAttachPick);
-  
-    // Load SP choices dynamically (fire-and-forget)
-    fneLoadSpChoices();
-    fneWireVerticalDirector();
-    fneApplyCriticalProjectsAccess();
-    fneEnsurePowerUserUi();
+  updateTopStats();
+  renderHealthTiles();
+  renderMgrTiles();
+  renderCharts();
+  renderGrid();
+  updateSelectionBadge();
+  renderActiveChips();
+}
+
+function getViewItems(){
+  if(selMgr) return FILTERED.filter(i=>i.fneManager===selMgr);
+  return FILTERED;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ACTIVE FILTER CHIPS
+// ══════════════════════════════════════════════════════════════════
+function renderActiveChips(){
+  const container = el('activeChips'); container.innerHTML='';
+  if(selMgr){
+    const chip=document.createElement('div'); chip.className='filter-chip';
+    chip.innerHTML='FNE: <strong>'+selMgr+'</strong><button onclick="clearMgr()" title="Remove">×</button>';
+    container.appendChild(chip);
   }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  LOAD SP CHOICES DYNAMICALLY
-  // ══════════════════════════════════════════════════════════════════
-  function fneLoadSpChoices() {
-    const fieldMap = {
-      [FNE_F.SUB_REQ]:      'subRequest',
-      [FNE_F.IMPL_TYPE]:    'implType',
-      [FNE_F.BUILD_STATUS]: 'buildingStatus',
-      [FNE_F.SOF]:          'sof',
-      [FNE_F.VERTICAL]:     'vertical',
-      [FNE_F.REQ_STATUS]:   'requestStatus',
-      [FNE_F.ASSIGNED_BY]:  'assignedBy',
-      [FNE_F.PROJ_TYPE]:    'projectType',
-      [FNE_F.OSP_REQ]:      'ospCivil',
-      [FNE_F.ACC_DIR]:      'accountDirector',
-      [FNE_F.FNE_MGR]:      'fneManager',
-      [FNE_F.TEMP_CONN]:    'tempConnType',
-      [FNE_F.BLOCKER]:      'blocker',
-      [FNE_F.CRITICAL_PROJ]:'criticalProjects',
-    };
-    const internalNames = Object.keys(fieldMap);
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/fields?$select=InternalName,Choices&$filter=" +
-      internalNames.map(n => "InternalName eq '" + n + "'").join(' or ');
-  
-    spGet(url, function(err, data) {
-      if (err || !data || !data.d) return;
-      data.d.results.forEach(function(f) {
-        const key = fieldMap[f.InternalName];
-        if (key && f.Choices && f.Choices.results && f.Choices.results.length) {
-          FNE_CHOICES[key] = f.Choices.results;
-        }
-      });
-      fneRefreshAllChoiceDropdowns();
-      if (document.getElementById('fneBulkTableHead')) fneBulkRenderHead();
+  for(const [key, sel] of Object.entries(MS_STATE)){
+    if(!sel.size) continue;
+    sel.forEach(v=>{
+      const chip=document.createElement('div'); chip.className='filter-chip';
+      const lbl = key.charAt(0).toUpperCase()+key.slice(1);
+      const dispV = getDisplayVal(key, v);
+      chip.innerHTML=lbl+': <strong>'+dispV+'</strong><button onclick="removeChip(\''+key+'\',\''+v+'\')" title="Remove">×</button>';
+      container.appendChild(chip);
     });
   }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  FORM HTML
-  // ══════════════════════════════════════════════════════════════════
-  function fneFormHTML() {
-    const sel = (id, choices, req = '') => `
-      <select id="${id}" class="fne-input" ${req}>
-        <option value="">— Select —</option>
-        ${choices.map(c => `<option value="${c}">${c}</option>`).join('')}
-      </select>`;
-  
-    const inp = (id, type = 'text', req = '', placeholder = '') =>
-      `<input id="${id}" type="${type}" class="fne-input" placeholder="${placeholder}" ${req}>`;
-  
-    const grp = (label, content, req = false, hint = '') => `
-      <div class="fne-group${req ? ' fne-group-req' : ''}">
-        <label class="fne-label">${label}${req ? '<span class="fne-req-dot"></span>' : ''}</label>
-        ${content}
-        ${hint ? `<div class="fne-hint">${hint}</div>` : ''}
+}
+
+function removeChip(key, val){
+  MS_STATE[key].delete(val);
+  // Uncheck the checkbox
+  const drop = el('msd-'+MS_CFG[key].dropId.replace('msd-',''));
+  const actualDrop = el(MS_CFG[key].dropId);
+  if(actualDrop){
+    actualDrop.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+      if(cb.value===val) cb.checked=false;
+    });
+  }
+  updateMsTriggerLabel(key);
+  applyAll();
+}
+
+function clearMgr(){selMgr=null; renderMgrTiles(); updateTopStats(); renderHealthTiles(); renderCharts(); renderGrid(); updateSelectionBadge(); renderActiveChips();}
+
+// ══════════════════════════════════════════════════════════════════
+//  TOP STATS
+// ══════════════════════════════════════════════════════════════════
+function updateTopStats(){
+  const container=el('topStats');container.innerHTML='';
+  let base=getViewItems();
+  const total=base.length;
+  const completed=base.filter(i=>STATUS_COMPLETED.includes(i.requestStatus)).length;
+  const inprogress=base.filter(i=>STATUS_INPROGRESS.includes(i.requestStatus)).length;
+  const onhold=base.filter(i=>STATUS_ONHOLD.includes(i.requestStatus)).length;
+  const cancelled=base.filter(i=>STATUS_CANCELLED.includes(i.requestStatus)).length;
+  const totalTCV=base.reduce((s,i)=>s+i.tcv,0);
+  const totalMRC=base.reduce((s,i)=>s+i.mrc,0);
+  const totalOTC=base.reduce((s,i)=>s+i.otc,0);
+  const greenCount=base.filter(i=>i.projectHealth===HEALTH_GREEN).length;
+  const avgSPI=base.length?base.reduce((s,i)=>s+i.spi,0)/base.length:0;
+  const rfsCount=base.filter(i=>i.buildingStatus==='RFS').length;
+  const pct=n=>total?((n/total)*100).toFixed(1)+'%':'0%';
+
+  const tiles=[
+    {label:'Total Projects',value:total,sub:'All records',color:'var(--sc)',extra:[{l:'Completed',v:completed},{l:'In Progress',v:inprogress}],click:null},
+    {label:'Completed',value:pct(completed),sub:completed+' projects',color:'#16a34a',extra:[{l:'TCV',v:fmt(base.filter(i=>STATUS_COMPLETED.includes(i.requestStatus)).reduce((s,i)=>s+i.tcv,0))},{l:'MRC',v:fmt(base.filter(i=>STATUS_COMPLETED.includes(i.requestStatus)).reduce((s,i)=>s+i.mrc,0))}],click:'Completed'},
+    {label:'In Progress',value:pct(inprogress),sub:inprogress+' active',color:'var(--acc)',extra:[{l:'TCV',v:fmt(base.filter(i=>STATUS_INPROGRESS.includes(i.requestStatus)).reduce((s,i)=>s+i.tcv,0))}],click:'Inprogress'},
+    {label:'On Hold',value:pct(onhold),sub:onhold+' on hold',color:'#d97706',extra:[{l:'TCV',v:fmt(base.filter(i=>STATUS_ONHOLD.includes(i.requestStatus)).reduce((s,i)=>s+i.tcv,0))}],click:'On hold'},
+    {label:'Cancelled',value:pct(cancelled),sub:cancelled+' cancelled',color:'#dc2626',extra:[{l:'TCV',v:fmt(base.filter(i=>STATUS_CANCELLED.includes(i.requestStatus)).reduce((s,i)=>s+i.tcv,0))}],click:'Cancelled'},
+    {label:'Total TCV',value:fmt(totalTCV),sub:'Contract value',color:'var(--sc)',extra:[{l:'MRC',v:fmt(totalMRC)},{l:'OTC',v:fmt(totalOTC)}],click:null},
+    {label:'RFS Ready',value:rfsCount,sub:total?((rfsCount/total)*100).toFixed(1)+'% of projects':'—',color:'#16a34a',extra:[],click:null},
+    {label:'Avg SPI',value:avgSPI.toFixed(2),sub:'Schedule index',color:avgSPI>=1?'#16a34a':avgSPI>=0.8?'#d97706':'#dc2626',extra:[{l:'Healthy',v:greenCount}],click:null},
+  ];
+  tiles.forEach(td=>{
+    const isActive=selStatusTile&&selStatusTile===td.click;
+    const isDimmed=selStatusTile&&td.click&&!isActive;
+    const card=document.createElement('div');
+    card.className='stat-card'+(isActive?' tile-active':'')+(isDimmed?' tile-dimmed':'');
+    card.style.cursor=td.click?'pointer':'default';
+    card.innerHTML=`<div class="stat-label">${td.label}</div><div class="stat-value" style="color:${td.color}">${td.value}</div><div class="stat-subtitle">${td.sub}</div>${td.extra.length?'<div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.25rem;">'+td.extra.map(e=>'<div style="display:flex;justify-content:space-between;font-size:.78rem;"><span style="color:var(--t3);font-weight:700;">'+e.l+'</span><span style="font-weight:800;color:var(--t1);">'+e.v+'</span></div>').join('')+'</div>':''}`;
+    if(td.click)card.onclick=()=>{selStatusTile=selStatusTile===td.click?null:td.click;applyAll();};
+    container.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  HEALTH TILES
+// ══════════════════════════════════════════════════════════════════
+function renderHealthTiles(){
+  const container=el('healthTiles');container.innerHTML='';
+  const base=getViewItems();
+  [{key:HEALTH_GREEN,cls:'green',label:'Green — Healthy',icon:'✓'},{key:HEALTH_AMBER,cls:'amber',label:'Amber — At Risk',icon:'⚠'},{key:HEALTH_RED,cls:'red',label:'Red — Critical',icon:'✕'},{key:HEALTH_NO_RFS,cls:'',label:'No Expected RFS',icon:'—'}].forEach(d=>{
+    const grp=base.filter(i=>i.projectHealth===d.key);
+    const tile=document.createElement('div');tile.className='health-tile '+d.cls;
+    const tcv=grp.reduce((s,i)=>s+i.tcv,0);
+    const avgSPI=grp.length?grp.reduce((s,i)=>s+i.spi,0)/grp.length:0;
+    const rfs=grp.filter(i=>i.buildingStatus==='RFS').length;
+    tile.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem;"><div class="health-count">${grp.length}</div><span style="font-size:1.4rem;opacity:.6">${d.icon}</span></div><div class="health-label">${d.label}</div><div class="health-meta" style="margin-top:.4rem;display:flex;flex-direction:column;gap:.2rem;"><div style="display:flex;justify-content:space-between;"><span>TCV</span><span style="font-weight:700;">${fmt(tcv)}</span></div><div style="display:flex;justify-content:space-between;"><span>Avg SPI</span><span style="font-weight:700;">${avgSPI.toFixed(2)}</span></div><div style="display:flex;justify-content:space-between;"><span>RFS Ready</span><span style="font-weight:700;">${rfs}</span></div></div>`;
+    container.appendChild(tile);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FNE MGR TILES — clicking filters (hides others), no AM drill-down
+// ══════════════════════════════════════════════════════════════════
+function renderMgrTiles(){
+  let base=FILTERED;
+  const mgrs=[...new Set(base.map(i=>i.fneManager).filter(v=>v&&v!=='—'))].sort();
+  set('mgrBadge',mgrs.length);
+  const grid=el('mgrGrid');grid.innerHTML='';
+
+  mgrs.forEach(function(mgr){
+    const mItems=base.filter(i=>i.fneManager===mgr);
+    const total=mItems.length;
+    const completed=mItems.filter(i=>STATUS_COMPLETED.includes(i.requestStatus)).length;
+    const inprogress=mItems.filter(i=>STATUS_INPROGRESS.includes(i.requestStatus)).length;
+    const onhold=mItems.filter(i=>STATUS_ONHOLD.includes(i.requestStatus)).length;
+    const cancelled=mItems.filter(i=>STATUS_CANCELLED.includes(i.requestStatus)).length;
+    const tcv=mItems.reduce((s,i)=>s+i.tcv,0);
+    const mrc=mItems.reduce((s,i)=>s+i.mrc,0);
+    const green=mItems.filter(i=>i.projectHealth===HEALTH_GREEN).length;
+    const amber=mItems.filter(i=>i.projectHealth===HEALTH_AMBER).length;
+    const red=mItems.filter(i=>i.projectHealth===HEALTH_RED).length;
+    const avgSPI=total?mItems.reduce((s,i)=>s+i.spi,0)/total:0;
+    const compPct=total?(completed/total*100).toFixed(1):0;
+    const poolTCV=base.reduce((s,i)=>s+i.tcv,0);
+    const tcvPct=poolTCV?(tcv/poolTCV*100).toFixed(1):0;
+    const countPct=base.length?(total/base.length*100).toFixed(1):0;
+    // Verticals in manager tile header
+    const verticals=[...new Set(mItems.map(i=>i.vertical).filter(v=>v&&v!=='—'))];
+    const isSelected=selMgr===mgr;
+    const isDimmed=selMgr&&!isSelected;
+
+    const tile=document.createElement('div');
+    tile.className='mgr-tile'+(isSelected?' selected':'')+(isDimmed?' dimmed':'');
+
+    tile.innerHTML=`
+      ${isSelected?'<div style="position:absolute;top:8px;right:10px;font-size:.65rem;font-weight:800;color:#fff;background:var(--acc);padding:2px 8px;border-radius:20px;z-index:2;">✓ SELECTED — Click to clear</div>':''}
+      <div class="mgr-header" style="flex-direction:column;align-items:flex-start;margin-top:${isSelected?'1.4rem':'0'}">
+        <h3 style="font-size:.9rem;">${mgr}</h3>
+        <div class="mgr-meta">FNE Manager</div>
+        <div style="margin-top:.3rem;display:flex;flex-wrap:wrap;gap:.2rem;">
+          ${verticals.slice(0,3).map(v=>'<span style="font-size:.62rem;font-weight:700;color:var(--acc);background:var(--nab);border:1px solid var(--nab2);padding:1px 6px;border-radius:20px;">'+v+'</span>').join('')}
+          ${verticals.length>3?'<span style="font-size:.62rem;color:var(--t3);">+'+( verticals.length-3)+' more</span>':''}
+        </div>
+      </div>
+      <div class="mgr-stats-grid"><div class="mgr-stat-box"><div class="mgr-stat-label">Projects</div><div class="mgr-stat-value">${total}</div></div><div class="mgr-stat-box"><div class="mgr-stat-label">TCV</div><div class="mgr-stat-value">${fmt(tcv)}</div></div></div>
+      <div class="mgr-health"><div class="mgr-health-label">Completed / In Progress / On Hold / Cancelled</div><div style="font-size:1rem;font-weight:900;margin:.2rem 0">${completed} / ${inprogress} / ${onhold} / ${cancelled}</div>
+        <div style="display:flex;flex-direction:column;gap:.12rem;margin-top:.3rem;font-size:.7rem;">
+          <div style="display:flex;justify-content:space-between;"><span style="opacity:.8">MRC</span><span style="font-weight:700;">${fmt(mrc)}</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="opacity:.8">Avg SPI</span><span style="font-weight:700;color:${avgSPI>=1?'#4ade80':avgSPI>=0.8?'#fbbf24':'#f87171'}">${avgSPI.toFixed(2)}</span></div>
+        </div>
+        <div style="margin-top:.5rem;">
+          <div style="font-size:.63rem;opacity:.75;margin-bottom:.2rem">Project Health</div>
+          <div style="display:flex;gap:.3rem;"><div style="flex:${green||1};background:#4ade80;border-radius:4px;height:6px;" title="Green: ${green}"></div><div style="flex:${amber||1};background:#fbbf24;border-radius:4px;height:6px;" title="Amber: ${amber}"></div><div style="flex:${red||1};background:#f87171;border-radius:4px;height:6px;" title="Red: ${red}"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:.62rem;margin-top:.15rem;opacity:.8;"><span>🟢 ${green}</span><span>🟡 ${amber}</span><span>🔴 ${red}</span></div>
+        </div>
+      </div>
+      <div style="margin-top:.45rem;">
+        <div class="lm-progress-row"><span class="lm-progress-label">Completion Rate</span><span class="lm-progress-value">${compPct}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${compPct}%"></div></div>
+        <div class="lm-progress-row"><span class="lm-progress-label">TCV Contribution</span><span class="lm-progress-value">${tcvPct}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${tcvPct}%"></div></div>
+        <div class="lm-progress-row"><span class="lm-progress-label">Count Contribution</span><span class="lm-progress-value">${countPct}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${countPct}%"></div></div>
       </div>`;
-  
-    const lockWrap = (id, inner) =>
-      `<div class="fne-lock-wrap" id="lockwrap_${id}">${inner}<span class="fne-lock-icon" id="lockicon_${id}" style="display:none;" title="This field cannot be modified after initial entry">🔒</span></div>`;
-  
-    return `
-  <style>
-  /* ══ FNE FORM v2 STYLES ══ */
-  .fne-view-wrap { max-width: 100%; }
-  
-  /* Header Banner */
-  .fne-header-banner {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.4rem 1.8rem;
-    margin-bottom: 1.2rem;
-    box-shadow: var(--cs);
-    position: relative;
-    overflow: hidden;
-  }
-  .fne-header-banner::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 4px;
-    background: var(--grad);
-  }
-  .fne-header-banner::after {
-    content: '';
-    position: absolute;
-    top: -40px; right: -40px;
-    width: 160px; height: 160px;
-    border-radius: 50%;
-    background: var(--glow);
-    opacity: 0.18;
-    pointer-events: none;
-  }
-  .fne-banner-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: .85rem;
-  }
-  .fne-banner-left { display: flex; align-items: center; gap: 1rem; }
-  .fne-banner-icon {
-    width: 52px; height: 52px;
-    border-radius: 14px;
-    background: var(--grad);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 20px var(--glow);
-    flex-shrink: 0;
-  }
-  .fne-banner-icon svg { width: 26px; height: 26px; stroke: #fff; fill: none; stroke-width: 2; }
-  .fne-banner-title {
-    font-size: 1.35rem;
-    font-weight: 900;
-    background: var(--grad);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.1;
-  }
-  .fne-banner-sub { font-size: .78rem; color: var(--t3); margin-top: .2rem; font-weight: 600; }
-  .fne-banner-badges { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
-  .fne-banner-badge {
-    display: inline-flex; align-items: center; gap: .3rem;
-    padding: .3rem .75rem;
-    border-radius: 20px;
-    background: var(--nab);
-    border: 1px solid var(--nab2);
-    font-size: .73rem; font-weight: 700; color: var(--acc);
-  }
-  .fne-banner-badge svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
-  .fne-banner-datetime { font-size: .73rem; color: var(--t3); font-weight: 600; }
-  
-  /* Mode banner (edit) */
-  .fne-edit-banner {
-    display: none;
-    background: rgba(37,99,235,.07);
-    border: 1px solid var(--nab2);
-    border-left: 4px solid var(--acc);
-    border-radius: 10px;
-    padding: .65rem 1rem;
-    margin-bottom: .9rem;
-    font-size: .82rem; font-weight: 600; color: var(--acc);
-    align-items: center; gap: .55rem;
-  }
-  .fne-edit-banner svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
-  
-  /* Section cards */
-  .fne-form-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1.4rem 1.6rem;
-    box-shadow: var(--cs);
-    margin-bottom: 1rem;
-    position: relative;
-    overflow: hidden;
-  }
-  .fne-form-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 4px; height: 100%;
-    background: var(--grad);
-    border-radius: 14px 0 0 14px;
-  }
-  .fne-form-card.accent-green::before  { background: linear-gradient(180deg, #10b981, #059669); }
-  .fne-form-card.accent-amber::before  { background: linear-gradient(180deg, #f59e0b, #d97706); }
-  .fne-form-card.accent-purple::before { background: linear-gradient(180deg, #8b5cf6, #7c3aed); }
-  .fne-form-card.accent-cyan::before   { background: linear-gradient(180deg, #06b6d4, #0891b2); }
-  .fne-form-card.accent-rose::before   { background: linear-gradient(180deg, #f43f5e, #e11d48); }
-  
-  .fne-section-hdr {
-    display: flex; align-items: center; gap: .5rem;
-    font-size: .8rem; font-weight: 800; text-transform: uppercase;
-    letter-spacing: .08em; color: var(--acc);
-    margin: 0 0 1rem !important;
-    padding-bottom: .65rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .fne-section-hdr svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
-  .fne-section-count {
-    margin-left: auto;
-    background: var(--nab); border: 1px solid var(--nab2);
-    border-radius: 20px; padding: 1px 8px;
-    font-size: .65rem; font-weight: 700; color: var(--acc);
-  }
-  
-  /* Grid layouts */
-  .fne-grid { display: grid; gap: .9rem 1rem; }
-  .fne-grid-2 { grid-template-columns: 1fr 1fr; }
-  .fne-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-  .fne-grid-4 { grid-template-columns: repeat(4, 1fr); }
-  .fne-grid-span2 { grid-column: span 2; }
-  @media(max-width: 960px) {
-    .fne-grid-3, .fne-grid-4 { grid-template-columns: 1fr 1fr; }
-    .fne-grid-span2 { grid-column: span 1; }
-  }
-  @media(max-width: 600px) {
-    .fne-grid-2, .fne-grid-3, .fne-grid-4 { grid-template-columns: 1fr; }
-    .fne-grid-span2 { grid-column: span 1; }
-  }
-  
-  /* Groups & labels */
-  .fne-group { display: flex; flex-direction: column; gap: .32rem; }
-  .fne-label {
-    font-size: .78rem; font-weight: 700;
-    color: var(--t2);
-    display: flex; align-items: center; gap: .3rem;
-  }
-  .fne-group-req .fne-label { color: var(--t1); }
-  .fne-req-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: #dc2626; flex-shrink: 0; margin-left: 2px;
-  }
-  .fne-hint { font-size: .68rem; color: var(--t3); margin-top: .15rem; }
-  
-  /* Inputs */
-  .fne-input {
-    padding: .52rem .8rem;
-    border-radius: 9px;
-    border: 1.5px solid var(--border);
-    background: var(--bg-input);
-    color: var(--t1);
-    font-size: .86rem;
-    font-family: inherit;
-    transition: border-color .18s, box-shadow .18s, background .18s;
-    width: 100%;
-  }
-  .fne-input:focus {
-    outline: none;
-    border-color: var(--acc);
-    box-shadow: 0 0 0 3px var(--glow);
-    background: var(--bg-card);
-  }
-  .fne-input::placeholder { color: var(--t3); }
-  .fne-input[readonly] {
-    background: var(--bg-secondary);
-    color: var(--t3);
-    cursor: default;
-    border-style: dashed;
-  }
-  .fne-input[readonly].fne-tcv-out {
-    color: var(--acc);
-    font-weight: 800;
-    font-size: .95rem;
-  }
-  .fne-group-req .fne-input {
-    border-color: rgba(37,99,235,.3);
-  }
-  .fne-group-req .fne-input:focus {
-    border-color: var(--acc);
-  }
-  .fne-textarea { min-height: 90px; resize: vertical; }
-  
-  /* Lock wrap */
-  .fne-lock-wrap { position: relative; display: flex; align-items: center; gap: .4rem; }
-  .fne-lock-wrap .fne-input { flex: 1; }
-  .fne-lock-icon {
-    font-size: 1rem; flex-shrink: 0; cursor: help;
-    filter: grayscale(.3);
-  }
-  .fne-locked .fne-input {
-    background: var(--bg-secondary) !important;
-    color: var(--t3) !important;
-    cursor: not-allowed !important;
-    border-style: dashed !important;
-    pointer-events: none;
-  }
-  
-  /* Actions bar */
-  .fne-actions {
-    display: flex; gap: .75rem;
-    justify-content: flex-end;
-    align-items: center;
-    margin-top: .5rem;
-    flex-wrap: wrap;
-  }
-  .fne-btn {
-    padding: .6rem 1.4rem;
-    border-radius: 9px;
-    font-size: .86rem; font-weight: 700;
-    cursor: pointer; border: none;
-    transition: all .2s;
-    display: inline-flex; align-items: center; gap: .4rem;
-    white-space: nowrap;
-  }
-  .fne-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
-  .fne-btn-primary {
-    background: var(--grad); color: #fff;
-    box-shadow: 0 2px 10px var(--glow);
-  }
-  .fne-btn-primary:hover { box-shadow: 0 4px 18px var(--glow); transform: translateY(-1px); }
-  .fne-btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-  .fne-btn-secondary {
-    background: var(--bg-secondary); color: var(--t1);
-    border: 1.5px solid var(--border);
-  }
-  .fne-btn-secondary:hover { border-color: var(--border-s); }
-  .fne-btn-danger {
-    background: rgba(220,38,38,.08); color: #dc2626;
-    border: 1.5px solid rgba(220,38,38,.25);
-  }
-  .fne-btn-danger:hover { background: rgba(220,38,38,.16); }
-  .fne-btn-cancel {
-    background: var(--bg-secondary); color: var(--t2);
-    border: 1.5px solid var(--border);
-  }
-  .fne-btn-cancel:hover { border-color: var(--border-s); color: var(--t1); }
-  
-  /* Toast */
-  .fne-toast {
-    position: fixed; bottom: 24px; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--bg-card);
-    border: 1px solid var(--border-s);
-    border-radius: 12px;
-    padding: .8rem 1.4rem;
-    box-shadow: 0 8px 32px rgba(0,0,0,.28);
-    font-size: .86rem; font-weight: 600; color: var(--t1);
-    z-index: 99999;
-    transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .3s;
-    opacity: 0;
-    display: flex; align-items: center; gap: .5rem;
-    max-width: 420px;
-  }
-  .fne-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-  .fne-toast.success { border-color: rgba(22,163,74,.4); color: #16a34a; }
-  .fne-toast.error   { border-color: rgba(220,38,38,.4); color: #dc2626; }
-  
-  /* Health indicator strip */
-  .fne-health-strip {
-    display: flex; align-items: center; gap: .75rem;
-    padding: .65rem 1rem;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--bg-secondary);
-    margin-bottom: 1rem;
-  }
-  .fne-health-dot {
-    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
-    transition: background .3s;
-  }
-  .fne-health-strip.health-green { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.3); }
-  .fne-health-strip.health-amber { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.3); }
-  .fne-health-strip.health-red   { background: rgba(220,38,38,.08);  border-color: rgba(220,38,38,.3);  }
-  .fne-health-strip.health-green .fne-health-dot { background: #10b981; }
-  .fne-health-strip.health-amber .fne-health-dot { background: #f59e0b; }
-  .fne-health-strip.health-red   .fne-health-dot { background: #ef4444; }
-  .fne-health-text { font-size: .82rem; font-weight: 700; color: var(--t1); }
-  .fne-health-sub  { font-size: .72rem; color: var(--t3); margin-left: auto; }
-  
-  /* Attachment zone */
-  .fne-attach-zone {
-    border: 2px dashed var(--border);
-    border-radius: 10px;
-    padding: 1rem 1.2rem;
-    cursor: pointer;
-    transition: border-color .2s, background .2s;
-    text-align: center;
-    background: var(--bg-input);
-  }
-  .fne-attach-zone:hover { border-color: var(--acc); background: var(--nab); }
-  .fne-attach-zone-inner { display: flex; align-items: center; justify-content: center; gap: .6rem; color: var(--t3); font-size: .82rem; font-weight: 600; }
-  .fne-attach-zone-inner svg { width: 20px; height: 20px; stroke: var(--acc); fill: none; stroke-width: 2; }
-  .fne-attach-zone.drag-over { border-color: var(--acc); background: var(--nab); }
-  
-  .fne-attach-list { margin-top: .75rem; display: flex; flex-direction: column; gap: .4rem; }
-  .fne-attach-item {
-    display: flex; align-items: center; gap: .55rem;
-    padding: .45rem .75rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: .8rem;
-  }
-  .fne-attach-item svg { width: 15px; height: 15px; stroke: var(--acc); fill: none; stroke-width: 2; flex-shrink: 0; }
-  .fne-attach-name { flex: 1; color: var(--t1); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .fne-attach-size { color: var(--t3); font-size: .72rem; white-space: nowrap; }
-  .fne-attach-remove {
-    width: 22px; height: 22px; border-radius: 50%;
-    background: rgba(220,38,38,.1); border: none;
-    color: #dc2626; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: .75rem; font-weight: 800; flex-shrink: 0;
-    transition: background .2s;
-  }
-  .fne-attach-remove:hover { background: rgba(220,38,38,.2); }
-  .fne-attach-existing-badge {
-    font-size: .65rem; padding: 1px 6px; border-radius: 20px;
-    background: rgba(16,185,129,.12); color: #16a34a;
-    border: 1px solid rgba(16,185,129,.25); font-weight: 700;
-    white-space: nowrap;
-  }
-  .fne-attach-download { color: var(--acc); text-decoration: none; font-size: .72rem; font-weight: 700; white-space: nowrap; }
-  .fne-attach-download:hover { text-decoration: underline; }
-  
-  /* Record count badge in header */
-  #fneRecordCount { font-size: .75rem; color: var(--t3); font-weight: 600; }
 
-  /* AG Grid multi-select column filter */
-  .fne-ag-set-filter { padding: .5rem; min-width: 200px; max-width: 260px; }
-  .fne-ag-set-search {
-    width: 100%; box-sizing: border-box; margin-bottom: .45rem;
-    padding: .35rem .5rem; border: 1px solid var(--border); border-radius: 8px;
-    font-size: .75rem; background: var(--bg-card); color: var(--t1);
-  }
-  .fne-ag-set-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: .2rem; }
-  .fne-ag-set-option { display: flex; align-items: center; gap: .35rem; font-size: .75rem; cursor: pointer; padding: .15rem 0; }
-  .fne-ag-set-actions { display: flex; gap: .35rem; margin-top: .45rem; }
-  .fne-ag-set-actions button {
-    flex: 1; padding: .25rem .4rem; font-size: .68rem; font-weight: 700;
-    border: 1px solid var(--border); border-radius: 6px; background: var(--nab); color: var(--acc); cursor: pointer;
-  }
-
-  /* Bulk update bar */
-  .fne-bulk-bar {
-    display: flex; align-items: center; flex-wrap: wrap; gap: .55rem;
-    padding: .65rem .85rem; margin-bottom: .75rem;
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
-  }
-  .fne-bulk-label { font-size: .68rem; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: .05em; }
-  .fne-bulk-count { font-size: .72rem; color: var(--t3); font-weight: 600; margin-left: auto; }
-  .fne-bulk-hint { font-size: .72rem; color: var(--t3); font-weight: 600; flex: 1 1 100%; }
-  /* AG Grid row selection checkboxes */
-  #fneGrid .ag-checkbox-input-wrapper {
-    opacity: 1 !important;
-    width: 16px; height: 16px;
-  }
-  #fneGrid .ag-header-select-all .ag-checkbox-input-wrapper {
-    opacity: 1 !important;
-  }
-  #fneGrid .ag-cell[col-id="fne_select"],
-  #fneGrid .ag-header-cell[col-id="fne_select"] {
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  /* Bulk entry table (New Entry) */
-  .fne-entry-tabs {
-    display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap;
-  }
-  .fne-entry-tab {
-    padding: .45rem 1rem; border-radius: 999px; border: 1px solid var(--border);
-    background: var(--bg-card); color: var(--t2); font-size: .78rem; font-weight: 700; cursor: pointer;
-  }
-  .fne-entry-tab.active {
-    background: var(--grad); color: #fff; border-color: transparent;
-  }
-  .fne-bulk-table-hint { font-size: .78rem; color: var(--t3); margin: 0 0 .75rem; line-height: 1.5; }
-  .fne-bulk-table-toolbar {
-    display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .65rem;
-  }
-  .fne-bulk-table-wrap {
-    overflow: auto; max-height: 520px; border: 1px solid var(--border); border-radius: 10px;
-  }
-  .fne-bulk-table {
-    width: max-content; min-width: 100%; border-collapse: collapse; font-size: .75rem;
-  }
-  .fne-bulk-table th {
-    position: sticky; top: 0; z-index: 2;
-    background: var(--nab); color: var(--acc); font-weight: 700;
-    padding: .45rem .4rem; border-bottom: 1px solid var(--border); white-space: nowrap; text-align: left;
-  }
-  .fne-bulk-table td { padding: .25rem .3rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  .fne-bulk-table tr:hover td { background: var(--bg-hover); }
-  .fne-bulk-cell {
-    min-width: 110px; width: 130px; padding: .3rem .4rem;
-    border: 1px solid var(--border); border-radius: 6px; font-size: .72rem;
-    background: var(--bg-card); color: var(--t1); box-sizing: border-box;
-  }
-  .fne-bulk-cell-date { min-width: 120px; width: 130px; }
-  .fne-bulk-cell-num { min-width: 80px; width: 90px; }
-  .fne-bulk-cell-comments { min-width: 180px; width: 200px; }
-  .fne-bulk-cell-readonly {
-    background: var(--nab) !important; color: var(--t3) !important;
-    cursor: default !important; border-style: dashed !important;
-  }
-  .fne-bulk-cell-readonly.fne-bulk-tcv {
-    color: var(--acc) !important; font-weight: 700;
-  }
-  .fne-bulk-auto-tag {
-    display: block; font-size: .58rem; font-weight: 600; color: var(--t3);
-    text-transform: uppercase; letter-spacing: .03em; margin-top: .1rem;
-  }
-  .fne-bulk-del {
-    padding: .2rem .45rem; font-size: .68rem; border: 1px solid rgba(220,38,38,.35);
-    background: rgba(220,38,38,.08); color: #dc2626; border-radius: 6px; cursor: pointer; font-weight: 700;
-  }
-  .fne-bulk-copy {
-    padding: .2rem .4rem; font-size: .68rem; border: 1px solid var(--nab2);
-    background: var(--nab); color: var(--acc); border-radius: 6px; cursor: pointer; font-weight: 700; margin-right: .2rem;
-  }
-  .fne-bulk-copy:disabled { opacity: .35; cursor: not-allowed; }
-  .fne-bulk-row-actions { white-space: nowrap; text-align: center; }
-  .fne-bulk-upload-status { font-size: .78rem; font-weight: 600; margin-top: .65rem; color: var(--t3); }
-
-  /* Bulk edit modal (list view) */
-  .fne-modal-overlay {
-    position: fixed; inset: 0; z-index: 10050;
-    background: rgba(15, 23, 42, .55);
-    display: none; align-items: center; justify-content: center;
-    padding: 1rem;
-  }
-  .fne-modal-overlay.open { display: flex; }
-  .fne-modal-panel {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
-    width: min(96vw, 1400px); max-height: 92vh; display: flex; flex-direction: column;
-    box-shadow: 0 24px 48px rgba(0,0,0,.25);
-  }
-  .fne-modal-header {
-    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
-    padding: .85rem 1rem; border-bottom: 1px solid var(--border);
-  }
-  .fne-modal-header h3 { margin: 0; font-size: 1rem; color: var(--t1); }
-  .fne-modal-close {
-    border: none; background: transparent; font-size: 1.35rem; line-height: 1;
-    cursor: pointer; color: var(--t3); padding: .15rem .35rem;
-  }
-  .fne-modal-body { padding: .85rem 1rem 1rem; overflow: auto; }
-  .fne-modal-footer {
-    display: flex; align-items: center; justify-content: flex-end; gap: .55rem;
-    padding: .75rem 1rem; border-top: 1px solid var(--border);
-  }
-  .fne-bulk-id { background: var(--nab) !important; color: var(--acc); font-weight: 700; cursor: default; }
-  .ag-theme-alpine .ag-cell-wrapper.ag-row-group { align-items: center; }
-  .ms-wrap { position: relative; z-index: auto; }
-  .ms-trigger {
-    padding: .38rem .7rem; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--bg-input); color: var(--t1); font-size: .8rem; cursor: pointer;
-    display: flex; align-items: center; justify-content: space-between; gap: .5rem;
-    transition: border-color .18s, box-shadow .18s; user-select: none; width: 100%;
-  }
-  .ms-trigger:hover, .ms-trigger.open { border-color: var(--border-s); box-shadow: 0 0 0 3px var(--glow); }
-  .ms-trigger.has-sel { border-color: var(--acc); background: var(--nab); color: var(--acc); font-weight: 600; }
-  .ms-trigger svg { width: 13px; height: 13px; stroke: var(--t3); fill: none; stroke-width: 2; transition: transform .2s; flex-shrink: 0; }
-  .ms-trigger.open svg { transform: rotate(180deg); }
-  .ms-dropdown {
-    position: fixed; background: var(--bg-card); border: 1px solid var(--border-s); border-radius: 8px;
-    max-height: 230px; overflow-y: auto; z-index: 99999; box-shadow: 0 8px 32px rgba(0,0,0,.28);
-    display: none; min-width: 180px;
-  }
-  .ms-dropdown.open { display: block; }
-  .ms-option { display: flex; align-items: center; gap: .45rem; padding: .42rem .65rem; cursor: pointer; font-size: .8rem; }
-  .ms-option:hover { background: var(--nab); }
-  .ms-option input { accent-color: var(--acc); }
-
-  /* Version history (edit mode) */
-  .fne-history-timeline { display: flex; flex-direction: column; gap: 14px; }
-  .fne-history-card {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-    overflow: hidden; box-shadow: var(--cs);
-  }
-  .fne-history-card-head {
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-    padding: 14px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--border);
-  }
-  .fne-history-version-badge {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: 42px; padding: 4px 10px; border-radius: 999px;
-    background: var(--nab); border: 1px solid var(--nab2); color: var(--acc);
-    font-size: .72rem; font-weight: 800;
-  }
-  .fne-history-changes-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
-  .fne-history-changes-table th {
-    text-align: left; padding: 8px 12px; background: var(--bg-secondary);
-    color: var(--t3); font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
-    border-bottom: 1px solid var(--border);
-  }
-  .fne-history-changes-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  .fne-history-changes-table tr:last-child td { border-bottom: none; }
-  .fne-history-old { color: var(--t3); text-decoration: line-through; }
-  .fne-history-new { color: var(--t1); font-weight: 700; }
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  </style>
-  
-  <div id="fneToast" class="fne-toast"></div>
-  
-  <div class="fne-view-wrap">
-  
-    <!-- ══ HEADER BANNER ══ -->
-    <div class="fne-header-banner">
-      <div class="fne-banner-inner">
-        <div class="fne-banner-left">
-          <div class="fne-banner-icon">
-            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          </div>
-          <div>
-            <div class="fne-banner-title">GKLA FNE Tracker</div>
-            <div class="fne-banner-sub">Fixed Network Expansion — Project Entry Form</div>
-          </div>
-        </div>
-        <div class="fne-banner-badges">
-          <div class="fne-banner-badge">
-            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span id="fneBannerDate">—</span>
-          </div>
-          <div class="fne-banner-badge">
-            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span id="fneBannerCount">— records</span>
-          </div>
-          <div class="fne-banner-badge" id="fneBannerMode">
-            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>New Entry</span>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:.6rem; display:flex; align-items:center; gap:1rem;">
-        <div style="font-size:.72rem; color:var(--t3);" id="fneFormId"></div>
-      </div>
-    </div>
-  
-    <!-- Edit mode banner -->
-    <div id="fneEditBanner" class="fne-edit-banner">
-      <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      <span id="fneEditBannerTxt">Editing record —</span>
-      <button type="button" class="fne-btn fne-btn-secondary" id="fneViewHistoryBtn" style="display:none;padding:.25rem .65rem;font-size:.72rem;margin-left:auto;" onclick="fneShowItemHistory()">
-        <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        View History
-      </button>
-      <button class="fne-btn fne-btn-secondary" style="padding:.25rem .65rem;font-size:.72rem;" onclick="fneOpenForm(null)">
-        + New Instead
-      </button>
-    </div>
-  
-    <!-- Health indicator strip -->
-    <div class="fne-health-strip" id="fneHealthStrip">
-      <div class="fne-health-dot"></div>
-      <div class="fne-health-text" id="fneHealthTxt">Project Health: —</div>
-      <div class="fne-health-sub" id="fneHealthSub">Set Expected RFS and Building Status to calculate</div>
-    </div>
-
-    <div id="fneEntryModeTabs" class="fne-entry-tabs" style="display:none;">
-      <button type="button" id="fneTabSingle" class="fne-entry-tab active" onclick="fneSetEntryMode('single')">Single Entry</button>
-      <button type="button" id="fneTabBulk" class="fne-entry-tab" onclick="fneSetEntryMode('bulk')">Bulk Entry</button>
-    </div>
-
-    <div id="fneSingleEntryWrap">
-  
-    <!-- ══ CUSTOMER DETAILS ══ -->
-    <div class="fne-form-card">
-      <div class="fne-section-hdr">
-        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Customer Details
-        <span class="fne-section-count">5 fields</span>
-      </div>
-      <div class="fne-grid fne-grid-2">
-        ${grp('FES / Shortfall Ref', inp('fne_fes_ref','text','','REF-XXXX'))}
-        ${grp('Site Survey Reference', inp('fne_site_ref','text','','REF-XXXX'))}
-      </div>
-      <div class="fne-grid fne-grid-3" style="margin-top:.9rem;">
-        ${grp('Account Code', inp('fne_acc_code','number','','e.g. 100123'))}
-        ${grp('Customer Name', inp('fne_cust_name','text','required','Full customer name'), true)}
-        ${grp('Customer Address', inp('fne_cust_addr','text','','Street, Area, City'))}
-      </div>
-      <div class="fne-grid fne-grid-2" style="margin-top:.9rem;" id="fne_pm_row" style="display:none;">
-        ${grp('Project Duration', `<input id="fne_pm_man_days" type="text" class="fne-input" readonly placeholder="Auto-calculated by SharePoint">`, false, 'Read-only — auto-calculated by SharePoint')}
-      </div>
-    </div>
-  
-    <!-- ══ REQUEST TYPE / STATUS ══ -->
-    <div class="fne-form-card accent-amber">
-      <div class="fne-section-hdr" style="color:#d97706;">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Request Type &amp; Status
-        <span class="fne-section-count" style="color:#d97706;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);">11 fields</span>
-      </div>
-      <div class="fne-grid fne-grid-3">
-        ${grp('Request Status', sel('fne_req_status', FNE_CHOICES.requestStatus, 'required'), true)}
-        ${grp('Request Type', sel('fne_sub_req', FNE_CHOICES.subRequest))}
-        ${grp('Implementation Type', sel('fne_impl_type', FNE_CHOICES.implType, 'required'), true)}
-      </div>
-      <div class="fne-grid fne-grid-3" style="margin-top:.9rem;">
-        ${grp('Building Status', sel('fne_build_status', FNE_CHOICES.buildingStatus, 'required'), true)}
-        ${grp('Connectivity Type', sel('fne_proj_type', FNE_CHOICES.projectType))}
-        ${grp('Assigned By', sel('fne_assigned_by', FNE_CHOICES.assignedBy))}
-      </div>
-      <div class="fne-grid fne-grid-4" style="margin-top:.9rem;">
-        ${grp('SOF', sel('fne_sof', FNE_CHOICES.sof))}
-        ${grp('Critical Project', fneIsPowerUser()
-          ? sel('fne_critical_projects', FNE_CHOICES.criticalProjects)
-          : '<input id="fne_critical_projects" type="text" class="fne-input" readonly tabindex="-1" placeholder="—">')}
-        ${grp('SLA (days)', inp('fne_sla','number','','e.g. 30'))}
-        ${grp('Unit No', inp('fne_unit_no','number'))}
-        ${grp('WO Number', inp('fne_wo_num','text','','WO-XXXX'))}
-      </div>
-      <div class="fne-grid fne-grid-3" style="margin-top:.9rem;">
-        ${grp('Bid Number', inp('fne_bid_ref','text','','BID-XXXX'))}
-        ${grp('GAID', inp('fne_gaid','text','','Plain text only'))}
-        ${grp('Est. Cost', inp('fne_est_cost','number','','0.00'))}
-      </div>
-      <div class="fne-grid fne-grid-3" style="margin-top:.9rem;">
-        ${grp('OSP &amp; Civil Required', sel('fne_osp', FNE_CHOICES.ospCivil))}
-        ${grp('OSP Civil Est. Timeline (days)', inp('fne_osp_et','number','','Days'))}
-        ${grp('Current Blocker', sel('fne_blocker', FNE_CHOICES.blocker))}
-      </div>
-    </div>
-  
-    <!-- ══ SEGMENTATION ══ -->
-    <div class="fne-form-card accent-purple">
-      <div class="fne-section-hdr" style="color:#8b5cf6;">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-        Segmentation &amp; Ownership
-        <span class="fne-section-count" style="color:#8b5cf6;background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.3);">4 fields</span>
-      </div>
-      <div class="fne-grid fne-grid-2">
-        ${grp('Vertical', sel('fne_vertical', FNE_CHOICES.vertical, 'required'), true)}
-        ${grp('Account Director', sel('fne_acc_dir', FNE_CHOICES.accountDirector))}
-      </div>
-      <div class="fne-grid fne-grid-2" style="margin-top:.9rem;">
-        ${grp('Account Manager (Email)', inp('fne_am_email','email','','manager@example.com'))}
-        ${grp('FNE Manager', sel('fne_fne_mgr', FNE_CHOICES.fneManager, 'required'), true)}
-      </div>
-    </div>
-  
-    <!-- ══ DATES & REVENUE ══ -->
-    <div class="fne-form-card accent-green">
-      <div class="fne-section-hdr" style="color:#10b981;">
-        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Dates &amp; Revenue
-        <span class="fne-section-count" style="color:#10b981;background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);">8 fields</span>
-      </div>
-      <div class="fne-grid fne-grid-2">
-        ${grp('Received Date', inp('fne_start_date','date'))}
-        ${grp('Expected RFS Date',
-          lockWrap('exp_rfs', `<input id="fne_exp_rfs" type="date" class="fne-input">`),
-          false, 'Locked after first save'
-        )}
-      </div>
-      <div class="fne-grid fne-grid-2" style="margin-top:.9rem;">
-        ${grp('Actual RFS Date',
-          inp('fne_rfs_baseline','date'),
-          false,
-          'Today or past dates only'
-        )}
-        ${grp('Implementation Start Date',
-          lockWrap('impl_start', `<input id="fne_impl_start" type="date" class="fne-input">`),
-          false, 'Locked after first save. Required if FES Ref is set.'
-        )}
-      </div>
-      <div class="fne-grid fne-grid-2" style="margin-top:.9rem;">
-        ${grp('Current Temp Connectivity Type', sel('fne_temp_conn', FNE_CHOICES.tempConnType))}
-        ${grp('Target Migration Date', inp('fne_target_mig','date'))}
-      </div>
-      <div class="fne-grid fne-grid-4" style="margin-top:.9rem;">
-        ${grp('Contract Duration (months)', inp('fne_contract_dur','number','','0'))}
-        ${grp('OTC', inp('fne_otc','number','','0.00'))}
-        ${grp('MRC', inp('fne_mrc','number','','0.00'))}
-        ${grp('TCV (Auto-Calculated)', `<input id="fne_tcv" type="number" class="fne-input fne-tcv-out" readonly placeholder="Auto">`)}
-      </div>
-    </div>
-  
-    <!-- ══ COMMENTS ══ -->
-    <div class="fne-form-card accent-cyan">
-      <div class="fne-section-hdr" style="color:#06b6d4;">
-        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        Comments
-      </div>
-      <textarea id="fne_comments_new" class="fne-input fne-textarea" placeholder="Enter notes, comments or updates about this project..."></textarea>
-    </div>
-  
-    <!-- ══ ATTACHMENTS ══ -->
-    <div class="fne-form-card accent-rose">
-      <div class="fne-section-hdr" style="color:#f43f5e;">
-        <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-        Attachments
-        <span class="fne-section-count" id="fneAttachCount" style="color:#f43f5e;background:rgba(244,63,94,.1);border-color:rgba(244,63,94,.3);">0 files</span>
-      </div>
-      <div class="fne-attach-zone" id="fneAttachZone" onclick="document.getElementById('fneAttachInput').click()"
-           ondragover="event.preventDefault();this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="fneHandleAttachDrop(event)">
-        <div class="fne-attach-zone-inner">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span>Click to attach files or drag &amp; drop here</span>
-        </div>
-        <input type="file" id="fneAttachInput" multiple style="display:none;" accept="*/*">
-      </div>
-      <div class="fne-attach-list" id="fneAttachList"></div>
-    </div>
-
-    </div><!-- end fneSingleEntryWrap -->
-
-    <div id="fneBulkEntryWrap" style="display:none;">
-      <div class="fne-form-card accent-green">
-        <div class="fne-section-hdr" style="color:#10b981;">
-          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-          Bulk New Entries
-        </div>
-        <p class="fne-bulk-table-hint">Fill row 1, then use <strong>Copy ↑</strong> on the next row to duplicate it and tweak only what changed — or click <strong>Add Row (copy last)</strong>. You can also paste from Excel (Ctrl+V). Columns marked <strong>Auto-calculated</strong> (TCV, Project Duration, Project Health, SPI) are read-only and filled by SharePoint or formula. Attachments are added per record after upload.</p>
-        <div class="fne-bulk-table-toolbar">
-          <button type="button" class="fne-btn fne-btn-secondary" style="padding:.35rem .75rem;font-size:.75rem;" onclick="fneBulkAddRow()">+ Add Row</button>
-          <button type="button" class="fne-btn fne-btn-secondary" style="padding:.35rem .75rem;font-size:.75rem;" onclick="fneBulkAddRowCopyLast()">+ Add Row (copy last)</button>
-          <button type="button" class="fne-btn fne-btn-secondary" style="padding:.35rem .75rem;font-size:.75rem;" onclick="fneBulkClearTable()">Clear Table</button>
-          <span id="fneBulkRowCount" style="font-size:.75rem;color:var(--t3);font-weight:600;"></span>
-        </div>
-        <div class="fne-bulk-table-wrap" id="fneBulkTableWrap">
-          <table class="fne-bulk-table" id="fneBulkTable">
-            <thead id="fneBulkTableHead"></thead>
-            <tbody id="fneBulkTableBody"></tbody>
-          </table>
-        </div>
-        <div id="fneBulkUploadStatus" class="fne-bulk-upload-status"></div>
-      </div>
-    </div>
-  
-    <!-- ══ ACTIONS ══ -->
-    <div class="fne-actions">
-      <button type="button" class="fne-btn fne-btn-cancel" id="fneCancelBtn" onclick="fneCancelForm()">
-        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        Cancel
-      </button>
-      <button type="button" class="fne-btn fne-btn-secondary" onclick="fneResetForm()">
-        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
-        Clear
-      </button>
-      <button type="button" id="fneDeleteBtn" class="fne-btn fne-btn-danger" style="display:none;" onclick="fneDeleteItem()">
-        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        Delete
-      </button>
-      <button type="button" class="fne-btn fne-btn-primary" id="fneSaveBtn" onclick="fneSave()">
-        <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        <span id="fneSaveBtnTxt">Save Entry</span>
-      </button>
-      <button type="button" class="fne-btn fne-btn-primary" id="fneBulkUploadBtn" style="display:none;" onclick="fneBulkUploadAll()">
-        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Upload All Entries
-      </button>
-    </div>
-  
-  </div><!-- end fne-view-wrap -->
-  `;
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  LIST VIEW HTML
-  // ══════════════════════════════════════════════════════════════════
-  function fneListHTML() {
-    return `
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.65rem;">
-    <h2 class="section-title" style="margin:0!important;">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-      FNE Tracker — All Records
-    </h2>
-    ${fneIsAdmin() ? `
-    <button type="button" class="fne-btn fne-btn-primary" onclick="fneOpenForm(null);showFneView('form',document.getElementById('navFneForm'))">
-      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      New Entry
-    </button>` : ''}
-  </div>
-  
-  <!-- Filters -->
-  <div class="filter-bar" style="margin-bottom:.85rem;">
-    <div class="filter-bar-header">
-      <span class="filter-bar-label">
-        <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;display:inline;vertical-align:middle;margin-right:.3rem"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-        Filters
-      </span>
-      <button type="button" class="reset-btn" onclick="fneListReset()">
-        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
-        Reset
-      </button>
-    </div>
-    <div class="filter-bar-grid">
-      ${fneListMsHtml('status', 'Request Status')}
-      ${fneListMsHtml('implType', 'Impl. Type')}
-      ${fneListMsHtml('vertical', 'Vertical')}
-      ${fneListMsHtml('fneManager', 'FNE Manager')}
-      ${fneListMsHtml('buildStatus', 'Building')}
-      ${fneListMsHtml('projType', 'Connectivity Type')}
-      ${fneListMsHtml('subReq', 'Request Type')}
-      ${fneListMsHtml('assignedBy', 'Assigned By')}
-      ${fneListMsHtml('accDir', 'Account Director')}
-      ${fneListMsHtml('osp', 'OSP Civil')}
-      ${fneListMsHtml('sof', 'SOF')}
-      ${fneListMsHtml('health', 'Project Health')}
-      ${fneListMsHtml('blocker', 'Blocker')}
-      ${fneListMsHtml('critical', 'Critical Project')}
-      ${fneListMsHtml('year', 'Year')}
-      ${fneIsPowerUser() ? `
-      <div class="fb-group">
-        <div class="fb-group-label">Target Migration</div>
-        <select id="fnel_rfsMigration" class="fb-select" onchange="fneListApplyFilter()">
-          <option value="">All</option>
-          <option value="approaching">Approaching (≤4 days)</option>
-          <option value="overdue">Overdue (past Expected RFS)</option>
-        </select>
-      </div>` : ''}
-    </div>
-  </div>
-
-  ${fneIsAdmin() || fneIsPowerUser() ? `
-  <div class="fne-bulk-bar" id="fneBulkBar">
-    ${fneIsAdmin() ? `
-    <span class="fne-bulk-label">Bulk edit</span>
-    <button type="button" class="fne-btn fne-btn-primary" style="padding:.35rem .85rem;font-size:.75rem;" onclick="fneBulkEditOpen()">
-      Bulk Edit
-    </button>` : ''}
-    ${fneIsPowerUser() ? `
-    <button type="button" class="fne-btn fne-btn-danger" style="padding:.35rem .85rem;font-size:.75rem;" onclick="fneBulkDeleteSelected()">
-      Bulk Delete
-    </button>` : ''}
-    <span class="fne-bulk-hint">Tick the checkboxes on the far left of the grid${fneIsAdmin() ? ', then Bulk Edit to update selected records in a spreadsheet table' : ''}${fneIsPowerUser() ? (fneIsAdmin() ? ', or Bulk Delete to remove them' : ' — then Bulk Delete to remove selected records') : ''}.</span>
-    <span id="fneBulkSelCount" class="fne-bulk-count">0 selected</span>
-  </div>` : ''}
-  
-  <!-- Table -->
-  <div class="table-section">
-    <div class="table-header">
-      <h3 class="table-title">
-        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span id="fneListCount">Loading...</span>
-      </h3>
-      <div class="table-actions">
-        <button type="button" class="export-btn" onclick="fneRefreshList()" title="Reload all records from SharePoint">
-          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          Refresh
-        </button>
-        <button type="button" class="export-btn" onclick="fneExportExcel()">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Excel
-        </button>
-        <input type="text" class="search-box" id="fneListSearch" placeholder="Search all columns..."
-               oninput="if(FNE_GRID_API) FNE_GRID_API.setGridOption('quickFilterText',this.value)">
-      </div>
-    </div>
-    <div id="fneListSpinner" style="display:none;padding:2rem;text-align:center;">
-      <div style="display:inline-flex;flex-direction:column;align-items:center;gap:.75rem;">
-        <svg style="width:36px;height:36px;stroke:var(--acc);fill:none;stroke-width:2;animation:spin 1s linear infinite" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-        <span style="font-size:.82rem;color:var(--t3);font-weight:600;">Loading tracker records...</span>
-      </div>
-    </div>
-    <div id="fneGrid" class="ag-theme-alpine" style="height:640px;width:100%;"></div>
-  </div>
-
-  <div id="fneBulkEditModal" class="fne-modal-overlay" onclick="if(event.target===this)fneBulkEditClose()">
-    <div class="fne-modal-panel" onclick="event.stopPropagation()">
-      <div class="fne-modal-header">
-        <h3 id="fneBulkEditTitle">Bulk Edit Selected Records</h3>
-        <button type="button" class="fne-modal-close" onclick="fneBulkEditClose()" title="Close">&times;</button>
-      </div>
-      <div class="fne-modal-body">
-        <p class="fne-bulk-table-hint">Edit any cells below, use <strong>↑</strong> to copy from the row above, then click <strong>Update All</strong>. Columns marked <strong>Auto-calculated</strong> are read-only. Paste from Excel (Ctrl+V) is supported.</p>
-        <div class="fne-bulk-table-wrap" id="fneBulkEditTableWrap" style="max-height:58vh;">
-          <table class="fne-bulk-table" id="fneBulkEditTable">
-            <thead id="fneBulkEditTableHead"></thead>
-            <tbody id="fneBulkEditTableBody"></tbody>
-          </table>
-        </div>
-        <div id="fneBulkEditStatus" class="fne-bulk-upload-status"></div>
-      </div>
-      <div class="fne-modal-footer">
-        <button type="button" class="fne-btn fne-btn-cancel" onclick="fneBulkEditClose()">Cancel</button>
-        <button type="button" class="fne-btn fne-btn-primary" onclick="fneBulkEditSaveAll()">Update All</button>
-      </div>
-    </div>
-  </div>
-  `;
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  BANNER CLOCK
-  // ══════════════════════════════════════════════════════════════════
-  function fneStartBannerClock() {
-    function update() {
-      const el = document.getElementById('fneBannerDate');
-      if (!el) return;
-      const now = new Date();
-      el.textContent = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
-        ' ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    }
-    update();
-    setInterval(update, 30000);
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  TCV AUTO CALC
-  // ══════════════════════════════════════════════════════════════════
-  function fneTcvCalc() {
-    const mrc = parseFloat(document.getElementById('fne_mrc')?.value) || 0;
-    const otc = parseFloat(document.getElementById('fne_otc')?.value) || 0;
-    const dur = parseFloat(document.getElementById('fne_contract_dur')?.value) || 0;
-    const tcv = dur * mrc + otc;
-    const tcvEl = document.getElementById('fne_tcv');
-    if (tcvEl) tcvEl.value = tcv ? tcv.toFixed(2) : '';
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  PROJECT HEALTH CALC (client-side estimate)
-  // ══════════════════════════════════════════════════════════════════
-function fneCalcHealth() {
-  const expRfs = document.getElementById('fne_exp_rfs')?.value;
-  const strip  = document.getElementById('fneHealthStrip');
-  const txt    = document.getElementById('fneHealthTxt');
-  const sub    = document.getElementById('fneHealthSub');
-
-  if (!strip || !txt || !sub) return;
-
-  strip.className = 'fne-health-strip';
-
-  if (!expRfs) {
-    txt.textContent = 'Project Health: No Expected RFS to calculate Project Health';
-    sub.textContent = 'Expected RFS date is missing';
-    return;
-  }
-
-  const today = new Date(); today.setHours(0,0,0,0);
-  const exp   = new Date(expRfs); exp.setHours(0,0,0,0);
-
-  if (exp > today) {
-    strip.classList.add('health-green');
-    txt.textContent = 'Project Health: Green';
-    sub.textContent = 'Expected RFS is in the future';
-  } 
-  else if (+exp === +today) {
-    strip.classList.add('health-amber');
-    txt.textContent = 'Project Health: Amber';
-    sub.textContent = 'Expected RFS is today';
-  } 
-  else {
-    strip.classList.add('health-red');
-    txt.textContent = 'Project Health: Red';
-    sub.textContent = 'Expected RFS is overdue';
-  }
+    tile.onclick=()=>selectMgr(mgr);
+    grid.appendChild(tile);
+  });
 }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  OPEN FORM (new or edit)
-  // ══════════════════════════════════════════════════════════════════
 
-    
-function fneOpenForm(itemId, fromList) {
-  if (itemId && !fneIsAdmin()) {
-    fneToast('You do not have permission to edit this record', 'error');
-    return;
+function selectMgr(mgr){
+  if(selMgr===mgr){
+    selMgr=null;
+  } else {
+    selMgr=mgr;
   }
-
-    FNE_EDIT_ID = itemId;
-    FNE_CAME_FROM_LIST = !!fromList;
-    FNE_PENDING_ATTACH = [];
-    FNE_EXISTING_ATTACH = [];
-    fneResetForm();
-    fneRenderAttachList();
-  
-    const bannerBadge = document.getElementById('fneBannerMode');
-    const idLabel     = document.getElementById('fneFormId');
-    const banner      = document.getElementById('fneEditBanner');
-    const bannerTxt   = document.getElementById('fneEditBannerTxt');
-    const saveBtn     = document.getElementById('fneSaveBtnTxt');
-    const delBtn      = document.getElementById('fneDeleteBtn');
-  
-    // Update banner count
-    const countEl = document.getElementById('fneBannerCount');
-    if (countEl) countEl.textContent = FNE_LIST_DATA.length + ' records';
-  
-    if (!itemId) {
-      if (bannerBadge) bannerBadge.innerHTML = `<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>New Entry</span>`;
-      if (idLabel)   idLabel.textContent = '';
-      if (banner)    banner.style.display = 'none';
-      if (saveBtn)   saveBtn.textContent  = 'Save Entry';
-      if (delBtn)    delBtn.style.display = 'none';
-      const histBtn = document.getElementById('fneViewHistoryBtn');
-      if (histBtn) histBtn.style.display = 'none';
-      fneSetLockState('exp_rfs', false);
-      fneSetLockState('impl_start', false);
-      fneSetActualRfsMaxDate();
-      fneCalcHealth();
-      const tabs = document.getElementById('fneEntryModeTabs');
-      if (tabs) tabs.style.display = fneIsAdmin() ? 'flex' : 'none';
-      fneSetEntryMode('single');
-      FNE_EDIT_CRITICAL_PREV = '';
-      fneApplyCriticalProjectsAccess();
-      return;
-    }
-  
-    const item = FNE_LIST_DATA.find(i => i.id === itemId);
-    if (!item) { fneToast('Item not found in cache — reload list', 'error'); return; }
-  
-    if (bannerBadge) bannerBadge.innerHTML = `<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>Edit Mode</span>`;
-    if (idLabel)   idLabel.textContent  = 'Record ID: ' + itemId;
-    if (saveBtn)   saveBtn.textContent  = 'Update Entry';
-    if (delBtn)    delBtn.style.display = 'inline-flex';
-    if (banner) {
-      banner.style.display = 'flex';
-      bannerTxt.textContent = 'Editing ID ' + itemId + ' — ' + (item.customerName || '');
-    }
-    const histBtn = document.getElementById('fneViewHistoryBtn');
-    if (histBtn) histBtn.style.display = 'inline-flex';
-  
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-    const clean = v => (v === '—' ? '' : v) || '';
-  
-    
-    set('fne_fes_ref',      clean(item.fesRef));
-    set('fne_site_ref',     clean(item.siteRef));
-    set('fne_acc_code',     item.accountCode || '');
-    set('fne_cust_name',    clean(item.customerName));
-    set('fne_cust_addr',    clean(item.customerAddress));
-    // Show Project Duration (read-only, SP calculated)
-    const pmRow = document.getElementById('fne_pm_row');
-    if (pmRow) pmRow.style.display = 'block';
-    set('fne_pm_man_days',  clean(item.pmManDays));
-    set('fne_osp',          clean(item.ospRequired));
-    set('fne_osp_et',       item.ospCivilET || '');
-    set('fne_est_cost',     item.estimatedCost || '');
-    set('fne_req_status',   clean(item.requestStatus));
-    set('fne_wo_num',       clean(item.woNumber));
-    set('fne_sub_req',      clean(item.subRequest));
-    set('fne_bid_ref',      clean(item.bidRef));
-    set('fne_impl_type',    clean(item.implType));
-    set('fne_gaid',         clean(item.gaid));
-    set('fne_build_status', clean(item.buildingStatus));
-    set('fne_sla',          item.sla || '');
-    set('fne_unit_no',      item.unitNo || '');
-    set('fne_assigned_by',  clean(item.assignedBy));
-    set('fne_proj_type',    clean(item.projectType));
-    set('fne_sof',          clean(item.sof));
-    if (fneIsPowerUser()) set('fne_critical_projects', clean(item.criticalProjects));
-    else set('fne_critical_projects', clean(item.criticalProjects) || '—');
-    FNE_EDIT_CRITICAL_PREV = fneIsCriticalYes(clean(item.criticalProjects)) ? 'Yes' : (clean(item.criticalProjects) || '');
-    set('fne_vertical',     clean(item.vertical));
-    set('fne_acc_dir',      clean(item.accountDirector));
-    set('fne_am_email',     item.amEmail || '');
-    set('fne_fne_mgr',      clean(item.fneManager));
-    set('fne_comments_new', fneHtmlToPlain(item.commentsNew));
-    set('fne_blocker',      clean(item.blocker));
-    set('fne_temp_conn',    clean(item.tempConnType));
-  
-    const toDateVal = iso => iso ? new Date(iso).toISOString().split('T')[0] : '';
-    set('fne_start_date',   toDateVal(item.startDate));
-    set('fne_exp_rfs',      toDateVal(item.expectedRFS));
-    set('fne_rfs_baseline', toDateVal(item.rfsBaseline));
-    set('fne_impl_start',   toDateVal(item.implStart));
-    set('fne_target_mig',   toDateVal(item.targetMigDate));
-    set('fne_contract_dur', item.contractDuration || '');
-    set('fne_otc',          item.otc || '');
-    set('fne_mrc',          item.mrc || '');
-    fneTcvCalc();
-  
-    // One-time field locking
-    const locks = FNE_LOCK_STATE[itemId] || {};
-    fneSetLockState('exp_rfs',    !!(item.expectedRFS && item.expectedRFS !== null));
-    fneSetLockState('impl_start', !!(item.implStart   && item.implStart   !== null));
-  
-    // Fetch existing attachments
-    fneLoadExistingAttachments(itemId);
-  
-    fneSetActualRfsMaxDate();
-    fneCalcHealth();
-    const tabs = document.getElementById('fneEntryModeTabs');
-    if (tabs) tabs.style.display = 'none';
-    fneSetEntryMode('single');
-    fneApplyCriticalProjectsAccess();
-  }
-  // ══════════════════════════════════════════════════════════════════
-  function fneSetLockState(fieldKey, locked) {
-    const wrap  = document.getElementById('lockwrap_' + fieldKey);
-    const icon  = document.getElementById('lockicon_' + fieldKey);
-    const input = document.getElementById('fne_' + fieldKey.replace('_', '_')); // same key
-  
-    // Map keys to actual input IDs
-    const inputIdMap = { 'exp_rfs': 'fne_exp_rfs', 'impl_start': 'fne_impl_start' };
-    const inp = document.getElementById(inputIdMap[fieldKey]);
-  
-    if (!wrap || !inp) return;
-    if (locked) {
-      wrap.classList.add('fne-locked');
-      inp.readOnly = true;
-      if (icon) icon.style.display = 'inline-flex';
-    } else {
-      wrap.classList.remove('fne-locked');
-      inp.readOnly = false;
-      if (icon) icon.style.display = 'none';
-    }
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  RESET FORM
-  // ══════════════════════════════════════════════════════════════════
-  function fneResetForm() {
-    [
-      'fne_fes_ref','fne_site_ref','fne_acc_code','fne_cust_name','fne_cust_addr',
-      'fne_osp','fne_osp_et','fne_est_cost','fne_req_status','fne_wo_num',
-      'fne_sub_req','fne_bid_ref','fne_impl_type','fne_gaid','fne_build_status',
-      'fne_sla','fne_unit_no','fne_assigned_by','fne_proj_type','fne_sof',
-      'fne_vertical','fne_acc_dir','fne_am_email','fne_fne_mgr','fne_comments_new',
-      'fne_critical_projects',
-      'fne_start_date','fne_exp_rfs','fne_rfs_baseline','fne_impl_start',
-      'fne_contract_dur','fne_otc','fne_mrc','fne_tcv',
-      'fne_blocker','fne_temp_conn','fne_target_mig','fne_pm_man_days',
-    ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    const pmRow = document.getElementById('fne_pm_row');
-    if (pmRow) pmRow.style.display = 'none';
-  
-    // Reset health strip
-    const strip = document.getElementById('fneHealthStrip');
-    if (strip) strip.className = 'fne-health-strip';
-    const txt = document.getElementById('fneHealthTxt');
-    if (txt) txt.textContent = 'Project Health: —';
-    const sub = document.getElementById('fneHealthSub');
-    if (sub) sub.textContent = 'Set Expected RFS and Building Status to calculate';
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  CANCEL FORM
-  // ══════════════════════════════════════════════════════════════════
-  function fneCancelForm() {
-    FNE_EDIT_ID = null;
-    FNE_PENDING_ATTACH = [];
-    FNE_EXISTING_ATTACH = [];
-    fneResetForm();
-    if (FNE_CAME_FROM_LIST) {
-      showFneView('list', document.getElementById('navFneList'));
-    } else {
-      fneResetForm();
-    }
-  }
-
-  // After a create/update/delete completes, land back on the Tracker List
-  // instead of leaving the user stuck on the New Entry / Edit form.
-  function fneGoToListAfterSave() {
-    FNE_EDIT_ID = null;
-    FNE_CAME_FROM_LIST = false;
-    FNE_PENDING_ATTACH = [];
-    FNE_EXISTING_ATTACH = [];
-    fneEnsurePowerUserUi();
-    showFneView('list', document.getElementById('navFneList'));
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  ATTACHMENTS
-  // ══════════════════════════════════════════════════════════════════
-  function fneHandleAttachPick(evt) {
-    const files = Array.from(evt.target.files || []);
-    files.forEach(f => FNE_PENDING_ATTACH.push({ file: f, name: f.name }));
-    evt.target.value = ''; // allow re-picking same file
-    fneRenderAttachList();
-  }
-  
-  function fneHandleAttachDrop(evt) {
-    evt.preventDefault();
-    document.getElementById('fneAttachZone').classList.remove('drag-over');
-    const files = Array.from(evt.dataTransfer.files || []);
-    files.forEach(f => FNE_PENDING_ATTACH.push({ file: f, name: f.name }));
-    fneRenderAttachList();
-  }
-  
-  function fneRenderAttachList() {
-    const list = document.getElementById('fneAttachList');
-    const countEl = document.getElementById('fneAttachCount');
-    if (!list) return;
-    list.innerHTML = '';
-  
-    const total = FNE_EXISTING_ATTACH.length + FNE_PENDING_ATTACH.length;
-    if (countEl) countEl.textContent = total + ' file' + (total !== 1 ? 's' : '');
-  
-    // Existing attachments from SP
-    FNE_EXISTING_ATTACH.forEach((att, idx) => {
-      const item = document.createElement('div');
-      item.className = 'fne-attach-item';
-      const fileUrl = FNE_SP + att.ServerRelativeUrl;
-      item.innerHTML = `
-        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span class="fne-attach-name">${att.FileName}</span>
-        <span class="fne-attach-existing-badge">Saved</span>
-        <a href="${fileUrl}" target="_blank" class="fne-attach-download">Download</a>
-        <button type="button" class="fne-attach-remove" onclick="fneRemoveExistingAttach(${idx},event)" title="Delete">×</button>`;
-      list.appendChild(item);
-    });
-  
-    // Pending (new) attachments
-    FNE_PENDING_ATTACH.forEach((att, idx) => {
-      const sizeFmt = att.file.size > 1048576
-        ? (att.file.size / 1048576).toFixed(1) + ' MB'
-        : Math.round(att.file.size / 1024) + ' KB';
-      const item = document.createElement('div');
-      item.className = 'fne-attach-item';
-      item.innerHTML = `
-        <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-        <span class="fne-attach-name">${att.name}</span>
-        <span class="fne-attach-size">${sizeFmt}</span>
-        <button type="button" class="fne-attach-remove" onclick="fneRemovePendingAttach(${idx})" title="Remove">×</button>`;
-      list.appendChild(item);
-    });
-  }
-  
-  function fneRemovePendingAttach(idx) {
-    FNE_PENDING_ATTACH.splice(idx, 1);
-    fneRenderAttachList();
-  }
-  
-  function fneRemoveExistingAttach(idx, evt) {
-    if (evt) { evt.preventDefault(); evt.stopPropagation(); }
-    const att = FNE_EXISTING_ATTACH[idx];
-    if (!att || !FNE_EDIT_ID) return;
-    if (!confirm('Delete attachment "' + att.FileName + '" permanently?')) return;
-  
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/items(" + FNE_EDIT_ID + ")/AttachmentFiles/getByFileName('" +
-      encodeURIComponent(att.FileName) + "')";
-  
-    getDigest(function(digest) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', url, true);
-      xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
-      xhr.setRequestHeader('Content-Type', 'application/json;odata=verbose');
-      xhr.setRequestHeader('X-HTTP-Method', 'DELETE');
-      xhr.setRequestHeader('IF-MATCH', '*');
-      if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState !== 4) return;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          FNE_EXISTING_ATTACH.splice(idx, 1);
-          fneRenderAttachList();
-          fneToast('Attachment deleted', 'success');
-        } else {
-          fneToast('Delete failed: HTTP ' + xhr.status, 'error');
-        }
-      };
-      xhr.send();
-    });
-  }
-  
-  function fneLoadExistingAttachments(itemId) {
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/items(" + itemId + ")/AttachmentFiles?$select=FileName,ServerRelativeUrl";
-    spGet(url, function(err, data) {
-      if (err || !data || !data.d) return;
-      FNE_EXISTING_ATTACH = data.d.results || [];
-      fneRenderAttachList();
-    });
-  }
-  
-  function fneUploadAttachments(itemId, callback) {
-    if (!FNE_PENDING_ATTACH.length) { callback(); return; }
-    const attach = FNE_PENDING_ATTACH.slice();
-    let i = 0;
-    function uploadNext() {
-      if (i >= attach.length) { FNE_PENDING_ATTACH = []; fneRenderAttachList(); callback(); return; }
-      const att = attach[i++];
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const arrayBuffer = e.target.result;
-        const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-          "')/items(" + itemId + ")/AttachmentFiles/add(FileName='" +
-          encodeURIComponent(att.name) + "')";
-        getDigest(function(digest) {
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', url, true);
-          xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
-          if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
-          xhr.onreadystatechange = function() {
-            if (xhr.readyState !== 4) return;
-            if (xhr.status >= 200 && xhr.status < 300) {
-              fneToast('Uploaded: ' + att.name, 'success');
-            } else {
-              fneToast('Upload failed: ' + att.name, 'error');
-              console.warn('[FNE Attach] Failed', xhr.status, xhr.responseText);
-            }
-            uploadNext();
-          };
-          xhr.send(arrayBuffer);
-        });
-      };
-      reader.readAsArrayBuffer(att.file);
-    }
-    uploadNext();
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  SAVE (create or update)
-  // ══════════════════════════════════════════════════════════════════
-  function fneSave() {
-    
-if (!fneIsAdmin()) {
-    fneToast('You do not have permission to modify records', 'error');
-    return;
-  }
-
-    // Validation
-    const required = [
-      ['fne_cust_name',    'Customer Name'],
-      ['fne_req_status',   'Request Status'],
-      ['fne_impl_type',    'Implementation Type'],
-      ['fne_build_status', 'Building Status'],
-      ['fne_vertical',     'Vertical'],
-      ['fne_fne_mgr',      'FNE Manager'],
-    ];
-    for (const [id, label] of required) {
-      const el = document.getElementById(id);
-      if (!el || !el.value.trim()) {
-        fneToast(label + ' is required', 'error');
-        el && el.focus();
-        return;
-      }
-    }
-  
-    // If FES Ref filled and not locked — Implementation Start Date should be set
-    const fesVal   = document.getElementById('fne_fes_ref')?.value.trim();
-    const implLock = document.getElementById('lockwrap_impl_start')?.classList.contains('fne-locked');
-    const implVal  = document.getElementById('fne_impl_start')?.value.trim();
-    if (fesVal && !implLock && !implVal) {
-      fneToast('Implementation Start Date is required when FES Reference is filled', 'error');
-      document.getElementById('fne_impl_start')?.focus();
-      return;
-    }
-  
-    const gv = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
-    const gn = id => { const v = parseFloat(gv(id)); return isNaN(v) ? null : v; };
-
-    const critSnapshot = fneIsPowerUser() ? gv('fne_critical_projects') : '';
-    const shouldNotifyCritical = fneIsPowerUser() &&
-      fneIsCriticalYes(critSnapshot) &&
-      !fneIsCriticalYes(FNE_EDIT_CRITICAL_PREV);
-    const criticalNotifyRow = shouldNotifyCritical ? {
-      id: FNE_EDIT_ID,
-      fneManager: gv('fne_fne_mgr'),
-      customerName: gv('fne_cust_name'),
-      requestStatus: gv('fne_req_status'),
-      fesRef: gv('fne_fes_ref'),
-    } : null;
-
-    const actualRfsVal = gv('fne_rfs_baseline');
-    if (actualRfsVal && fneIsFutureDate(actualRfsVal)) {
-      fneToast('Actual RFS Date cannot be in the future', 'error');
-      document.getElementById('fne_rfs_baseline')?.focus();
-      return;
-    }
-  
-    // Strip HTML tags from GAID
-    const gaid = gv('fne_gaid').replace(/<[^>]*>/g, '').trim();
-  
-    const body = {
-      '__metadata': { 'type': FNE_LIST_ITEM_TYPE },
-  
-      [FNE_F.SURVEY_REF]:   gv('fne_site_ref')     || null,
-      [FNE_F.ACC_CODE]:     gn('fne_acc_code'),
-      [FNE_F.CUST_NAME]:    gv('fne_cust_name'),
-      [FNE_F.CUST_ADDR]:    gv('fne_cust_addr')    || null,
-      [FNE_F.OSP_REQ]:      gv('fne_osp')          || null,
-      [FNE_F.OSP_ET]:       gn('fne_osp_et'),
-      [FNE_F.EST_COST]:     gn('fne_est_cost'),
-      [FNE_F.REQ_STATUS]:   gv('fne_req_status'),
-      [FNE_F.WO_NUM]:       gv('fne_wo_num')       || null,
-      [FNE_F.SUB_REQ]:      gv('fne_sub_req')      || null,
-      [FNE_F.BID_REF]:      gv('fne_bid_ref')      || null,
-      [FNE_F.IMPL_TYPE]:    gv('fne_impl_type'),
-      [FNE_F.GAID]:         gaid                   || null,
-      [FNE_F.BUILD_STATUS]: gv('fne_build_status'),
-      [FNE_F.SLA]:          gn('fne_sla'),
-      [FNE_F.UNIT_NO]:      gn('fne_unit_no'),
-      [FNE_F.ASSIGNED_BY]:  gv('fne_assigned_by')  || null,
-      [FNE_F.PROJ_TYPE]:    gv('fne_proj_type')    || null,
-      [FNE_F.SOF]:          gv('fne_sof')          || null,
-      [FNE_F.VERTICAL]:     gv('fne_vertical'),
-      [FNE_F.ACC_DIR]:      gv('fne_acc_dir')      || null,
-      [FNE_F.FNE_MGR]:      gv('fne_fne_mgr'),
-      [FNE_F.COMMENTS_NEW]: gv('fne_comments_new') || null,
-      [FNE_F.CONTRACT_DUR]: gn('fne_contract_dur'),
-      [FNE_F.OTC]:          gn('fne_otc'),
-      [FNE_F.MRC]:          gn('fne_mrc'),
-      [FNE_F.TCV]:          gn('fne_tcv'),
-      [FNE_F.BLOCKER]:      gv('fne_blocker')      || null,
-      [FNE_F.TEMP_CONN]:    gv('fne_temp_conn')    || null,
-      [FNE_F.FES_REF]:      gv('fne_fes_ref')      || null,
-    };
-    if (fneIsPowerUser()) {
-      body[FNE_F.CRITICAL_PROJ] = gv('fne_critical_projects') || null;
-    }
-    // Note: PROJ_HEALTH (Project_x0020_Health) is a SP calculated column — read-only, not written here
-    // Note: PM_MAN_DAYS (Project Duration display) is a SP calculated column — read-only, not written here
-    // Note: Account_x0020_Manager (Person field) is set separately via user ID lookup below
-  
-    // Date fields — only include if not locked (for one-time fields)
-    const expRfsLocked = document.getElementById('lockwrap_exp_rfs')?.classList.contains('fne-locked');
-    const implLocked   = document.getElementById('lockwrap_impl_start')?.classList.contains('fne-locked');
-  
-    const dateFields = [
-      ['fne_start_date',   FNE_F.START_DATE,   false],
-      ['fne_exp_rfs',      FNE_F.EXP_RFS,      expRfsLocked],
-      ['fne_rfs_baseline', FNE_F.RFS_BASELINE, false],
-      ['fne_impl_start',   FNE_F.IMPL_START,   implLocked],
-      ['fne_target_mig',   FNE_F.TARGET_MIG,   false],
-    ];
-    dateFields.forEach(([id, field, locked]) => {
-      if (locked) return; // don't overwrite locked fields
-      const v = gv(id);
-      body[field] = v ? new Date(v).toISOString() : null;
-    });
-  
-    const saveBtn = document.getElementById('fneSaveBtnTxt');
-    const saveBtnEl = document.getElementById('fneSaveBtn');
-    if (saveBtn) saveBtn.textContent = 'Saving...';
-    if (saveBtnEl) saveBtnEl.disabled = true;
-  
-    // Resolve Account Manager email → SP user ID, then save
-    const amEmail = gv('fne_am_email');
-    function doSave(amUserId) {
-      if (amUserId) body['Account_x0020_ManagerId'] = amUserId;
-  
-      const afterSave = (savedId) => {
-        if (criticalNotifyRow) {
-          criticalNotifyRow.id = savedId || criticalNotifyRow.id;
-          fneNotifyCriticalProjectYes(criticalNotifyRow);
-          fneToast('Critical Project set to Yes — Outlook email opened for the FNE Manager', 'success');
-        }
-        if (fneIsPowerUser()) FNE_EDIT_CRITICAL_PREV = critSnapshot;
-        fneUploadAttachments(savedId, function() {
-          if (saveBtn) saveBtn.textContent = FNE_EDIT_ID ? 'Update Entry' : 'Save Entry';
-          if (saveBtnEl) saveBtnEl.disabled = false;
-          fneFetchAndUpsertItem(savedId, function() {
-            fneUpdateListCounts();
-            fneGoToListAfterSave();
-          });
-        });
-      };
-  
-      if (FNE_EDIT_ID) {
-        const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-          "')/items(" + FNE_EDIT_ID + ")";
-        getDigest(function(digest) {
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', url, true);
-          xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
-          xhr.setRequestHeader('Content-Type', 'application/json;odata=verbose');
-          xhr.setRequestHeader('X-HTTP-Method', 'MERGE');
-          xhr.setRequestHeader('IF-MATCH', '*');
-          if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
-          xhr.onreadystatechange = function() {
-            if (xhr.readyState !== 4) return;
-            if (xhr.status >= 200 && xhr.status < 300) {
-              fneToast('Record updated successfully', 'success');
-              afterSave(FNE_EDIT_ID);
-            } else {
-              if (saveBtn) saveBtn.textContent = 'Update Entry';
-              if (saveBtnEl) saveBtnEl.disabled = false;
-              fneToast('Update failed: HTTP ' + xhr.status, 'error');
-              console.error('[FNE] Update error', xhr.responseText);
-            }
-          };
-          xhr.send(JSON.stringify(body));
-        });
-      } else {
-        const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items";
-        spPost(url, body, function(err, data) {
-          if (err) {
-            if (saveBtn) saveBtn.textContent = 'Save Entry';
-            if (saveBtnEl) saveBtnEl.disabled = false;
-            fneToast('Save failed: ' + err.message, 'error');
-            console.error('[FNE] Save error', err);
-            return;
-          }
-          fneToast('Record saved successfully', 'success');
-          const newId = data && data.d ? data.d.Id : null;
-          fneResetForm();
-          fneSetLockState('exp_rfs', false);
-          fneSetLockState('impl_start', false);
-          if (newId) afterSave(newId);
-          else { if (saveBtnEl) saveBtnEl.disabled = false; }
-        });
-      }
-    }
-  
-    if (amEmail) {
-      // Resolve email to SP user ID via ensureUser
-      const ensureUrl = FNE_SP + "/_api/web/ensureuser";
-      getDigest(function(digest) {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', ensureUrl, true);
-        xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
-        xhr.setRequestHeader('Content-Type', 'application/json;odata=verbose');
-        if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
-        xhr.onreadystatechange = function() {
-          if (xhr.readyState !== 4) return;
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const d = JSON.parse(xhr.responseText);
-              doSave(d.d.Id);
-            } catch(e) { doSave(null); }
-          } else {
-            console.warn('[FNE] ensureUser failed for:', amEmail, xhr.status);
-            doSave(null); // save without AM rather than blocking
-          }
-        };
-        xhr.send(JSON.stringify({ 'logonName': amEmail }));
-      });
-    } else {
-      doSave(null);
-    }
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  DELETE
-  // ══════════════════════════════════════════════════════════════════
-  function fneDeleteItem() {
-    if (!fneIsAdmin()) {
-  fneToast('You do not have permission to delete records', 'error');
-  return;
+  renderMgrTiles();
+  updateTopStats();
+  renderHealthTiles();
+  renderCharts();
+  renderGrid();
+  updateSelectionBadge();
+  renderActiveChips();
 }
-    if (!FNE_EDIT_ID) return;
-    if (!confirm('Delete record ID ' + FNE_EDIT_ID + '? This cannot be undone.')) return;
-  
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/items(" + FNE_EDIT_ID + ")";
-    getDigest(function(digest) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', url, true);
-      xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
-      xhr.setRequestHeader('Content-Type', 'application/json;odata=verbose');
-      xhr.setRequestHeader('X-HTTP-Method', 'DELETE');
-      xhr.setRequestHeader('IF-MATCH', '*');
-      if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState !== 4) return;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          fneToast('Record deleted', 'success');
-          const deletedId = FNE_EDIT_ID;
-          FNE_EDIT_ID = null;
-          FNE_PENDING_ATTACH = [];
-          FNE_EXISTING_ATTACH = [];
-          fneResetForm();
-          fneRenderAttachList();
-          document.getElementById('fneEditBanner').style.display = 'none';
-          document.getElementById('fneDeleteBtn').style.display  = 'none';
-          document.getElementById('fneSaveBtnTxt').textContent   = 'Save Entry';
-          document.getElementById('fneBannerMode').innerHTML     = `<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>New Entry</span>`;
-          fneSetLockState('exp_rfs',   false);
-          fneSetLockState('impl_start', false);
-          if (deletedId) fneRemoveListItems([deletedId]);
-          fneGoToListAfterSave();
-        } else {
-          fneToast('Delete failed: HTTP ' + xhr.status, 'error');
+
+// ══════════════════════════════════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════════════════════════════════
+function toggleCharts(){chartsVisible=!chartsVisible;el('chartsContent').style.display=chartsVisible?'block':'none';el('chartsToggleText').textContent=chartsVisible?'Hide Analytics Charts':'Show Analytics Charts';if(chartsVisible)setTimeout(()=>renderCharts(),80);}
+function getChartColors(){const t=document.body.getAttribute('data-theme')||'';const isDark=t==='dark'||t==='magenta-dark';const isMag=t==='magenta'||t==='magenta-dark';return{text:isDark?'rgba(255,255,255,0.6)':'rgba(0,0,0,0.5)',grid:isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)',p1:isMag?'#a855f7':'#2563eb',p2:isMag?'#c724b1':'#0ea5e9',p1a:isMag?'rgba(168,85,247,':'rgba(37,99,235,',p2a:isMag?'rgba(199,36,177,':'rgba(14,165,233,'};}
+function destroyChart(k){if(CHARTS[k]){CHARTS[k].destroy();CHARTS[k]=null;}}
+function renderCharts(){if(!chartsVisible)return;const items=getViewItems();const c=getChartColors();renderTrend(items,c);renderStatus(items,c);renderBuilding(items,c);renderSpiChart(items,c);renderHealthChart(items,c);renderVertical(items,c);renderImplType(items,c);renderLeaderboard(items,c);renderStatusByMgr(items,c);renderTopCustomers(items,c);renderSlaChart(items,c);renderProjectType(items,c);}
+function getBucket(rd){const d=new Date(rd);if(trendPeriod==='W')return d.getFullYear()+'-W'+String(getWeekOfYear(d)).padStart(2,'0');if(trendPeriod==='M')return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(trendPeriod==='Q')return d.getFullYear()+'-Q'+Math.ceil((d.getMonth()+1)/3);return String(d.getFullYear());}
+
+function renderTrend(items,c){
+  destroyChart('trend');const now=new Date();const periods=trendPeriod==='W'?12:trendPeriod==='M'?12:trendPeriod==='Q'?8:5;const labels=[],buckets=[];
+  for(let i=periods-1;i>=0;i--){let label,bucket;if(trendPeriod==='W'){const d=new Date(now);d.setDate(d.getDate()-i*7);bucket=d.getFullYear()+'-W'+String(getWeekOfYear(d)).padStart(2,'0');label='W'+getWeekOfYear(d);}else if(trendPeriod==='M'){const d=new Date(now.getFullYear(),now.getMonth()-i,1);bucket=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');label=d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});}else if(trendPeriod==='Q'){const totalQ=now.getFullYear()*4+Math.ceil((now.getMonth()+1)/3)-1-i;const yr=Math.floor(totalQ/4);const q=(totalQ%4)+1;bucket=yr+'-Q'+q;label='Q'+q+' '+String(yr).slice(2);}else{const yr=now.getFullYear()-i;bucket=String(yr);label=String(yr);}labels.push(label);buckets.push(bucket);}
+  const getVal=(it,k)=>k==='tcv'?it.tcv:k==='mrc'?it.mrc:it.otc;
+  const compD=[],ipD=[],ohD=[];
+  buckets.forEach(bkt=>{const mb=items.filter(i=>{const rd=getRefDate(i);if(!rd)return false;return getBucket(rd)===bkt;});compD.push(+(mb.filter(i=>STATUS_COMPLETED.includes(i.requestStatus)).reduce((s,i)=>s+getVal(i,trendMetric),0)/1e6).toFixed(2));ipD.push(+(mb.filter(i=>STATUS_INPROGRESS.includes(i.requestStatus)).reduce((s,i)=>s+getVal(i,trendMetric),0)/1e6).toFixed(2));ohD.push(+(mb.filter(i=>STATUS_ONHOLD.includes(i.requestStatus)).reduce((s,i)=>s+getVal(i,trendMetric),0)/1e6).toFixed(2));});
+  CHARTS.trend=new Chart(el('chartTrend'),{type:'line',data:{labels,datasets:[{label:'Completed',data:compD,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.25)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5},{label:'In Progress',data:ipD,borderColor:c.p1,backgroundColor:c.p1a+'0.2)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:c.p1,pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5},{label:'On Hold',data:ohD,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.2)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:'#f59e0b',pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{color:c.text,font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:10,padding:20}},tooltip:{backgroundColor:'rgba(15,10,30,.85)',padding:14,cornerRadius:12,titleFont:{size:13,weight:'700'},bodyFont:{size:12},callbacks:{label:ctx=>'  '+ctx.dataset.label+': '+ctx.parsed.y.toFixed(2)+'M'}}},scales:{x:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{color:c.grid},border:{dash:[4,4]}},y:{ticks:{color:c.text,callback:v=>v+'M'},grid:{color:c.grid},border:{dash:[4,4]},beginAtZero:true}}}});
+  const pWrap=el('trendPeriodBtns');if(pWrap)pWrap.innerHTML=['W','M','Q','Y'].map(p=>`<button type="button" onclick="trendPeriod='${p}';renderCharts()" style="padding:.2rem .55rem;border-radius:6px;font-size:.7rem;font-weight:700;border:1px solid var(--border);cursor:pointer;background:${trendPeriod===p?'var(--grad)':'var(--bg-secondary)'};color:${trendPeriod===p?'#fff':'var(--t3)'};">${p==='W'?'Week':p==='M'?'Month':p==='Q'?'Quarter':'Year'}</button>`).join('');
+  const mWrap=el('trendMetricBtns');if(mWrap)mWrap.innerHTML=[{k:'tcv',l:'TCV'},{k:'mrc',l:'MRC'},{k:'otc',l:'OTC'}].map(m=>`<button type="button" onclick="trendMetric='${m.k}';renderCharts()" style="padding:.25rem .7rem;border-radius:6px;font-size:.72rem;font-weight:700;border:1px solid var(--border);cursor:pointer;background:${trendMetric===m.k?'var(--grad)':'var(--bg-secondary)'};color:${trendMetric===m.k?'#fff':'var(--t3)'};">${m.l}</button>`).join('');
+}
+
+function renderStatus(items,c){destroyChart('status');const statuses=[...new Set(items.map(i=>i.requestStatus).filter(s=>s&&s!=='—'))];const counts=statuses.map(s=>items.filter(i=>i.requestStatus===s).length);const palette=['#10b981','#2563eb','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];CHARTS.status=new Chart(el('chartStatus'),{type:'doughnut',data:{labels:statuses,datasets:[{data:counts,backgroundColor:palette.slice(0,statuses.length),borderWidth:4,borderColor:'var(--bg-card)',hoverOffset:12}]},options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{position:'right',labels:{color:c.text,font:{size:11,weight:'600'},padding:10,usePointStyle:true,pointStyleWidth:8}},tooltip:{backgroundColor:'rgba(0,0,0,.8)',padding:12,cornerRadius:10,callbacks:{label:ctx=>{const t=counts.reduce((a,b)=>a+b,0);return ctx.parsed+' ('+((ctx.parsed/t)*100).toFixed(1)+'%)';}}}}}}); }
+
+function renderBuilding(items,c){destroyChart('building');const statuses=[...new Set(items.map(i=>i.buildingStatus).filter(s=>s&&s!=='—'))];const counts=statuses.map(s=>items.filter(i=>i.buildingStatus===s).length);const colorMap={'RFS':'#10b981','Partial RFS':'#f59e0b','Not Connected':'#ef4444'};const colors=statuses.map(s=>colorMap[s]||c.p1);CHARTS.building=new Chart(el('chartBuilding'),{type:'bar',data:{labels:statuses,datasets:[{data:counts,backgroundColor:colors,borderRadius:8,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:12,cornerRadius:10,callbacks:{label:ctx=>ctx.parsed.x+' projects'}}},scales:{x:{ticks:{color:c.text,font:{size:11}},grid:{color:c.grid},beginAtZero:true},y:{ticks:{color:c.text,font:{size:12,weight:'600'}},grid:{display:false}}}}});}
+
+function setSpiView(v){
+  spiView=v;
+  const btnT=el('spiBtnTrend'),btnM=el('spiBtnMgr'),title=el('spiChartTitle'),periodBtns=el('spiPeriodBtns');
+  if(btnT){btnT.style.background=v==='trend'?'var(--grad)':'var(--bg-secondary)';btnT.style.color=v==='trend'?'#fff':'var(--t3)';}
+  if(btnM){btnM.style.background=v==='mgr'?'var(--grad)':'var(--bg-secondary)';btnM.style.color=v==='mgr'?'#fff':'var(--t3)';}
+  if(title){const svg='<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';title.innerHTML=svg+(v==='trend'?' SPI Trend (Schedule Performance)':' SPI by Manager (Avg SPI)');}
+  if(periodBtns) periodBtns.style.display=v==='trend'?'flex':'none';
+  renderSpiChart(getViewItems(),getChartColors());
+}
+
+function renderSpiChart(items,c){
+  if(spiView==='mgr') renderSPIByMgr(items,c);
+  else renderSPI(items,c);
+}
+
+function renderSPIByMgr(items,c){
+  destroyChart('spi');
+  const mgrs=[...new Set(items.map(i=>i.fneManager).filter(v=>v&&v!=='—'))].sort();
+  if(!mgrs.length)return;
+  const avgSPIs=mgrs.map(m=>{const g=items.filter(i=>i.fneManager===m);return g.length?+(g.reduce((s,i)=>s+i.spi,0)/g.length).toFixed(2):null;});
+  const barColors=avgSPIs.map(v=>v===null?c.p1:v>=1?'#10b981':v>=0.8?'#f59e0b':'#ef4444');
+  const h=Math.max(280,mgrs.length*42);
+  el('chartSPI').parentElement.style.height=h+'px';
+  CHARTS.spi=new Chart(el('chartSPI'),{type:'bar',data:{labels:mgrs,datasets:[
+    {label:'Avg SPI',data:avgSPIs,backgroundColor:barColors,borderRadius:6,borderSkipped:false,barThickness:22},
+    {label:'Target (1.0)',data:mgrs.map(()=>1),type:'line',borderColor:'rgba(100,100,100,.5)',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false}
+  ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'top',labels:{color:c.text,font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:10,padding:16}},
+      tooltip:{backgroundColor:'rgba(0,0,0,.78)',padding:12,cornerRadius:10,callbacks:{
+        label:ctx=>{
+          if(ctx.dataset.label==='Target (1.0)') return 'Target: 1.0';
+          const v=ctx.parsed.x;
+          const status=v>=1?'✓ On/Ahead of Schedule':v>=0.8?'⚠ Slightly Behind':'✗ Behind Schedule';
+          return ['  Avg SPI: '+v.toFixed(2),'  '+status];
+        },
+        afterLabel:ctx=>{
+          if(ctx.datasetIndex!==0) return;
+          const m=mgrs[ctx.dataIndex];
+          const grp=items.filter(i=>i.fneManager===m);
+          const onTrack=grp.filter(i=>i.spi>=1).length;
+          return '  On Track: '+onTrack+'/'+grp.length+' projects';
         }
-      };
-      xhr.send();
-    });
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  LOAD LIST DATA
-  // ══════════════════════════════════════════════════════════════════
-  function fneGetListSelect() {
-    return [
-      'Id', FNE_F.SUB_REQ, FNE_F.IMPL_TYPE, FNE_F.START_DATE,
-      FNE_F.SLA, FNE_F.EXP_RFS, FNE_F.BUILD_STATUS, FNE_F.CUST_NAME,
-      FNE_F.SOF, FNE_F.MRC, FNE_F.EST_COST, FNE_F.VERTICAL, FNE_F.COMMENTS,
-      FNE_F.REQ_STATUS, FNE_F.CUST_ADDR, FNE_F.ACC_CODE, FNE_F.ASSIGNED_BY,
-      FNE_F.PROJ_TYPE, FNE_F.UNIT_NO, FNE_F.OTC, FNE_F.TCV, FNE_F.OSP_REQ,
-      FNE_F.OSP_ET, FNE_F.FES_REF, FNE_F.SURVEY_REF, FNE_F.GAID, FNE_F.BID_REF,
-      FNE_F.WO_NUM, FNE_F.ACC_DIR, FNE_F.CONTRACT_DUR, FNE_F.FNE_MGR,
-      FNE_F.RFS_BASELINE, FNE_F.CRITICAL_PROJ, FNE_F.COMMENTS_NEW, FNE_F.IMPL_START, FNE_F.PROJ_HEALTH,
-      FNE_F.SPI, FNE_F.TEMP_CONN, FNE_F.TARGET_MIG, FNE_F.BLOCKER, FNE_F.PM_MAN_DAYS,
-      'Account_x0020_Manager/Id', 'Account_x0020_Manager/Title', 'Account_x0020_Manager/EMail'
-    ].join(',');
-  }
-
-  function fneRecalcMaxListId() {
-    FNE_MAX_LIST_ID = FNE_LIST_DATA.reduce(function(max, item) {
-      return item.id > max ? item.id : max;
-    }, 0);
-  }
-
-  function fneUpdateListCounts() {
-    const countBanner = document.getElementById('fneBannerCount');
-    if (countBanner) countBanner.textContent = FNE_LIST_DATA.length + ' records';
-  }
-
-  function fneUpsertItemsInCache(mappedItems) {
-    if (!mappedItems || !mappedItems.length) return false;
-    mappedItems.forEach(function(item) {
-      const idx = FNE_LIST_DATA.findIndex(function(x) { return x.id === item.id; });
-      if (idx >= 0) FNE_LIST_DATA[idx] = item;
-      else FNE_LIST_DATA.unshift(item);
-      if (item.id > FNE_MAX_LIST_ID) FNE_MAX_LIST_ID = item.id;
-    });
-    fneListBuildAllFilters();
-    fneListApplyFilter();
-    fneUpdateListCounts();
-    return true;
-  }
-
-  function fneRemoveListItems(ids) {
-    const idSet = new Set((ids || []).map(Number));
-    if (!idSet.size) return;
-    FNE_LIST_DATA = FNE_LIST_DATA.filter(function(x) { return !idSet.has(x.id); });
-    fneRecalcMaxListId();
-    fneListBuildAllFilters();
-    fneListApplyFilter();
-    fneUpdateListCounts();
-  }
-
-  function fneFetchAndUpsertItem(id, cb) {
-    if (!id) { if (cb) cb(null); return; }
-    fneFetchAndUpsertItems([id], cb);
-  }
-
-  function fneFetchAndUpsertItems(ids, cb) {
-    const unique = [...new Set((ids || []).filter(Boolean).map(Number))];
-    if (!unique.length) { if (cb) cb(null); return; }
-    const select = fneGetListSelect();
-    const filter = unique.map(function(id) { return 'Id eq ' + id; }).join(' or ');
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/items?$select=" + encodeURIComponent(select) +
-      "&$expand=Account_x0020_Manager&$filter=" + encodeURIComponent(filter);
-    spGet(url, function(err, data) {
-      if (err || !data || !data.d) { if (cb) cb(err); return; }
-      fneUpsertItemsInCache(data.d.results.map(fneMapItem));
-      if (cb) cb(null);
-    });
-  }
-
-  function fneEnsureList() {
-    fneLoadList(false);
-  }
-
-  function fneRefreshList() {
-    fneLoadList(true);
-  }
-
-  // When embedded in the main dashboard (fne.html), the dashboard already
-  // fetches this same SharePoint list on launch. Reuse that raw data instead
-  // of hitting SharePoint a second time when the user opens Tracker List.
-  function fneTryHydrateFromDashboard() {
-    if (window.FNE_STANDALONE) return false;
-    const raw = window.FNE_RAW_ITEMS;
-    if (!Array.isArray(raw) || !raw.length) return false;
-    FNE_LIST_DATA = raw.map(fneMapItem);
-    FNE_LIST_LOADED = true;
-    fneRecalcMaxListId();
-    FNE_LAST_SYNC_ISO = new Date().toISOString();
-    fneListBuildAllFilters();
-    return true;
-  }
-
-  function fneLoadList(force, onComplete) {
-    if (FNE_LIST_LOADING) return;
-    if (!force && FNE_LIST_LOADED) {
-      fneListApplyFilter();
-      if (onComplete) onComplete();
-      return;
+      }}
+    },
+    scales:{
+      x:{ticks:{color:c.text,font:{size:11}},grid:{color:c.grid},border:{dash:[4,4]},min:0,max:1.5},
+      y:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}}
     }
-    if (!force && !FNE_LIST_LOADED && fneTryHydrateFromDashboard()) {
-      fneListApplyFilter();
-      fneUpdateListCounts();
-      const spinner0 = document.getElementById('fneListSpinner');
-      const gridEl0  = document.getElementById('fneGrid');
-      if (spinner0) spinner0.style.display = 'none';
-      if (gridEl0)  gridEl0.style.display  = 'block';
-      if (onComplete) onComplete(null);
-      return;
-    }
+  }});
+}
 
-    const countEl   = document.getElementById('fneListCount');
-    const spinner   = document.getElementById('fneListSpinner');
-    const gridEl    = document.getElementById('fneGrid');
-    if (countEl) countEl.textContent = 'Loading...';
-    if (spinner) spinner.style.display = 'block';
-    if (gridEl)  gridEl.style.display  = 'none';
+function renderSPI(items,c){destroyChart('spi');const now=new Date();const periods=spiPeriod==='M'?12:spiPeriod==='Q'?8:5;const labels=[],buckets=[];for(let i=periods-1;i>=0;i--){let label,bucket;if(spiPeriod==='M'){const d=new Date(now.getFullYear(),now.getMonth()-i,1);bucket=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');label=d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});}else if(spiPeriod==='Q'){const totalQ=now.getFullYear()*4+Math.ceil((now.getMonth()+1)/3)-1-i;const yr=Math.floor(totalQ/4);const q=(totalQ%4)+1;bucket=yr+'-Q'+q;label='Q'+q+' '+String(yr).slice(2);}else{const yr=now.getFullYear()-i;bucket=String(yr);label=String(yr);}labels.push(label);buckets.push(bucket);}
+  const avgSPIs=buckets.map(bkt=>{const mb=items.filter(i=>{const rd=getRefDate(i);if(!rd)return false;const d=new Date(rd);let b;if(spiPeriod==='M')b=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');else if(spiPeriod==='Q')b=d.getFullYear()+'-Q'+Math.ceil((d.getMonth()+1)/3);else b=String(d.getFullYear());return b===bkt;});return mb.length?+(mb.reduce((s,i)=>s+i.spi,0)/mb.length).toFixed(2):null;});
+  const colors=avgSPIs.map(v=>v===null?c.p1:v>=1?'#10b981':v>=0.8?'#f59e0b':'#ef4444');
+  el('chartSPI').parentElement.style.height='280px';
+  CHARTS.spi=new Chart(el('chartSPI'),{type:'bar',data:{labels,datasets:[{label:'Avg SPI',data:avgSPIs,backgroundColor:colors,borderRadius:8,borderSkipped:false},{label:'Target (1.0)',data:labels.map(()=>1),type:'line',borderColor:'rgba(100,100,100,.5)',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{color:c.text,font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:10,padding:20}},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:12,cornerRadius:10}},scales:{x:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{color:c.grid},border:{dash:[4,4]}},y:{ticks:{color:c.text},grid:{color:c.grid},beginAtZero:true}}}});
+  const spiBtns=el('spiPeriodBtns');if(spiBtns)spiBtns.innerHTML=['M','Q','Y'].map(p=>`<button type="button" onclick="spiPeriod='${p}';renderCharts()" style="padding:.2rem .55rem;border-radius:6px;font-size:.7rem;font-weight:700;border:1px solid var(--border);cursor:pointer;background:${spiPeriod===p?'var(--grad)':'var(--bg-secondary)'};color:${spiPeriod===p?'#fff':'var(--t3)'};">${p==='M'?'Month':p==='Q'?'Quarter':'Year'}</button>`).join('');}
 
-    FNE_LIST_LOADING = true;
-    const select = fneGetListSelect();
-    let all = [];
+function setHealthView(v){
+  healthView=v;
+  const btnMgr=el('healthBtnMgr'),btnVert=el('healthBtnVert'),title=el('healthChartTitle');
+  if(btnMgr){btnMgr.style.background=v==='mgr'?'var(--grad)':'var(--bg-secondary)';btnMgr.style.color=v==='mgr'?'#fff':'var(--t3)';}
+  if(btnVert){btnVert.style.background=v==='vert'?'var(--grad)':'var(--bg-secondary)';btnVert.style.color=v==='vert'?'#fff':'var(--t3)';}
+  if(title){const svgMgr='<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';const svgVert='<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>';title.innerHTML=(v==='mgr'?svgMgr:svgVert)+(v==='mgr'?' Project Health by Manager':' Project Health by Vertical');}
+  renderHealthChart(getViewItems(),getChartColors());
+}
 
-    function finishLoad(err) {
-      FNE_LIST_LOADING = false;
-      if (err) {
-        if (countEl) countEl.textContent = '0 records';
-        if (spinner) spinner.style.display = 'none';
-        if (gridEl)  gridEl.style.display  = 'block';
-        if (onComplete) onComplete(err);
-        return;
+function renderHealthChart(items,c){
+  destroyChart('healthVert');
+  let labels;
+  if(healthView==='mgr'){
+    labels=[...new Set(items.map(i=>i.fneManager).filter(v=>v&&v!=='—'))].sort();
+  } else {
+    labels=[...new Set(items.map(i=>i.vertical).filter(v=>v&&v!=='—'))].sort();
+  }
+  // Build raw counts
+  const getGroup=(lbl)=>healthView==='mgr'?items.filter(i=>i.fneManager===lbl):items.filter(i=>i.vertical===lbl);
+  const greens=labels.map(lbl=>getGroup(lbl).filter(i=>i.projectHealth===HEALTH_GREEN).length);
+  const ambers=labels.map(lbl=>getGroup(lbl).filter(i=>i.projectHealth===HEALTH_AMBER).length);
+  const reds=labels.map(lbl=>getGroup(lbl).filter(i=>i.projectHealth===HEALTH_RED).length);
+  const noRfs=labels.map(lbl=>getGroup(lbl).filter(i=>i.projectHealth===HEALTH_NO_RFS).length);
+  const totals=labels.map((_,i)=>greens[i]+ambers[i]+reds[i]+noRfs[i]);
+  // Convert to percentages for 100% stacked
+  const toP=(arr)=>arr.map((v,i)=>totals[i]>0?+(v/totals[i]*100).toFixed(1):0);
+  const greenP=toP(greens), amberP=toP(ambers), redP=toP(reds), noRfsP=toP(noRfs);
+  // Dynamic height
+  const h=Math.max(280,labels.length*44);
+  el('chartHealthVertical').parentElement.style.height=h+'px';
+  CHARTS.healthVert=new Chart(el('chartHealthVertical'),{type:'bar',
+    data:{labels,datasets:[
+      {label:'Green',data:greenP,backgroundColor:'#10b981',borderSkipped:false,barThickness:26,stack:'health'},
+      {label:'Amber',data:amberP,backgroundColor:'#f59e0b',borderSkipped:false,barThickness:26,stack:'health'},
+      {label:'Red',data:redP,backgroundColor:'#ef4444',borderSkipped:false,barThickness:26,stack:'health'},
+      {label:'No Expected RFS',data:noRfsP,backgroundColor:'#64748b',borderSkipped:false,barThickness:26,stack:'health'},
+    ]},
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{color:c.text,font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:10,padding:16}},
+        tooltip:{backgroundColor:'rgba(0,0,0,.82)',padding:12,cornerRadius:10,callbacks:{
+          label:ctx=>{
+            const i=ctx.dataIndex;
+            const raw=ctx.dataset.label==='Green'?greens[i]:ctx.dataset.label==='Amber'?ambers[i]:ctx.dataset.label==='Red'?reds[i]:noRfs[i];
+            return ' '+ctx.dataset.label+': '+raw+' projects ('+ctx.parsed.x.toFixed(1)+'%)';
+          },
+          afterBody:ctx=>{
+            const i=ctx[0].dataIndex;
+            return ['','  Total: '+totals[i]+' projects','  G: '+greens[i]+' | A: '+ambers[i]+' | R: '+reds[i]+' | No RFS: '+noRfs[i]];
+          }
+        }}
+      },
+      scales:{
+        x:{stacked:true,ticks:{color:c.text,callback:v=>v+'%',font:{size:11}},grid:{color:c.grid},border:{dash:[4,4]},min:0,max:100},
+        y:{stacked:true,ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}}
       }
-      FNE_LIST_DATA = all.map(fneMapItem);
-      FNE_LIST_LOADED = true;
-      fneRecalcMaxListId();
-      FNE_LAST_SYNC_ISO = new Date().toISOString();
-      fneListBuildAllFilters();
-      fneListApplyFilter();
-      if (spinner) spinner.style.display = 'none';
-      if (gridEl)  gridEl.style.display  = 'block';
-      fneUpdateListCounts();
-      if (onComplete) onComplete(null);
     }
+  });
+  // Draw count labels on bars
+  // (handled via tooltip — cleaner than plugin for stacked)
+}
 
-    function fetchPage(url) {
-      spGet(url, function(err, data) {
-        if (err) {
-          fneToast('Failed to load list: ' + err.message, 'error');
-          finishLoad(err);
-          return;
+function setStatusMgrMetric(m){
+  statusMgrMetric=m;
+  const btnC=el('statusMgrBtnCount'),btnT=el('statusMgrBtnTCV');
+  if(btnC){btnC.style.background=m==='count'?'var(--grad)':'var(--bg-secondary)';btnC.style.color=m==='count'?'#fff':'var(--t3)';}
+  if(btnT){btnT.style.background=m==='tcv'?'var(--grad)':'var(--bg-secondary)';btnT.style.color=m==='tcv'?'#fff':'var(--t3)';}
+  renderStatusByMgr(getViewItems(),getChartColors());
+}
+
+function renderStatusByMgr(items,c){
+  destroyChart('statusMgr');
+  const mgrs=[...new Set(items.map(i=>i.fneManager).filter(v=>v&&v!=='—'))].sort();
+  if(!mgrs.length)return;
+  const isTCV=statusMgrMetric==='tcv';
+  const getVal=(arr)=>isTCV?+(arr.reduce((s,i)=>s+i.tcv,0)/1e6).toFixed(2):arr.length;
+  const completed=mgrs.map(m=>getVal(items.filter(i=>i.fneManager===m&&STATUS_COMPLETED.includes(i.requestStatus))));
+  const inprog=mgrs.map(m=>getVal(items.filter(i=>i.fneManager===m&&STATUS_INPROGRESS.includes(i.requestStatus))));
+  const onhold=mgrs.map(m=>getVal(items.filter(i=>i.fneManager===m&&STATUS_ONHOLD.includes(i.requestStatus))));
+  const cancelled=mgrs.map(m=>getVal(items.filter(i=>i.fneManager===m&&STATUS_CANCELLED.includes(i.requestStatus))));
+  const suffix=isTCV?'M':'';
+  const h=Math.max(300,mgrs.length*40);
+  el('chartStatusByMgr').parentElement.style.height=h+'px';
+  CHARTS.statusMgr=new Chart(el('chartStatusByMgr'),{type:'bar',data:{labels:mgrs,datasets:[
+    {label:'Completed',data:completed,backgroundColor:'#10b981',borderRadius:4,borderSkipped:false,barPercentage:.65,categoryPercentage:.7},
+    {label:'In Progress',data:inprog,backgroundColor:c.p1,borderRadius:4,borderSkipped:false,barPercentage:.65,categoryPercentage:.7},
+    {label:'On Hold',data:onhold,backgroundColor:'#f59e0b',borderRadius:4,borderSkipped:false,barPercentage:.65,categoryPercentage:.7},
+    {label:'Cancelled',data:cancelled,backgroundColor:'#ef4444',borderRadius:4,borderSkipped:false,barPercentage:.65,categoryPercentage:.7},
+  ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{color:c.text,font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:10,padding:16}},tooltip:{backgroundColor:'rgba(0,0,0,.78)',padding:12,cornerRadius:10,callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.parsed.x.toFixed(isTCV?2:0)+suffix}}},scales:{x:{ticks:{color:c.text,callback:v=>isTCV?v+'M':v},grid:{color:c.grid},border:{dash:[4,4]},beginAtZero:true},y:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}}}}});
+}
+
+function renderVertical(items,c){destroyChart('vert');const vm={};items.forEach(i=>{const v=i.vertical||'Other';if(!vm[v])vm[v]={count:0,tcv:0};vm[v].count++;vm[v].tcv+=i.tcv;});const sorted=Object.entries(vm).sort((a,b)=>b[1][vertMetric]-a[1][vertMetric]).slice(0,10);const palette=['rgba(37,99,235,.85)','rgba(14,165,233,.85)','rgba(6,182,212,.85)','rgba(16,185,129,.85)','rgba(251,146,60,.85)','rgba(168,85,247,.85)','rgba(236,72,153,.85)','rgba(239,68,68,.85)','rgba(234,179,8,.85)','rgba(20,184,166,.85)'];const isValue=vertMetric==='tcv';CHARTS.vert=new Chart(el('chartVertical'),{type:'bar',data:{labels:sorted.map(([k])=>k),datasets:[{data:sorted.map(([,v])=>isValue?+(v.tcv/1e6).toFixed(2):v.count),backgroundColor:palette.slice(0,sorted.length),borderRadius:8,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:12,cornerRadius:10,callbacks:{label:ctx=>isValue?ctx.parsed.y.toFixed(2)+'M':ctx.parsed.y+' projects'}}},scales:{x:{ticks:{color:c.text,font:{size:10,weight:'600'}},grid:{display:false}},y:{ticks:{color:c.text,callback:v=>isValue?v+'M':v},grid:{color:c.grid},beginAtZero:true}}}});}
+function setVertMetric(m){vertMetric=m;el('vertBtnTCV').style.background=m==='tcv'?'var(--grad)':'var(--bg-secondary)';el('vertBtnTCV').style.color=m==='tcv'?'#fff':'var(--t3)';el('vertBtnCount').style.background=m==='count'?'var(--grad)':'var(--bg-secondary)';el('vertBtnCount').style.color=m==='count'?'#fff':'var(--t3)';renderVertical(getViewItems(),getChartColors());}
+
+function renderImplType(items,c){destroyChart('impltype');const types=[...new Set(items.map(i=>i.implType).filter(v=>v&&v!=='—'))];const tcvs=types.map(t=>+(items.filter(i=>i.implType===t).reduce((s,i)=>s+i.tcv,0)/1e6).toFixed(2));const counts=types.map(t=>items.filter(i=>i.implType===t).length);const total=tcvs.reduce((a,b)=>a+b,0);const palette=['#2563eb','#0ea5e9','#10b981','#f59e0b','#8b5cf6','#ef4444'];const centerPlugin={id:'implCenter',beforeDraw(chart){const{ctx,chartArea:{width,height,left,top}}=chart;ctx.save();ctx.font='bold 20px Inter';ctx.fillStyle=document.body.getAttribute('data-theme')?'rgba(255,255,255,0.9)':'rgba(15,30,62,0.9)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(total.toFixed(1)+'M',left+width/2,top+height/2-10);ctx.font='600 10px Inter';ctx.fillStyle=c.text;ctx.fillText('Total TCV',left+width/2,top+height/2+10);ctx.restore();}};CHARTS.impltype=new Chart(el('chartImplType'),{type:'doughnut',plugins:[centerPlugin],data:{labels:types.map((t,i)=>t+' — '+counts[i]+' — '+tcvs[i]+'M'),datasets:[{data:tcvs,backgroundColor:palette.slice(0,types.length),borderWidth:4,borderColor:'var(--bg-card)',hoverOffset:12}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{color:c.text,font:{size:11,weight:'600'},padding:10,usePointStyle:true,pointStyleWidth:8}},tooltip:{backgroundColor:'rgba(0,0,0,.8)',padding:12,cornerRadius:10,callbacks:{label:ctx=>{const pct=total>0?(ctx.parsed/total*100).toFixed(1):'0';return['TCV: '+ctx.parsed.toFixed(2)+'M','Share: '+pct+'%','Count: '+counts[ctx.dataIndex]];}}}}}});}
+
+function renderLeaderboard(items,c){
+  destroyChart('lb');
+  const metricWrap=el('lbMetricToggle');
+  if(metricWrap)metricWrap.innerHTML=[{k:'tcv',l:'TCV'},{k:'mrc',l:'MRC'},{k:'otc',l:'OTC'},{k:'count',l:'Count'}].map(m=>`<button type="button" onclick="lbMetric='${m.k}';renderLeaderboard(getViewItems(),getChartColors())" style="padding:.25rem .75rem;border-radius:6px;font-size:.72rem;font-weight:700;border:1px solid ${lbMetric===m.k?'transparent':'var(--border)'};cursor:pointer;background:${lbMetric===m.k?'var(--grad)':'var(--bg-secondary)'};color:${lbMetric===m.k?'#fff':'var(--t3)'};">${m.l}</button>`).join('');
+  const map={};
+  items.forEach(i=>{const k=i.fneManager||'?';if(!k||k==='—')return;if(!map[k])map[k]={completed:0,total:0,tcv:0,mrc:0,otc:0};if(STATUS_COMPLETED.includes(i.requestStatus))map[k].completed++;map[k].tcv+=i.tcv;map[k].mrc+=i.mrc;map[k].otc+=i.otc;map[k].total++;});
+  const getVal=v=>lbMetric==='tcv'?+(v.tcv/1e6).toFixed(2):lbMetric==='mrc'?+(v.mrc/1e6).toFixed(2):lbMetric==='otc'?+(v.otc/1e6).toFixed(2):v.total;
+  const sorted=Object.entries(map).sort((a,b)=>getVal(b[1])-getVal(a[1])).slice(0,12);if(!sorted.length)return;
+  const barColors=sorted.map(([,v])=>{const wr=v.total?v.completed/v.total:0;return wr>=.7?'#10b981':wr>=.4?c.p1:'#ef4444';});
+  const chartH=Math.max(320,sorted.length*48);el('chartLeaderboard').parentElement.style.height=chartH+'px';
+  CHARTS.lb=new Chart(el('chartLeaderboard'),{type:'bar',data:{labels:sorted.map(([k])=>k),datasets:[{label:lbMetric.toUpperCase(),data:sorted.map(([,v])=>getVal(v)),backgroundColor:barColors,borderRadius:8,borderSkipped:false,barThickness:26}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:60}},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.82)',padding:14,cornerRadius:10,titleFont:{size:13,weight:'700'},bodyFont:{size:12},callbacks:{label:ctx=>lbMetric==='count'?'  Projects: '+ctx.parsed.x:'  '+lbMetric.toUpperCase()+': '+ctx.parsed.x.toFixed(2)+'M',afterLabel:ctx=>{const d=sorted[ctx.dataIndex][1];return['  Total: '+d.total,'  Completed: '+d.completed];}}}},scales:{x:{ticks:{color:c.text,callback:v=>lbMetric==='count'?v:v+'M'},grid:{color:c.grid},border:{dash:[4,4]},beginAtZero:true},y:{ticks:{color:c.text,font:{size:12,weight:'700'},padding:12},grid:{display:false}}}}});}
+
+function renderTopCustomers(items,c){destroyChart('topCust');const cm={};items.forEach(i=>{if(!i.customerName||i.customerName==='—')return;if(!cm[i.customerName])cm[i.customerName]=0;cm[i.customerName]+=i.tcv;});const sorted=Object.entries(cm).sort((a,b)=>b[1]-a[1]).slice(0,10);const palette=['#2563eb','#3b82f6','#60a5fa','#0ea5e9','#06b6d4','#10b981','#f59e0b','#8b5cf6','#ec4899','#ef4444'];CHARTS.topCust=new Chart(el('chartTopCustomers'),{type:'bar',data:{labels:sorted.map(([k])=>k),datasets:[{data:sorted.map(([,v])=>+(v/1e6).toFixed(2)),backgroundColor:palette.slice(0,sorted.length),borderRadius:8,borderSkipped:false,barThickness:20}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:12,cornerRadius:10,callbacks:{label:ctx=>ctx.parsed.x.toFixed(2)+'M'}}},scales:{x:{ticks:{color:c.text,callback:v=>v+'M'},grid:{color:c.grid},border:{dash:[4,4]}},y:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}}}}});}
+
+function setSlaView(v){
+  slaView=v;
+  const btnM=el('slaBtnMgr'),btnV=el('slaBtnVert'),title=el('slaChartTitle');
+  if(btnM){btnM.style.background=v==='mgr'?'var(--grad)':'var(--bg-secondary)';btnM.style.color=v==='mgr'?'#fff':'var(--t3)';}
+  if(btnV){btnV.style.background=v==='vert'?'var(--grad)':'var(--bg-secondary)';btnV.style.color=v==='vert'?'#fff':'var(--t3)';}
+  if(title){const svg='<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';title.innerHTML=svg+(v==='mgr'?' SLA Compliance — By Manager':' SLA Compliance — By Vertical');}
+  renderSlaChart(getViewItems(),getChartColors());
+}
+
+function renderSlaChart(items,c){ renderSLACompliance(items,c); }
+
+function renderSLACompliance(items,c){
+  destroyChart('slaComp');
+  let labels, onTime;
+  if(slaView==='mgr'){
+    labels=[...new Set(items.map(i=>i.fneManager).filter(v=>v&&v!=='—'))].sort();
+    onTime=labels.map(m=>{const g=items.filter(i=>i.fneManager===m);const ok=g.filter(i=>i.spi>=1).length;return g.length?+(ok/g.length*100).toFixed(1):0;});
+  } else {
+    labels=[...new Set(items.map(i=>i.vertical).filter(v=>v&&v!=='—'))];
+    onTime=labels.map(v=>{const g=items.filter(i=>i.vertical===v);const ok=g.filter(i=>i.spi>=1).length;return g.length?+(ok/g.length*100).toFixed(1):0;});
+  }
+  const colors=onTime.map(v=>v>=80?'#10b981':v>=60?'#f59e0b':'#ef4444');
+  // Build count annotations for tooltip
+  const totalCounts=labels.map(lbl=>{
+    const grp=slaView==='mgr'?items.filter(i=>i.fneManager===lbl):items.filter(i=>i.vertical===lbl);
+    const ok=grp.filter(i=>i.spi>=1).length;
+    return {total:grp.length, ok};
+  });
+  CHARTS.slaComp=new Chart(el('chartSLACompliance'),{type:'bar',data:{labels,datasets:[
+    {label:'On-Time %',data:onTime,backgroundColor:colors,borderRadius:8,borderSkipped:false},
+    {label:'Target (80%)',data:labels.map(()=>80),type:'line',borderColor:'rgba(100,100,100,.5)',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'top',labels:{color:c.text,font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:10,padding:16}},
+      tooltip:{backgroundColor:'rgba(0,0,0,.78)',padding:12,cornerRadius:10,callbacks:{
+        label:ctx=>{
+          if(ctx.dataset.label==='Target (80%)') return 'Target: 80%';
+          const d=totalCounts[ctx.dataIndex];
+          return ['  On-Time: '+ctx.parsed.y.toFixed(1)+'%','  '+d.ok+' / '+d.total+' projects on track'];
         }
-        all = all.concat(data.d.results);
-        if (data.d.__next) { fetchPage(data.d.__next); return; }
-        finishLoad(null);
-      });
+      }}
+    },
+    scales:{
+      x:{ticks:{color:c.text,font:{size:11,weight:'600'},maxRotation:30},grid:{display:false}},
+      y:{ticks:{color:c.text,callback:v=>v+'%'},grid:{color:c.grid},beginAtZero:true,max:110}
     }
+  }});
+}
 
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/items?$select=" + encodeURIComponent(select) +
-      "&$expand=Account_x0020_Manager&$top=5000&$orderby=Id desc";
-    fetchPage(url);
-  }
+function renderProjectType(items,c){destroyChart('projType');const types=[...new Set(items.map(i=>i.projectType).filter(v=>v&&v!=='—'))];const counts=types.map(t=>items.filter(i=>i.projectType===t).length);const tcvs=types.map(t=>+(items.filter(i=>i.projectType===t).reduce((s,i)=>s+i.tcv,0)/1e6).toFixed(2));CHARTS.projType=new Chart(el('chartProjectType'),{type:'bar',data:{labels:types,datasets:[{label:'Count',data:counts,backgroundColor:c.p1+'cc',borderRadius:8,borderSkipped:false,yAxisID:'y',barPercentage:.45,categoryPercentage:.75},{label:'TCV (M)',data:tcvs,type:'line',borderColor:c.p2,pointBackgroundColor:c.p2,pointBorderColor:'#fff',pointBorderWidth:2,pointRadius:5,borderWidth:2.5,tension:.35,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{color:c.text,font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:10,padding:16}},tooltip:{backgroundColor:'rgba(0,0,0,.75)',padding:12,cornerRadius:10}},scales:{x:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}},y:{ticks:{color:c.text},grid:{color:c.grid},beginAtZero:true,position:'left'},y2:{ticks:{color:c.text,callback:v=>v+'M'},grid:{display:false},beginAtZero:true,position:'right'}}}});}
 
-  function fneStartLivePoll() {
-    if (FNE_LIVE_POLL_TIMER) return;
-    FNE_LIVE_POLL_TIMER = setInterval(fnePollLiveChanges, FNE_LIVE_POLL_MS);
-  }
-
-  function fneStopLivePoll() {
-    if (FNE_LIVE_POLL_TIMER) {
-      clearInterval(FNE_LIVE_POLL_TIMER);
-      FNE_LIVE_POLL_TIMER = null;
-    }
-  }
-
-  function fnePollLiveChanges() {
-    if (!FNE_LIST_LOADED || FNE_LIST_LOADING) return;
-    const pollStarted = new Date().toISOString();
-    const select = fneGetListSelect();
-    const base = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/items?$select=" + encodeURIComponent(select) + "&$expand=Account_x0020_Manager&$top=500";
-    let pending = 0;
-    let changed = false;
-
-    function finishPoll() {
-      pending--;
-      if (pending <= 0) FNE_LAST_SYNC_ISO = pollStarted;
-    }
-
-    if (FNE_MAX_LIST_ID > 0) {
-      pending++;
-      const newUrl = base + "&$filter=Id gt " + FNE_MAX_LIST_ID + "&$orderby=Id asc";
-      spGet(newUrl, function(err, data) {
-        if (!err && data && data.d && data.d.results.length) {
-          if (fneUpsertItemsInCache(data.d.results.map(fneMapItem))) changed = true;
-        }
-        finishPoll();
-      });
-    }
-
-    if (FNE_LAST_SYNC_ISO) {
-      pending++;
-      const modUrl = base + "&$filter=Modified ge datetime'" + FNE_LAST_SYNC_ISO + "'&$orderby=Modified asc";
-      spGet(modUrl, function(err, data) {
-        if (!err && data && data.d && data.d.results.length) {
-          if (fneUpsertItemsInCache(data.d.results.map(fneMapItem))) changed = true;
-        }
-        finishPoll();
-      });
-    }
-
-    if (!pending) FNE_LAST_SYNC_ISO = pollStarted;
-    if (changed && typeof window.fneOnLiveUpdate === 'function') window.fneOnLiveUpdate();
-  }
-  
-  function fneMapItem(it) {
-    const n  = v => { const f = parseFloat(v); return isNaN(f) ? 0 : f; };
-    const sd = it[FNE_F.START_DATE] || null;
-    const yr = sd ? new Date(sd).getFullYear() : null;
-    return {
-      id:              it.Id,
-      subRequest:      it[FNE_F.SUB_REQ]      || '—',
-      implType:        it[FNE_F.IMPL_TYPE]    || '—',
-      startDate:       sd,
-      year:            yr,
-      sla:             n(it[FNE_F.SLA]),
-      expectedRFS:     it[FNE_F.EXP_RFS]      || null,
-      buildingStatus:  it[FNE_F.BUILD_STATUS] || '—',
-      customerName:    it[FNE_F.CUST_NAME]    || '—',
-      sof:             it[FNE_F.SOF]          || '—',
-      mrc:             n(it[FNE_F.MRC]),
-      estimatedCost:   n(it[FNE_F.EST_COST]),
-      vertical:        it[FNE_F.VERTICAL]     || '—',
-      requestStatus:   it[FNE_F.REQ_STATUS]   || '—',
-      customerAddress: it[FNE_F.CUST_ADDR]    || '—',
-      accountCode:     n(it[FNE_F.ACC_CODE]),
-      assignedBy:      it[FNE_F.ASSIGNED_BY]  || '—',
-      projectType:     it[FNE_F.PROJ_TYPE]    || '—',
-      unitNo:          n(it[FNE_F.UNIT_NO]),
-      otc:             n(it[FNE_F.OTC]),
-      tcv:             n(it[FNE_F.TCV]),
-      ospRequired:     it[FNE_F.OSP_REQ]      || '—',
-      ospCivilET:      n(it[FNE_F.OSP_ET]),
-      fesRef:          it[FNE_F.FES_REF]      || '—',
-      siteRef:         it[FNE_F.SURVEY_REF]   || '—',
-      gaid:            (it[FNE_F.GAID] || '—').replace(/<[^>]*>/g, ''),
-      bidRef:          it[FNE_F.BID_REF]      || '—',
-      woNumber:        it[FNE_F.WO_NUM]       || '—',
-      accountDirector: it[FNE_F.ACC_DIR]      || '—',
-      contractDuration:n(it[FNE_F.CONTRACT_DUR]),
-      fneManager:      it[FNE_F.FNE_MGR]      || '—',
-      rfsBaseline:     it[FNE_F.RFS_BASELINE] || null,
-      criticalProjects:it[FNE_F.CRITICAL_PROJ]|| '—',
-      commentsNew:     fneHtmlToPlain(it[FNE_F.COMMENTS_NEW]) || '—',
-      implStart:       it[FNE_F.IMPL_START]   || null,
-      projectHealth:   it[FNE_F.PROJ_HEALTH]  || '—',
-      spi:             n(it[FNE_F.SPI]),
-      tempConnType:    it[FNE_F.TEMP_CONN]    || '—',
-      targetMigDate:   it[FNE_F.TARGET_MIG]   || null,
-      blocker:         it[FNE_F.BLOCKER]      || '—',
-      pmManDays:       it[FNE_F.PM_MAN_DAYS]  || '—',
-      amName:          it.Account_x0020_Manager ? (it.Account_x0020_Manager.Title || '—') : '—',
-      amEmail:         it.Account_x0020_Manager ? (it.Account_x0020_Manager.EMail || '')  : '',
-    };
-  }
-  
-  function fneListApplyFilter() {
-    fneEnsurePowerUserUi();
-    const rfsMig = fneGetRfsMigrationFilter();
-    const filtered = FNE_LIST_DATA.filter(function(item) {
-      for (const key in FNE_LIST_MS_CFG) {
-        const cfg = FNE_LIST_MS_CFG[key];
-        const sel = FNE_LIST_MS_STATE[key];
-        if (!sel || sel.size === 0) continue;
-        const val = item[cfg.field];
-        if (!sel.has(val) && !sel.has(String(val))) return false;
-      }
-      if (rfsMig === 'approaching' && !fneIsApproachingRfs(item)) return false;
-      if (rfsMig === 'overdue' && !fneIsOverdueRfs(item)) return false;
-      return true;
-    });
-    fneRenderGrid(filtered);
-  }
-
-  function fneListReset() {
-    Object.keys(FNE_LIST_MS_STATE).forEach(function(key) {
-      FNE_LIST_MS_STATE[key].clear();
-      const cfg = FNE_LIST_MS_CFG[key];
-      if (cfg) {
-        const drop = document.getElementById(cfg.dropId);
-        if (drop) drop.querySelectorAll('input[type=checkbox]').forEach(function(cb) { cb.checked = false; });
-        fneUpdateListMsLabel(key);
-      }
-    });
-    const rfsMig = document.getElementById('fnel_rfsMigration');
-    if (rfsMig) rfsMig.value = '';
-    const search = document.getElementById('fneListSearch');
-    if (search) search.value = '';
-    if (FNE_GRID_API) FNE_GRID_API.setGridOption('quickFilterText', '');
-    fneRenderGrid(FNE_LIST_DATA);
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  AG GRID — MULTI-SELECT COLUMN FILTER (SharePoint-style)
-  // ══════════════════════════════════════════════════════════════════
-  class FneSetColumnFilter {
-    init(params) {
-      this.params = params;
-      this.selected = new Set();
-      this.gui = document.createElement('div');
-      this.gui.className = 'fne-ag-set-filter';
-      this._buildGui();
-    }
-
-    _cellValue(data) {
-      let v = data[this.params.colDef.field];
-      if (v === null || v === undefined || v === '') return '—';
-      return String(v);
-    }
-
-    _allValues() {
-      const values = new Set();
-      this.params.api.forEachNode(node => {
-        if (node.data) values.add(this._cellValue(node.data));
-      });
-      return [...values].sort((a, b) => a.localeCompare(b));
-    }
-
-    _buildGui() {
-      const all = this._allValues();
-      this.gui.innerHTML = '';
-
-      const search = document.createElement('input');
-      search.type = 'text';
-      search.placeholder = 'Search...';
-      search.className = 'fne-ag-set-search';
-      this.gui.appendChild(search);
-
-      const list = document.createElement('div');
-      list.className = 'fne-ag-set-list';
-      this.gui.appendChild(list);
-
-      const render = (term) => {
-        list.innerHTML = '';
-        all.filter(v => !term || v.toLowerCase().includes(term.toLowerCase())).forEach(v => {
-          const row = document.createElement('label');
-          row.className = 'fne-ag-set-option';
-          const cb = document.createElement('input');
-          cb.type = 'checkbox';
-          cb.checked = this.selected.has(v);
-          cb.onchange = () => {
-            if (cb.checked) this.selected.add(v);
-            else this.selected.delete(v);
-            this.params.filterChangedCallback();
-          };
-          row.appendChild(cb);
-          row.appendChild(document.createTextNode(' ' + v));
-          list.appendChild(row);
-        });
-      };
-      render('');
-      search.oninput = () => render(search.value);
-
-      const actions = document.createElement('div');
-      actions.className = 'fne-ag-set-actions';
-      const btnAll = document.createElement('button');
-      btnAll.type = 'button';
-      btnAll.textContent = 'Select all';
-      btnAll.onclick = () => { all.forEach(v => this.selected.add(v)); render(search.value); this.params.filterChangedCallback(); };
-      const btnClear = document.createElement('button');
-      btnClear.type = 'button';
-      btnClear.textContent = 'Clear';
-      btnClear.onclick = () => { this.selected.clear(); render(search.value); this.params.filterChangedCallback(); };
-      actions.appendChild(btnAll);
-      actions.appendChild(btnClear);
-      this.gui.appendChild(actions);
-    }
-
-    getGui() { return this.gui; }
-    isFilterActive() { return this.selected.size > 0; }
-    doesFilterPass(params) {
-      if (!this.selected.size) return true;
-      return this.selected.has(this._cellValue(params.data));
-    }
-    getModel() { return this.selected.size ? { values: [...this.selected] } : null; }
-    setModel(model) {
-      this.selected = new Set(model && model.values ? model.values : []);
-      this._buildGui();
-    }
-    destroy() {}
-  }
-  window.FneSetColumnFilter = FneSetColumnFilter;
-
-  const FNE_MS_FILTER_FIELDS = new Set([
-    'fneManager', 'customerName', 'requestStatus', 'projectHealth', 'buildingStatus',
-    'fesRef', 'vertical', 'implType', 'subRequest', 'projectType',
-    'accountDirector', 'amName', 'assignedBy', 'tempConnType', 'blocker',
-    'sof', 'ospRequired', 'gaid', 'woNumber', 'bidRef', 'siteRef', 'criticalProjects', 'year',
-  ]);
-
-  const FNE_DATE_FILTER_FIELDS = new Set(['startDate', 'expectedRFS', 'rfsBaseline', 'implStart', 'targetMigDate']);
-
-  function fneEnhanceColDef(col) {
-    fneApplyHeaderSizing(col);
-    if (FNE_MS_FILTER_FIELDS.has(col.field)) {
-      col.filter = FneSetColumnFilter;
-    } else if (col.type === 'numericColumn') {
-      col.filter = 'agNumberColumnFilter';
-    } else if (FNE_DATE_FILTER_FIELDS.has(col.field)) {
-      col.filter = 'agDateColumnFilter';
-    }
+// ══════════════════════════════════════════════════════════════════
+//  AG GRID
+// ══════════════════════════════════════════════════════════════════
+function renderGrid(){
+  if(typeof agGrid==='undefined'){el('myGrid').innerHTML='<div style="padding:20px;color:var(--t3);">AG Grid not loaded.</div>';return;}
+  const data=getViewItems();
+  const DASH_MS_FIELDS=new Set(['fneManager','amName','customerName','subRequest','implType','projectType','vertical','accountDirector','requestStatus','projectHealth','buildingStatus','criticalProjects','ospRequired','bidRef','woNumber','gaid','siteRef','fesRef','assignedBy']);
+  const dashEnhanceCol=function(col){
+    if(typeof fneApplyHeaderSizing==='function') fneApplyHeaderSizing(col);
+    if(typeof FneSetColumnFilter!=='undefined'&&DASH_MS_FIELDS.has(col.field))col.filter=FneSetColumnFilter;
+    else if(col.type==='numericColumn')col.filter='agNumberColumnFilter';
+    else if(['startDate','expectedRFS','rfsBaseline'].includes(col.field))col.filter='agDateColumnFilter';
     return col;
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  //  BULK EDIT — grid selection helpers
-  // ══════════════════════════════════════════════════════════════════
-  function fneUpdateBulkSelectionCount() {
-    const el = document.getElementById('fneBulkSelCount');
-    if (!el || !FNE_GRID_API) return;
-    const n = fneGetSelectedGridRows().length;
-    el.textContent = n + ' selected';
-  }
-
-  function fneGetSelectedGridRows() {
-    if (!FNE_GRID_API) return [];
-    if (typeof FNE_GRID_API.getSelectedRows === 'function') {
-      return FNE_GRID_API.getSelectedRows() || [];
-    }
-    const rows = [];
-    FNE_GRID_API.forEachNode(node => {
-      if (node.isSelected && node.isSelected() && node.data) rows.push(node.data);
-    });
-    return rows;
-  }
-
-  function fneDeleteSpItem(itemId, cb) {
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/items(" + itemId + ")";
-    getDigest(function(digest) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', url, true);
-      xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
-      xhr.setRequestHeader('Content-Type', 'application/json;odata=verbose');
-      xhr.setRequestHeader('X-HTTP-Method', 'DELETE');
-      xhr.setRequestHeader('IF-MATCH', '*');
-      if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState !== 4) return;
-        cb(xhr.status >= 200 && xhr.status < 300 ? null : new Error('HTTP ' + xhr.status));
-      };
-      xhr.send();
-    });
-  }
-
-  function fneBulkDeleteSelected() {
-    if (!fneIsPowerUser()) {
-      fneToast('You do not have permission to bulk delete records', 'error');
-      return;
-    }
-    const rows = fneGetSelectedGridRows();
-    if (!rows.length) {
-      fneToast('Select at least one row using the checkboxes on the left', 'error');
-      return;
-    }
-    if (!confirm('Delete ' + rows.length + ' selected record(s)? This cannot be undone.')) return;
-
-    let done = 0, failed = 0;
-    const total = rows.length;
-    const deletedIds = [];
-
-    function deleteNext(i) {
-      if (i >= total) {
-        fneToast('Deleted ' + done + ' record(s)' + (failed ? ', ' + failed + ' failed' : ''), failed ? 'error' : 'success');
-        if (deletedIds.length) fneRemoveListItems(deletedIds);
-        return;
-      }
-      fneDeleteSpItem(rows[i].id, function(err) {
-        if (err) failed++;
-        else {
-          done++;
-          deletedIds.push(rows[i].id);
-        }
-        deleteNext(i + 1);
-      });
-    }
-    deleteNext(0);
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  //  BULK ENTRY TABLE (New Entry — spreadsheet style)
-  // ══════════════════════════════════════════════════════════════════
-  const FNE_BULK_TABLE_COLS = [
-    { key: 'fesRef',           label: 'FES / Shortfall Ref', type: 'text' },
-    { key: 'siteRef',          label: 'Site Survey Ref',   type: 'text' },
-    { key: 'accountCode',      label: 'Account Code',      type: 'number' },
-    { key: 'customerName',     label: 'Customer Name *',   type: 'text', required: true },
-    { key: 'customerAddress',  label: 'Address',           type: 'text', wide: true },
-    { key: 'requestStatus',    label: 'Status *',          type: 'choice', choicesKey: 'requestStatus', required: true },
-    { key: 'subRequest',       label: 'Request Type',      type: 'choice', choicesKey: 'subRequest' },
-    { key: 'implType',         label: 'Impl. Type *',      type: 'choice', choicesKey: 'implType', required: true },
-    { key: 'buildingStatus',   label: 'Building *',        type: 'choice', choicesKey: 'buildingStatus', required: true },
-    { key: 'projectType',      label: 'Connectivity Type', type: 'choice', choicesKey: 'projectType' },
-    { key: 'assignedBy',       label: 'Assigned By',       type: 'choice', choicesKey: 'assignedBy' },
-    { key: 'sof',              label: 'SOF',               type: 'choice', choicesKey: 'sof' },
-    { key: 'criticalProjects', label: 'Critical Project',  type: 'choice', choicesKey: 'criticalProjects', powerEditOnly: true },
-    { key: 'sla',              label: 'SLA (days)',        type: 'number' },
-    { key: 'unitNo',           label: 'Unit No',           type: 'number' },
-    { key: 'woNumber',         label: 'WO Number',         type: 'text' },
-    { key: 'bidRef',           label: 'Bid Number',        type: 'text' },
-    { key: 'gaid',             label: 'GAID',              type: 'text' },
-    { key: 'estimatedCost',    label: 'Est. Cost',         type: 'number' },
-    { key: 'ospRequired',      label: 'OSP Civil',         type: 'choice', choicesKey: 'ospCivil' },
-    { key: 'ospCivilET',       label: 'OSP ET (days)',     type: 'number' },
-    { key: 'blocker',          label: 'Blocker',           type: 'choice', choicesKey: 'blocker' },
-    { key: 'vertical',         label: 'Vertical *',        type: 'choice', choicesKey: 'vertical', required: true },
-    { key: 'accountDirector',  label: 'Acct. Director',    type: 'choice', choicesKey: 'accountDirector' },
-    { key: 'amEmail',          label: 'AM Email',          type: 'email' },
-    { key: 'fneManager',       label: 'FNE Manager *',     type: 'choice', choicesKey: 'fneManager', required: true },
-    { key: 'startDate',        label: 'Received Date',     type: 'date' },
-    { key: 'expectedRFS',      label: 'Exp. RFS Date',     type: 'date' },
-    { key: 'rfsBaseline',      label: 'Actual RFS Date',   type: 'date', noFuture: true },
-    { key: 'implStart',        label: 'Impl. Start',       type: 'date' },
-    { key: 'tempConnType',     label: 'Temp Conn.',        type: 'choice', choicesKey: 'tempConnType' },
-    { key: 'targetMigDate',    label: 'Target Mig. Date',  type: 'date' },
-    { key: 'contractDuration', label: 'Duration (mo)',     type: 'number' },
-    { key: 'otc',              label: 'OTC',               type: 'number' },
-    { key: 'mrc',              label: 'MRC',               type: 'number' },
-    { key: 'tcv',              label: 'TCV',               type: 'number', readonly: true, autoCalc: true },
-    { key: 'pmManDays',        label: 'Project Duration',  type: 'text',   readonly: true, autoCalc: true },
-    { key: 'projectHealth',    label: 'Project Health',    type: 'text',   readonly: true, autoCalc: true },
-    { key: 'spi',              label: 'SPI',               type: 'number', readonly: true, autoCalc: true },
-    { key: 'commentsNew',      label: 'Comments',          type: 'text', wide: true },
-  ];
-
-  function fneBulkTableCols() {
-    return FNE_BULK_TABLE_COLS;
-  }
-
-  const FNE_IMPORT_COLUMNS = [
-    { key: 'customerName',     sp: () => FNE_F.CUST_NAME,    required: true,  type: 'text' },
-    { key: 'requestStatus',    sp: () => FNE_F.REQ_STATUS,   required: true,  type: 'text' },
-    { key: 'implType',         sp: () => FNE_F.IMPL_TYPE,    required: true,  type: 'text' },
-    { key: 'buildingStatus',   sp: () => FNE_F.BUILD_STATUS, required: true,  type: 'text' },
-    { key: 'vertical',         sp: () => FNE_F.VERTICAL,     required: true,  type: 'text' },
-    { key: 'fneManager',       sp: () => FNE_F.FNE_MGR,      required: true,  type: 'text' },
-    { key: 'fesRef',           sp: () => FNE_F.FES_REF,      required: false, type: 'text' },
-    { key: 'siteRef',          sp: () => FNE_F.SURVEY_REF,   required: false, type: 'text' },
-    { key: 'accountCode',      sp: () => FNE_F.ACC_CODE,     required: false, type: 'number' },
-    { key: 'customerAddress',  sp: () => FNE_F.CUST_ADDR,    required: false, type: 'text' },
-    { key: 'subRequest',       sp: () => FNE_F.SUB_REQ,      required: false, type: 'text' },
-    { key: 'projectType',      sp: () => FNE_F.PROJ_TYPE,    required: false, type: 'text' },
-    { key: 'assignedBy',       sp: () => FNE_F.ASSIGNED_BY,  required: false, type: 'text' },
-    { key: 'sof',              sp: () => FNE_F.SOF,          required: false, type: 'text' },
-    { key: 'criticalProjects', sp: () => FNE_F.CRITICAL_PROJ, required: false, type: 'text' },
-    { key: 'sla',              sp: () => FNE_F.SLA,          required: false, type: 'number' },
-    { key: 'unitNo',           sp: () => FNE_F.UNIT_NO,      required: false, type: 'number' },
-    { key: 'woNumber',         sp: () => FNE_F.WO_NUM,       required: false, type: 'text' },
-    { key: 'bidRef',           sp: () => FNE_F.BID_REF,      required: false, type: 'text' },
-    { key: 'gaid',             sp: () => FNE_F.GAID,         required: false, type: 'text' },
-    { key: 'estimatedCost',    sp: () => FNE_F.EST_COST,     required: false, type: 'number' },
-    { key: 'ospRequired',      sp: () => FNE_F.OSP_REQ,      required: false, type: 'text' },
-    { key: 'ospCivilET',       sp: () => FNE_F.OSP_ET,       required: false, type: 'number' },
-    { key: 'blocker',          sp: () => FNE_F.BLOCKER,      required: false, type: 'text' },
-    { key: 'accountDirector',  sp: () => FNE_F.ACC_DIR,      required: false, type: 'text' },
-    { key: 'startDate',        sp: () => FNE_F.START_DATE,   required: false, type: 'date' },
-    { key: 'expectedRFS',      sp: () => FNE_F.EXP_RFS,      required: false, type: 'date' },
-    { key: 'rfsBaseline',      sp: () => FNE_F.RFS_BASELINE, required: false, type: 'date', noFuture: true },
-    { key: 'implStart',        sp: () => FNE_F.IMPL_START,   required: false, type: 'date' },
-    { key: 'tempConnType',     sp: () => FNE_F.TEMP_CONN,    required: false, type: 'text' },
-    { key: 'targetMigDate',    sp: () => FNE_F.TARGET_MIG,   required: false, type: 'date' },
-    { key: 'contractDuration', sp: () => FNE_F.CONTRACT_DUR, required: false, type: 'number' },
-    { key: 'otc',              sp: () => FNE_F.OTC,          required: false, type: 'number' },
-    { key: 'mrc',              sp: () => FNE_F.MRC,          required: false, type: 'number' },
-    { key: 'commentsNew',      sp: () => FNE_F.COMMENTS_NEW, required: false, type: 'text' },
-  ];
-
-  let FNE_BULK_TABLE_READY = false;
-  let FNE_BULK_TABLE_CTX = 'new';
-
-  const FNE_BULK_TABLE_IDS = {
-    new:  { head: 'fneBulkTableHead', body: 'fneBulkTableBody', wrap: 'fneBulkTableWrap', status: 'fneBulkUploadStatus', count: 'fneBulkRowCount' },
-    edit: { head: 'fneBulkEditTableHead', body: 'fneBulkEditTableBody', wrap: 'fneBulkEditTableWrap', status: 'fneBulkEditStatus', count: 'fneBulkEditRowCount' },
   };
-
-  function fneBulkSetCtx(ctx) { FNE_BULK_TABLE_CTX = ctx === 'edit' ? 'edit' : 'new'; }
-  function fneBulkIsEdit() { return FNE_BULK_TABLE_CTX === 'edit'; }
-  function fneBulkEl(key) {
-    const ids = FNE_BULK_TABLE_IDS[FNE_BULK_TABLE_CTX];
-    return ids ? document.getElementById(ids[key]) : null;
-  }
-  function fneBulkBodyId() { return FNE_BULK_TABLE_IDS[FNE_BULK_TABLE_CTX].body; }
-
-  function fneBulkPlainVal(v) {
-    if (v === null || v === undefined || v === '—' || v === '') return '';
-    return String(v);
-  }
-  function fneBulkPlainDate(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return isNaN(d) ? '' : d.toISOString().split('T')[0];
-  }
-  function fneGridRowToBulkEdit(row) {
-    const rec = { _id: row.id };
-    fneBulkTableCols().forEach(col => {
-      const v = row[col.key];
-      if (col.type === 'date') rec[col.key] = fneBulkPlainDate(v);
-      else if (col.type === 'number') rec[col.key] = (v === '—' || v === null || v === undefined || v === '') ? '' : String(v);
-      else rec[col.key] = fneBulkPlainVal(v);
-    });
-    return rec;
-  }
-
-  function fneBulkRecalcRowTcv(tr) {
-    if (!tr) return;
-    const gn = key => parseFloat(tr.querySelector('[data-key="' + key + '"]')?.value) || 0;
-    const tcv = gn('contractDuration') * gn('mrc') + gn('otc');
-    const el = tr.querySelector('[data-key="tcv"]');
-    if (el) el.value = tcv ? tcv.toFixed(2) : '';
-  }
-
-  function fneBulkWireRowCalc(tr) {
-    if (!tr) return;
-    ['contractDuration', 'otc', 'mrc'].forEach(key => {
-      const el = tr.querySelector('[data-key="' + key + '"]');
-      if (!el || el.dataset.tcvWired) return;
-      el.dataset.tcvWired = '1';
-      el.addEventListener('input', () => fneBulkRecalcRowTcv(tr));
-    });
-    fneBulkRecalcRowTcv(tr);
-  }
-
-  function fneBulkWireVerticalDirector(tr) {
-    if (!tr) return;
-    const vEl = tr.querySelector('[data-key="vertical"]');
-    const dEl = tr.querySelector('[data-key="accountDirector"]');
-    if (!vEl || !dEl || vEl.dataset.vdWired) return;
-    vEl.dataset.vdWired = '1';
-    vEl.addEventListener('change', function() {
-      fneSetDirectorForVertical(vEl.value, dEl);
-    });
-    if (vEl.value) fneSetDirectorForVertical(vEl.value, dEl);
-  }
-
-  function fneBulkStripAutoCalc(data) {
-    if (!data) return data;
-    fneBulkTableCols().forEach(col => {
-      if (col.readonly) data[col.key] = '';
-    });
-    return data;
-  }
-
-  function fneSetEntryMode(mode) {
-    const single = document.getElementById('fneSingleEntryWrap');
-    const bulk = document.getElementById('fneBulkEntryWrap');
-    const health = document.getElementById('fneHealthStrip');
-    const saveBtn = document.getElementById('fneSaveBtn');
-    const bulkBtn = document.getElementById('fneBulkUploadBtn');
-    const tabS = document.getElementById('fneTabSingle');
-    const tabB = document.getElementById('fneTabBulk');
-    const isBulk = mode === 'bulk';
-
-    if (single) single.style.display = isBulk ? 'none' : 'block';
-    if (bulk) bulk.style.display = isBulk ? 'block' : 'none';
-    if (health) health.style.display = isBulk ? 'none' : 'flex';
-    if (saveBtn) saveBtn.style.display = isBulk ? 'none' : 'inline-flex';
-    if (bulkBtn) bulkBtn.style.display = isBulk ? 'inline-flex' : 'none';
-    if (tabS) tabS.classList.toggle('active', !isBulk);
-    if (tabB) tabB.classList.toggle('active', isBulk);
-
-    if (isBulk) {
-      fneBulkInitTable('new');
-    }
-  }
-
-  function fneBulkCellHtml(col, val) {
-    const v = val || '';
-    const cls = col.wide ? 'fne-bulk-cell fne-bulk-cell-comments' : (col.type === 'date' ? 'fne-bulk-cell fne-bulk-cell-date' : (col.type === 'number' ? 'fne-bulk-cell fne-bulk-cell-num' : 'fne-bulk-cell'));
-    if (col.readonly) {
-      const roCls = cls + ' fne-bulk-cell-readonly' + (col.key === 'tcv' ? ' fne-bulk-tcv' : '');
-      const ph = v ? '' : ' placeholder="Auto-calculated"';
-      return '<input type="text" class="' + roCls + '" data-key="' + col.key + '" value="' + String(v).replace(/"/g, '&quot;') + '" readonly tabindex="-1" title="Auto-calculated — not editable"' + ph + '>';
-    }
-    if (col.type === 'choice') {
-      if (col.powerEditOnly && !fneIsPowerUser()) {
-        const disp = v || '—';
-        return '<input type="text" class="' + cls + ' fne-bulk-cell-readonly" data-key="' + col.key +
-          '" value="' + String(disp).replace(/"/g, '&quot;') + '" readonly tabindex="-1">';
-      }
-      const opts = (FNE_CHOICES[col.choicesKey] || []);
-      return '<select class="' + cls + '" data-key="' + col.key + '"><option value=""></option>' +
-        opts.map(c => '<option value="' + c + '"' + (c === v ? ' selected' : '') + '>' + c + '</option>').join('') + '</select>';
-    }
-    if (col.type === 'date') {
-      const iso = v ? (fneParseImportDate(v) || v) : '';
-      const max = col.noFuture ? ' max="' + fneTodayDateStr() + '"' : '';
-      return '<input type="date" class="' + cls + '" data-key="' + col.key + '" value="' + iso + '"' + max + '>';
-    }
-    if (col.type === 'number') {
-      return '<input type="number" class="' + cls + '" data-key="' + col.key + '" value="' + v + '">';
-    }
-    if (col.type === 'email') {
-      return '<input type="email" class="' + cls + '" data-key="' + col.key + '" value="' + String(v).replace(/"/g, '&quot;') + '" placeholder="email@company.com">';
-    }
-    return '<input type="text" class="' + cls + '" data-key="' + col.key + '" value="' + String(v).replace(/"/g, '&quot;') + '">';
-  }
-
-  function fneBulkRowActionsHtml(isFirst) {
-    let html = '<td class="fne-bulk-row-actions">' +
-      '<button type="button" class="fne-bulk-copy" onclick="fneBulkCopyRowAbove(this)" title="Copy values from row above"' +
-      (isFirst ? ' disabled' : '') + '>↑</button>';
-    if (!fneBulkIsEdit()) {
-      html += '<button type="button" class="fne-bulk-del" onclick="fneBulkRemoveRow(this)" title="Remove row">×</button>';
-    }
-    return html + '</td>';
-  }
-
-  function fneBulkReadRowData(tr) {
-    const data = {};
-    if (!tr) return data;
-    if (tr.dataset.recordId) data._id = tr.dataset.recordId;
-    else {
-      const idEl = tr.querySelector('.fne-bulk-id');
-      if (idEl && idEl.value) data._id = idEl.value;
-    }
-    fneBulkTableCols().forEach(col => {
-      const el = tr.querySelector('[data-key="' + col.key + '"]');
-      data[col.key] = el ? String(el.value || '').trim() : '';
-    });
-    return data;
-  }
-
-  function fneBulkApplyRowData(tr, data) {
-    if (!tr || !data) return;
-    fneBulkTableCols().forEach(col => {
-      if (col.readonly) return;
-      const el = tr.querySelector('[data-key="' + col.key + '"]');
-      if (!el || data[col.key] === undefined) return;
-      el.value = data[col.key] || '';
-    });
-    fneBulkRecalcRowTcv(tr);
-  }
-
-  function fneBulkRenumberRows() {
-    const body = fneBulkEl('body');
-    if (!body) return;
-    [...body.rows].forEach((row, i) => {
-      row.cells[0].textContent = i + 1;
-      const copyBtn = row.querySelector('.fne-bulk-copy');
-      if (copyBtn) copyBtn.disabled = i === 0;
-    });
-  }
-
-  function fneBulkRenderHead() {
-    const head = fneBulkEl('head');
-    if (!head) return;
-    let html = '<tr><th style="width:36px;">#</th>';
-    if (fneBulkIsEdit()) html += '<th style="width:56px;">ID</th>';
-    html += fneBulkTableCols().map(c =>
-      c.readonly
-        ? '<th>' + c.label + '<span class="fne-bulk-auto-tag">Auto-calculated</span></th>'
-        : '<th>' + c.label + '</th>'
-    ).join('') +
-      '<th style="width:' + (fneBulkIsEdit() ? '48' : '72') + 'px;">Actions</th></tr>';
-    head.innerHTML = html;
-  }
-
-  function fneBulkAddRow(data) {
-    const body = fneBulkEl('body');
-    if (!body) return;
-    const tr = document.createElement('tr');
-    if (data && data._id) tr.dataset.recordId = String(data._id);
-    let html = '<td style="color:var(--t3);font-weight:700;text-align:center;">1</td>';
-    if (fneBulkIsEdit()) {
-      const idVal = data && data._id ? String(data._id) : '';
-      html += '<td><input type="text" class="fne-bulk-cell fne-bulk-id" readonly tabindex="-1" value="' + idVal + '"></td>';
-    }
-    html += fneBulkTableCols().map(col => '<td>' + fneBulkCellHtml(col, data ? data[col.key] : '') + '</td>').join('') +
-      fneBulkRowActionsHtml(body.rows.length === 0);
-    tr.innerHTML = html;
-    body.appendChild(tr);
-    fneBulkWireRowCalc(tr);
-    fneBulkWireVerticalDirector(tr);
-    fneBulkRenumberRows();
-    fneBulkUpdateRowCount();
-  }
-
-  function fneBulkAddRowCopyLast() {
-    if (fneBulkIsEdit()) return;
-    const body = fneBulkEl('body');
-    if (!body || !body.rows.length) { fneBulkAddRow(); return; }
-    const last = body.rows[body.rows.length - 1];
-    fneBulkAddRow(fneBulkStripAutoCalc(fneBulkReadRowData(last)));
-  }
-
-  function fneBulkCopyRowAbove(btn) {
-    const tr = btn.closest('tr');
-    const prev = tr && tr.previousElementSibling;
-    if (!tr || !prev) return;
-    fneBulkApplyRowData(tr, fneBulkReadRowData(prev));
-    const vEl = tr.querySelector('[data-key="vertical"]');
-    const dEl = tr.querySelector('[data-key="accountDirector"]');
-    if (vEl && dEl && vEl.value && !dEl.value) fneSetDirectorForVertical(vEl.value, dEl);
-  }
-
-  function fneBulkRemoveRow(btn) {
-    if (fneBulkIsEdit()) return;
-    const body = fneBulkEl('body');
-    if (!body || body.rows.length <= 1) {
-      fneToast('At least one row is required', 'error');
-      return;
-    }
-    const tr = btn.closest('tr');
-    if (tr) tr.remove();
-    fneBulkRenumberRows();
-    fneBulkUpdateRowCount();
-  }
-
-  function fneBulkUpdateRowCount() {
-    const el = fneBulkEl('count');
-    const n = fneBulkEl('body')?.rows.length || 0;
-    if (el) el.textContent = n + ' row' + (n !== 1 ? 's' : '');
-  }
-
-  function fneBulkClearTable() {
-    fneBulkSetCtx('new');
-    const body = fneBulkEl('body');
-    if (body) body.innerHTML = '';
-    fneBulkAddRow();
-    const st = fneBulkEl('status');
-    if (st) st.textContent = '';
-  }
-
-  function fneBulkInitTable(ctx) {
-    fneBulkSetCtx(ctx || 'new');
-    fneBulkRenderHead();
-    if (!FNE_BULK_TABLE_READY) {
-      Object.values(FNE_BULK_TABLE_IDS).forEach(ids => {
-        const wrap = document.getElementById(ids.wrap);
-        if (wrap) wrap.addEventListener('paste', fneBulkHandlePaste);
-      });
-      FNE_BULK_TABLE_READY = true;
-    }
-    if (fneBulkIsEdit()) return;
-    const body = fneBulkEl('body');
-    if (body && !body.rows.length) fneBulkClearTable();
-    else fneBulkUpdateRowCount();
-  }
-
-  function fneBulkReadAllRows() {
-    const body = fneBulkEl('body');
-    if (!body) return [];
-    const isEdit = fneBulkIsEdit();
-    const rows = [];
-    [...body.rows].forEach((tr, i) => {
-      const rec = { _line: i + 1, _errors: [] };
-      let hasAny = false;
-      if (isEdit) {
-        rec._id = tr.dataset.recordId || tr.querySelector('.fne-bulk-id')?.value || '';
-        if (!rec._id) rec._errors.push('Record ID missing');
-      }
-      fneBulkTableCols().forEach(col => {
-        const el = tr.querySelector('[data-key="' + col.key + '"]');
-        const val = el ? String(el.value || '').trim() : '';
-        rec[col.key] = val;
-        if (!col.readonly && val) hasAny = true;
-        if (col.readonly) return;
-        if (col.required && !val) rec._errors.push(col.label.replace(' *', '') + ' required');
-        if (col.type === 'date' && val) {
-          const parsed = fneParseImportDate(val);
-          if (!parsed) rec._errors.push(col.label + ' invalid date');
-          else {
-            rec[col.key + '_iso'] = parsed;
-            if (col.noFuture && fneIsFutureDate(parsed)) rec._errors.push(col.label + ' cannot be future');
-          }
-        }
-      });
-      if (isEdit || hasAny) rows.push(rec);
-    });
-    return rows;
-  }
-
-  function fneBulkHandlePaste(e) {
-    const wrap = e.currentTarget;
-    fneBulkSetCtx(wrap && wrap.id === 'fneBulkEditTableWrap' ? 'edit' : 'new');
-    const text = e.clipboardData && e.clipboardData.getData('text');
-    if (!text || text.indexOf('\t') < 0) return;
-    e.preventDefault();
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
-    if (!lines.length) return;
-    const body = fneBulkEl('body');
-    if (!body) return;
-
-    let startRow = 0;
-    const active = document.activeElement;
-    const bodyId = fneBulkBodyId();
-    if (active && active.closest && active.closest('#' + bodyId + ' tr')) {
-      startRow = [...body.rows].indexOf(active.closest('tr'));
-      if (startRow < 0) startRow = 0;
-    }
-
-    if (!fneBulkIsEdit()) {
-      while (body.rows.length < startRow + lines.length) fneBulkAddRow();
-    } else {
-      if (startRow + lines.length > body.rows.length) lines.splice(body.rows.length - startRow);
-    }
-
-    lines.forEach((line, li) => {
-      const cells = line.split('\t').map(c => c.trim());
-      const tr = body.rows[startRow + li];
-      if (!tr) return;
-      let colOffset = 0;
-      if (fneBulkIsEdit() && cells[0] && /^\d+$/.test(cells[0])) colOffset = 1;
-      fneBulkTableCols().forEach((col, ci) => {
-        if (col.readonly) return;
-        const cellIdx = ci + colOffset;
-        if (cellIdx >= cells.length) return;
-        const el = tr.querySelector('[data-key="' + col.key + '"]');
-        if (!el) return;
-        if (col.type === 'date') {
-          const parsed = fneParseImportDate(cells[cellIdx]);
-          el.value = parsed || cells[cellIdx];
-        } else {
-          el.value = cells[cellIdx];
-        }
-      });
-    });
-    fneBulkUpdateRowCount();
-    [...body.rows].forEach(tr => fneBulkRecalcRowTcv(tr));
-    fneToast('Pasted ' + lines.length + ' row(s) from Excel', 'success');
-  }
-
-  function fneEnsureUserId(email, cb) {
-    const amEmail = String(email || '').trim();
-    if (!amEmail) { cb(null); return; }
-    getDigest(function(digest) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', FNE_SP + '/_api/web/ensureuser', true);
-      xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
-      xhr.setRequestHeader('Content-Type', 'application/json;odata=verbose');
-      if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState !== 4) return;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            cb(JSON.parse(xhr.responseText).d.Id);
-          } catch (e) { cb(null); }
-        } else {
-          console.warn('[FNE] ensureUser failed for:', amEmail, xhr.status);
-          cb(null);
-        }
-      };
-      xhr.send(JSON.stringify({ logonName: amEmail }));
-    });
-  }
-
-  function fneBulkUploadAll() {
-    if (!fneIsAdmin()) return;
-    fneBulkSetCtx('new');
-    const rows = fneBulkReadAllRows();
-    const st = fneBulkEl('status');
-    if (!rows.length) {
-      fneToast('Add at least one row with data', 'error');
-      return;
-    }
-    const valid = rows.filter(r => !r._errors.length);
-    const invalid = rows.length - valid.length;
-    if (!valid.length) {
-      if (st) st.textContent = 'Fix errors before upload. First issue: ' + (rows[0]._errors[0] || 'unknown');
-      fneToast('No valid rows — check required fields', 'error');
-      return;
-    }
-    if (!confirm('Create ' + valid.length + ' new record(s)?' + (invalid ? ' (' + invalid + ' row(s) skipped due to errors)' : ''))) return;
-
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items";
-    let done = 0, failed = 0;
-    const savedIds = [];
-
-    function createNext(i) {
-      if (i >= valid.length) {
-        const msg = 'Uploaded ' + done + ' record(s)' + (failed ? ', ' + failed + ' failed' : '');
-        if (st) st.textContent = msg;
-        fneToast(msg, failed ? 'error' : 'success');
-        if (savedIds.length) fneFetchAndUpsertItems(savedIds);
-        if (done > 0) fneBulkClearTable();
-        return;
-      }
-      if (st) st.textContent = 'Uploading ' + (i + 1) + ' / ' + valid.length + '…';
-      const rec = valid[i];
-      const body = fneBuildImportSpBody(rec);
-      fneEnsureUserId(rec.amEmail, function(amUserId) {
-        if (amUserId) body['Account_x0020_ManagerId'] = amUserId;
-        spPost(url, body, function(err, data) {
-          if (err) failed++;
-          else {
-            done++;
-            if (data && data.d && data.d.Id) savedIds.push(data.d.Id);
-          }
-          createNext(i + 1);
-        });
-      });
-    }
-    createNext(0);
-  }
-
-  function fneBulkEditOpen() {
-    if (!fneIsAdmin()) {
-      fneToast('You do not have permission to bulk edit records', 'error');
-      return;
-    }
-    const selected = fneGetSelectedGridRows();
-    if (!selected.length) {
-      fneToast('Select at least one row using the checkboxes on the left', 'error');
-      return;
-    }
-    fneBulkSetCtx('edit');
-    fneBulkInitTable('edit');
-    const body = fneBulkEl('body');
-    if (body) body.innerHTML = '';
-    selected.forEach(row => fneBulkAddRow(fneGridRowToBulkEdit(row)));
-    const st = fneBulkEl('status');
-    if (st) st.textContent = selected.length + ' record(s) loaded — edit and click Update All';
-    const title = document.getElementById('fneBulkEditTitle');
-    if (title) title.textContent = 'Bulk Edit — ' + selected.length + ' record(s)';
-    const modal = document.getElementById('fneBulkEditModal');
-    if (modal) modal.classList.add('open');
-  }
-
-  function fneBulkEditClose() {
-    const modal = document.getElementById('fneBulkEditModal');
-    if (modal) modal.classList.remove('open');
-    const editBody = document.getElementById('fneBulkEditTableBody');
-    if (editBody) editBody.innerHTML = '';
-    const st = document.getElementById('fneBulkEditStatus');
-    if (st) st.textContent = '';
-    fneBulkSetCtx('new');
-  }
-
-  function fneMergeSpItem(itemId, body, cb) {
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) +
-      "')/items(" + itemId + ")";
-    getDigest(function(digest) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', url, true);
-      xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
-      xhr.setRequestHeader('Content-Type', 'application/json;odata=verbose');
-      xhr.setRequestHeader('X-HTTP-Method', 'MERGE');
-      xhr.setRequestHeader('IF-MATCH', '*');
-      if (digest) xhr.setRequestHeader('X-RequestDigest', digest);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState !== 4) return;
-        cb(xhr.status >= 200 && xhr.status < 300 ? null : new Error('HTTP ' + xhr.status));
-      };
-      xhr.send(JSON.stringify(body));
-    });
-  }
-
-  function fneBulkEditSaveAll() {
-    if (!fneIsAdmin()) return;
-    fneBulkSetCtx('edit');
-    const rows = fneBulkReadAllRows();
-    const st = document.getElementById('fneBulkEditStatus');
-    if (!rows.length) {
-      fneToast('No records to update', 'error');
-      return;
-    }
-    const valid = rows.filter(r => !r._errors.length);
-    const invalid = rows.length - valid.length;
-    if (!valid.length) {
-      if (st) st.textContent = 'Fix errors before update. First issue: ' + (rows[0]._errors[0] || 'unknown');
-      fneToast('No valid rows — check required fields', 'error');
-      return;
-    }
-    if (!confirm('Update ' + valid.length + ' record(s)?' + (invalid ? ' (' + invalid + ' row(s) skipped due to errors)' : ''))) return;
-
-    let done = 0, failed = 0;
-    const updatedIds = [];
-
-    function updateNext(i) {
-      if (i >= valid.length) {
-        const msg = 'Updated ' + done + ' record(s)' + (failed ? ', ' + failed + ' failed' : '');
-        if (st) st.textContent = msg;
-        fneToast(msg, failed ? 'error' : 'success');
-        if (updatedIds.length) fneFetchAndUpsertItems(updatedIds);
-        if (done > 0) fneBulkEditClose();
-        return;
-      }
-      if (st) st.textContent = 'Updating ' + (i + 1) + ' / ' + valid.length + '…';
-      const rec = valid[i];
-      const body = fneBuildImportSpBody(rec);
-      fneEnsureUserId(rec.amEmail, function(amUserId) {
-        if (amUserId) body['Account_x0020_ManagerId'] = amUserId;
-        fneMergeSpItem(rec._id, body, function(err) {
-          if (err) failed++;
-          else {
-            done++;
-            updatedIds.push(rec._id);
-          }
-          updateNext(i + 1);
-        });
-      });
-    }
-    updateNext(0);
-  }
-
-  // Shared import helpers (dates + SP body)
-  function fneParseImportDate(val) {
-    if (!val) return null;
-    const s = String(val).trim();
-    if (!s) return null;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-    const dmY = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-    if (dmY) {
-      let y = parseInt(dmY[3], 10);
-      if (y < 100) y += 2000;
-      const d = new Date(y, parseInt(dmY[2], 10) - 1, parseInt(dmY[1], 10));
-      if (!isNaN(d)) return d.toISOString().split('T')[0];
-    }
-    const d = new Date(s);
-    if (!isNaN(d)) return d.toISOString().split('T')[0];
-    return null;
-  }
-
-  function fneBuildImportSpBody(rec) {
-    const gn = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
-    const body = {
-      '__metadata': { 'type': FNE_LIST_ITEM_TYPE },
-      [FNE_F.CUST_NAME]:    String(rec.customerName || '').trim(),
-      [FNE_F.REQ_STATUS]:   String(rec.requestStatus || '').trim(),
-      [FNE_F.IMPL_TYPE]:    String(rec.implType || '').trim(),
-      [FNE_F.BUILD_STATUS]: String(rec.buildingStatus || '').trim(),
-      [FNE_F.VERTICAL]:     String(rec.vertical || '').trim(),
-      [FNE_F.FNE_MGR]:      String(rec.fneManager || '').trim(),
-    };
-    FNE_IMPORT_COLUMNS.forEach(col => {
-      if (col.required) return;
-      if (col.key === 'criticalProjects' && !fneIsPowerUser()) return;
-      const raw = rec[col.key];
-      if (!String(raw || '').trim()) return;
-      if (col.type === 'date') {
-        const iso = rec[col.key + '_iso'] || fneParseImportDate(raw);
-        if (iso) body[col.sp()] = new Date(iso).toISOString();
-        return;
-      }
-      if (col.type === 'number') body[col.sp()] = gn(raw);
-      else if (col.key === 'gaid') body[col.sp()] = String(raw).replace(/<[^>]*>/g, '').trim();
-      else body[col.sp()] = String(raw).trim();
-    });
-    const mrc = gn(rec.mrc), otc = gn(rec.otc), dur = gn(rec.contractDuration);
-    if (mrc !== null || otc !== null || dur !== null) {
-      body[FNE_F.TCV] = (dur || 0) * (mrc || 0) + (otc || 0);
-    }
-    return body;
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  //  AG GRID RENDER
-  // ══════════════════════════════════════════════════════════════════
-  function fneRenderGrid(data) {
-    if (typeof agGrid === 'undefined') return;
-  
-    const countEl = document.getElementById('fneListCount');
-    const rfsMigHint = fneGetRfsMigrationFilter();
-    if (countEl) {
-      let txt = data.length + ' record' + (data.length !== 1 ? 's' : '');
-      if (rfsMigHint === 'approaching') txt += ' · Target Migration: Approaching';
-      else if (rfsMigHint === 'overdue') txt += ' · Target Migration: Overdue';
-      countEl.textContent = txt;
-    }
-  
-    const fmt2  = v => { const n = parseFloat(v); if (isNaN(n)) return '—'; if (n >= 1e6) return (n/1e6).toFixed(2)+'M'; if (n >= 1e3) return (n/1e3).toFixed(1)+'K'; return n.toFixed(0); };
-    const fmtD  = iso => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleDateString('en-GB'); };
-  
-    const statusBadge = v => {
-      const map = { 'Completed':'badge-success', 'In Progress':'badge-info', 'Inprogress':'badge-info', 'On Hold':'badge-warning', 'Cancelled':'badge-danger' };
-      return `<span class="status-badge ${map[v]||'badge-neutral'}">${v||'—'}</span>`;
-    };
-    const buildBadge = v => {
-      const map = { 'RFS':'badge-success', 'Partial RFS':'badge-warning', 'Not Connected':'badge-danger' };
-      return `<span class="status-badge ${map[v]||'badge-neutral'}">${v||'—'}</span>`;
-    };
-    const healthBadge = v => {
-  const map = {
-    'Green': 'badge-success',
-    'Amber': 'badge-warning',
-    'Red': 'badge-danger',
-    'No Expected RFS to calculate Project Health': 'badge-neutral'
-  };
-  return `<span class="status-badge ${map[v] || 'badge-neutral'}">${v || '—'}</span>`;
-};
-  
-    const editBtn = params => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'fne-btn fne-btn-secondary';
-      btn.style.cssText = 'padding:.25rem .75rem;font-size:.72rem;';
-      btn.innerHTML = '<svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit';
-      btn.onclick = () => {
-        fneOpenForm(params.data.id, true);
-        showFneView('form', document.getElementById('navFneForm'));
-      };
-      return btn;
-    };
-
-    const adminUser = fneIsAdmin();
-    const canSelectRows = adminUser || fneIsPowerUser();
-    const cols = [];
-
-    if (canSelectRows) {
-      cols.push({
-        colId: 'fne_select',
-        headerName: '',
-        width: 48,
-        minWidth: 48,
-        maxWidth: 48,
-        pinned: 'left',
-        lockPosition: 'left',
-        suppressMovable: true,
-        sortable: false,
-        filter: false,
-        resizable: false,
-        checkboxSelection: true,
-        headerCheckboxSelection: true,
-        headerCheckboxSelectionFilteredOnly: true,
-        suppressHeaderMenuButton: true,
-        showDisabledCheckboxes: true,
-        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
-      });
-    }
-
-    if (fneIsPowerUser()) {
-      cols.push({
-        colId: 'fne_reminder',
-        headerName: 'Send Reminder',
-        width: 130,
-        minWidth: fneHeaderMinWidth('Send Reminder'),
-        maxWidth: 150,
-        pinned: 'left',
-        lockPosition: 'left',
-        suppressMovable: true,
-        sortable: false,
-        filter: false,
-        resizable: false,
-        suppressHeaderMenuButton: true,
-        wrapHeaderText: true,
-        autoHeaderHeight: true,
-        cellRenderer: fneReminderCellRenderer,
-        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
-      });
-    }
-
-    cols.push(
-    {
-  headerName: '✏',
-  width: 72,
-  sortable: false,
-  filter: false,
-  pinned: 'left',
-  suppressSizeToFit: true,
-  cellRenderer: params => adminUser ? editBtn(params) : null
-},
-      { field: 'id',              headerName: 'ID',             width: 70,  minWidth: 70,  maxWidth: 80,  type: 'numericColumn', pinned: 'left', suppressSizeToFit: true },
-      { field: 'fneManager',      headerName: 'FNE Manager',    width: 150, minWidth: 130, pinned: 'left' },
-      { field: 'customerName',    headerName: 'Customer Name',  width: 200, minWidth: 160 },
-      { field: 'requestStatus',   headerName: 'Request Status', width: 140, minWidth: 130, cellRenderer: p => statusBadge(p.value) },
-      { field: 'projectHealth',   headerName: 'Project Health', width: 130, minWidth: 120, cellRenderer: p => healthBadge(p.value) },
-      { field: 'buildingStatus',  headerName: 'Building Status',width: 145, minWidth: 130, cellRenderer: p => buildBadge(p.value) },
-      { field: 'fesRef',          headerName: 'FES / Shortfall Ref', width: 175, minWidth: 165 },
-      { field: 'vertical',        headerName: 'Vertical',       width: 100, minWidth: 90  },
-      { field: 'implType',        headerName: 'Implementation Type', width: 175, minWidth: 165 },
-      { field: 'subRequest',      headerName: 'Request Type',   width: 165, minWidth: 140 },
-      { field: 'projectType',     headerName: 'Connectivity Type', width: 155, minWidth: 145 },
-      { field: 'accountDirector', headerName: 'Account Director', width: 165, minWidth: 150 },
-      { field: 'amName',          headerName: 'Account Manager',  width: 165, minWidth: 150 },
-      { field: 'assignedBy',      headerName: 'Assigned By',    width: 145, minWidth: 130 },
-      { field: 'sla',             headerName: 'SLA (days)',     width: 110, minWidth: 100, type: 'numericColumn' },
-      { field: 'mrc',             headerName: 'MRC',            width: 115, minWidth: 90,  type: 'numericColumn', valueFormatter: p => fmt2(p.value) },
-      { field: 'otc',             headerName: 'OTC',            width: 115, minWidth: 90,  type: 'numericColumn', valueFormatter: p => fmt2(p.value) },
-      { field: 'tcv',             headerName: 'TCV',            width: 125, minWidth: 100, type: 'numericColumn', valueFormatter: p => fmt2(p.value), cellStyle: { fontWeight: '700', color: 'var(--acc)' } },
-      { field: 'contractDuration',headerName: 'Duration (mo)', width: 130, minWidth: 120, type: 'numericColumn' },
-      { field: 'estimatedCost',   headerName: 'Estimated Cost', width: 130, minWidth: 120, type: 'numericColumn', valueFormatter: p => fmt2(p.value) },
-      { field: 'pmManDays',       headerName: 'Project Duration', width: 150, minWidth: 140 },
-      { field: 'startDate',       headerName: 'Received Date',  width: 140, minWidth: 130, valueFormatter: p => fmtD(p.value) },
-      { field: 'expectedRFS',     headerName: 'Expected RFS Date', width: 155, minWidth: 145, valueFormatter: p => fmtD(p.value) },
-      { field: 'rfsBaseline',     headerName: 'Actual RFS Date',width: 150, minWidth: 140, valueFormatter: p => fmtD(p.value) },
-      { field: 'implStart',       headerName: 'Implementation Start', width: 165, minWidth: 155, valueFormatter: p => fmtD(p.value) },
-      { field: 'targetMigDate',   headerName: 'Target Migration Date', width: 175, minWidth: 165, valueFormatter: p => fmtD(p.value) },
-      { field: 'tempConnType',    headerName: 'Temporary Connection Type',width: 195, minWidth: 185 },
-      { field: 'blocker',         headerName: 'Blocker',        width: 120, minWidth: 100 },
-      { field: 'criticalProjects',headerName: 'Critical Project', width: 140, minWidth: 130 },
-      { field: 'sof',             headerName: 'SOF',            width: 90,  minWidth: 80  },
-      { field: 'ospRequired',     headerName: 'OSP Civil',      width: 110, minWidth: 100  },
-      { field: 'ospCivilET',      headerName: 'OSP Civil ET (days)', width: 155, minWidth: 145, type: 'numericColumn' },
-      { field: 'gaid',            headerName: 'GAID',           width: 130, minWidth: 110 },
-      { field: 'woNumber',        headerName: 'WO Number',      width: 130, minWidth: 120 },
-      { field: 'bidRef',          headerName: 'Bid Reference',  width: 135, minWidth: 125 },
-      { field: 'siteRef',         headerName: 'Site Survey Reference',width: 185, minWidth: 175 },
-      { field: 'accountCode',     headerName: 'Account Code',   width: 125, minWidth: 115, type: 'numericColumn' },
-      { field: 'unitNo',          headerName: 'Unit Number',    width: 120, minWidth: 110, type: 'numericColumn' },
-      { field: 'customerAddress', headerName: 'Customer Address', width: 220, minWidth: 170 },
-      { field: 'commentsNew',     headerName: 'Comments',       width: 250, minWidth: 120 },
-      { field: 'year',            headerName: 'Year',           width: 90,  minWidth: 80,  type: 'numericColumn' },
-    );
-    const enhancedCols = cols.map(col => col.colId === 'fne_select' ? col : fneEnhanceColDef(col));
-  
-    if (FNE_GRID_API) { try { FNE_GRID_API.destroy(); } catch(e) {} FNE_GRID_API = null; }
-    const gridEl = document.getElementById('fneGrid');
-    if (!gridEl) return;
-    gridEl.innerHTML = '';
-  
-    FNE_GRID_API = agGrid.createGrid(gridEl, {
-      columnDefs: enhancedCols,
-      rowData: data,
-      defaultColDef: {
-        sortable: true,
-        filter: true,
-        resizable: true,
-        wrapHeaderText: true,
-        autoHeaderHeight: true,
-        suppressSizeToFit: false,
-        cellStyle: { display: 'flex', alignItems: 'center' },
+  const healthRenderer=p=>{const v=p.value||'—';const col=v===HEALTH_GREEN?'badge-success':v===HEALTH_AMBER?'badge-warning':v===HEALTH_RED?'badge-danger':'badge-neutral';return`<span class="status-badge ${col}">${v}</span>`;};
+  const statusRenderer=p=>{const v=p.value||'—';const col=STATUS_COMPLETED.includes(v)?'badge-success':STATUS_INPROGRESS.includes(v)?'badge-info':STATUS_ONHOLD.includes(v)?'badge-warning':STATUS_CANCELLED.includes(v)?'badge-danger':'badge-neutral';return`<span class="status-badge ${col}">${v}</span>`;};
+  const spiRenderer=p=>{const v=num(p.value);const col=v>=1?'#16a34a':v>=0.8?'#d97706':'#dc2626';return`<span style="font-weight:700;color:${col}">${v.toFixed(2)}</span>`;};
+  const cols=[
+    {field:'fneManager',headerName:'FNE Manager',width:145,pinned:'left'},
+    {field:'amName',headerName:'Account Manager',width:165,pinned:'left'},
+    {field:'customerName',headerName:'Customer Name',width:180},
+    {field:'subRequest',headerName:'Request Type',width:150},
+    {field:'implType',headerName:'Implementation Type',width:175},
+    {field:'projectType',headerName:'Connectivity Type',width:155},
+    {field:'vertical',headerName:'Vertical',width:110},
+    {field:'accountDirector',headerName:'Account Director',width:165},
+    {field:'requestStatus',headerName:'Request Status',width:145,cellRenderer:statusRenderer},
+    {field:'projectHealth',headerName:'Project Health',width:135,cellRenderer:healthRenderer},
+    {field:'spi',headerName:'SPI',width:90,cellRenderer:spiRenderer,type:'numericColumn'},
+    {field:'sla',headerName:'SLA (days)',width:115,type:'numericColumn'},
+    {field:'mrc',headerName:'MRC',width:110,valueFormatter:p=>fmt(p.value),type:'numericColumn'},
+    {field:'otc',headerName:'OTC',width:110,valueFormatter:p=>fmt(p.value),type:'numericColumn'},
+    {field:'tcv',headerName:'TCV',width:120,valueFormatter:p=>fmt(p.value),type:'numericColumn',cellStyle:{fontWeight:'700'}},
+    {field:'estimatedCost',headerName:'Estimated Cost',width:135,valueFormatter:p=>fmt(p.value),type:'numericColumn'},
+    {field:'buildingStatus',headerName:'Building Status',width:145},
+    {field:'startDate',headerName:'Start Date',width:120,valueFormatter:p=>fmtDate(p.value)},
+    {field:'expectedRFS',headerName:'Expected RFS Date',width:155,valueFormatter:p=>fmtDate(p.value)},
+    {field:'rfsBaseline',headerName:'Actual RFS Date',width:150,valueFormatter:p=>fmtDate(p.value)},
+    {field:'criticalProjects',headerName:'Critical Project',width:140},
+    {field:'contractDuration',headerName:'Duration (mo)',width:125,type:'numericColumn'},
+    {field:'ospRequired',headerName:'OSP Required',width:130},
+    {field:'ospCivilET',headerName:'OSP Civil ET (days)',width:155,type:'numericColumn'},
+    {field:'bidRef',headerName:'Bid Reference',width:130},
+    {field:'woNumber',headerName:'WO Number',width:125},
+    {field:'gaid',headerName:'GAID',width:120},
+    {field:'siteRef',headerName:'Site Survey Reference',width:175},
+    {field:'fesRef',headerName:'FES / Shortfall Ref',width:175},
+    {field:'assignedBy',headerName:'Assigned By',width:135},
+    {field:'accountCode',headerName:'Account Code',width:125},
+    {field:'customerAddress',headerName:'Customer Address',width:200},
+    {field:'commentsNew',headerName:'Comments',width:200},
+  ].map(dashEnhanceCol);
+  if(dashIsPowerUser()){
+    cols.unshift({
+      colId:'dash_reminder',
+      headerName:'Send Reminder',
+      width:130,
+      minWidth:130,
+      pinned:'left',
+      sortable:false,
+      filter:false,
+      wrapHeaderText:true,
+      autoHeaderHeight:true,
+      cellRenderer:function(p){
+        if(!p.data) return '—';
+        const filter=dashGetRfsMigrationFilter();
+        let kind=null;
+        if(filter==='approaching'||filter==='overdue') kind=filter;
+        else if(typeof fneRfsAlertKind==='function') kind=fneRfsAlertKind(p.data);
+        else if(dashIsOverdueRfs(p.data)) kind='overdue';
+        else if(dashIsApproachingRfs(p.data)) kind='approaching';
+        if(!kind) return '—';
+        const btn=document.createElement('button');
+        btn.type='button';
+        btn.className='fne-btn fne-btn-secondary';
+        btn.style.cssText='padding:.22rem .55rem;font-size:.68rem;white-space:nowrap;';
+        btn.textContent='Send Reminder';
+        btn.onclick=function(e){
+          e.stopPropagation();
+          if(typeof fneOpenRfsReminder==='function') fneOpenRfsReminder(p.data, kind);
+        };
+        return btn;
       },
-      rowSelection: canSelectRows ? 'multiple' : undefined,
-      suppressRowClickSelection: true,
-      isRowSelectable: () => canSelectRows,
-      pagination: true,
-      paginationPageSize: 50,
-      paginationPageSizeSelector: [25, 50, 100, 250],
-      rowHeight: 46,
-      headerHeight: 56,
-      animateRows: true,
-      enableCellTextSelection: true,
-      suppressColumnVirtualisation: false,
-      onGridReady: p => {
-        FNE_GRID_API = p.api;
-        fneUpdateBulkSelectionCount();
-        setTimeout(() => {
-          p.api.autoSizeColumns(['fneManager','customerName','fesRef','amName','accountDirector'], false);
-        }, 150);
-      },
-      onSelectionChanged: () => fneUpdateBulkSelectionCount(),
+      cellStyle:{display:'flex',alignItems:'center',justifyContent:'center'},
     });
   }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  EXPORT EXCEL
-  // ══════════════════════════════════════════════════════════════════
-  function fneExportExcel() {
-    const data  = FNE_LIST_DATA;
-    const cols  = ['id','fneManager','amName','customerName','subRequest','implType','projectType',
-                    'vertical','accountDirector','requestStatus','projectHealth','buildingStatus','sla',
-                    'mrc','otc','tcv','contractDuration','estimatedCost','pmManDays','startDate','expectedRFS',
-                    'rfsBaseline','implStart','targetMigDate','tempConnType','blocker','criticalProjects','sof','ospRequired',
-                    'ospCivilET','gaid','woNumber','bidRef','fesRef','siteRef','accountCode','unitNo',
-                    'customerAddress','commentsNew','year'];
-    const hdrs  = ['ID','FNE Manager','Account Manager','Customer Name','Request Type','Implementation Type','Connectivity Type',
-                    'Vertical','Account Director','Request Status','Project Health','Building Status','SLA (days)','MRC','OTC','TCV',
-                    'Duration (mo)','Estimated Cost','Project Duration','Received Date','Expected RFS Date','Actual RFS Date','Implementation Start','Target Migration Date',
-                    'Temporary Connection Type','Blocker','Critical Project','SOF','OSP Civil','OSP Civil ET (days)','GAID','WO Number','Bid Reference','FES / Shortfall Ref',
-                    'Site Survey Reference','Account Code','Unit Number','Customer Address','Comments','Year'];
-    const fmt2  = v => { const n=parseFloat(v); if(isNaN(n))return'—'; if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return n.toFixed(0); };
-    const fmtD  = iso => { if(!iso)return'—'; const d=new Date(iso); return isNaN(d)?'—':d.toLocaleDateString('en-GB'); };
-    const numFlds  = new Set(['mrc','otc','tcv','estimatedCost','ospCivilET']);
-    const dateFlds = new Set(['startDate','expectedRFS','rfsBaseline','implStart','targetMigDate']);
-  
-    let html = '<html><head><meta charset="utf-8"></head><body><table border="1" cellpadding="4" cellspacing="0">';
-    html += '<tr>' + hdrs.map(h => `<th style="background:#2563eb;color:white;font-weight:bold;padding:10px;">${h}</th>`).join('') + '</tr>';
-    data.forEach((row, i) => {
-      const bg = i % 2 === 0 ? '#f8faff' : '#ffffff';
-      html += '<tr>' + cols.map(c => {
-        let v = row[c];
-        if (v === undefined || v === null) v = '—';
-        if (numFlds.has(c))  v = fmt2(v);
-        if (dateFlds.has(c)) v = fmtD(v);
-        return `<td style="background:${bg};padding:8px;">${v}</td>`;
-      }).join('') + '</tr>';
-    });
-    html += '</table></body></html>';
-  
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-    const a    = document.createElement('a');
-    a.href     = URL.createObjectURL(blob);
-    a.download = 'FNE_Tracker_' + new Date().toISOString().split('T')[0] + '.xls';
-    a.click();
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  TOAST NOTIFICATION
-  // ══════════════════════════════════════════════════════════════════
-  function fneToast(msg, type = 'success') {
-    let toast = document.getElementById('fneToast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'fneToast';
-      toast.className = 'fne-toast';
-      document.body.appendChild(toast);
-    }
-    const icon = type === 'success'
-      ? '<svg style="width:18px;height:18px;stroke:#16a34a;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'
-      : '<svg style="width:18px;height:18px;stroke:#dc2626;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
-    toast.innerHTML = icon + msg;
-    toast.className = 'fne-toast ' + type;
-    requestAnimationFrame(() => { toast.classList.add('show'); });
-    clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => { toast.classList.remove('show'); }, 3500);
-  }
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  FETCH LIST ITEM TYPE
-  // ══════════════════════════════════════════════════════════════════
-  function fneFetchListItemType(callback) {
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" +
-      encodeURIComponent(FNE_LIST) + "')?$select=ListItemEntityTypeFullName";
-    spGet(url, function(err, data) {
-      if (!err && data && data.d && data.d.ListItemEntityTypeFullName) {
-        FNE_LIST_ITEM_TYPE = data.d.ListItemEntityTypeFullName;
-      } else {
-        // fallback — construct manually
-        FNE_LIST_ITEM_TYPE = 'SP.Data.FNE_x0020_Tracker_x0020_GKLA_x0020_23_x002d_24ListItem';
-        console.warn('[FNE] Could not fetch list item type, using fallback');
-      }
-      if (callback) callback();
-    });
-  }
-  
-  
-  // ══════════════════════════════════════════════════════════════════
-  //  VERSION HISTORY (SharePoint item versions — same pattern as SM)
-  // ══════════════════════════════════════════════════════════════════
-  const FNE_HISTORY_FIELDS = {
-    'Title': 'FES / Shortfall Ref',
-    [FNE_F.SUB_REQ]: 'Request Type',
-    [FNE_F.IMPL_TYPE]: 'Implementation Type',
-    [FNE_F.START_DATE]: 'Received Date',
-    [FNE_F.SLA]: 'SLA (days)',
-    [FNE_F.EXP_RFS]: 'Expected RFS Date',
-    [FNE_F.BUILD_STATUS]: 'Building Connectivity',
-    [FNE_F.CUST_NAME]: 'Customer Name',
-    [FNE_F.SOF]: 'SOF',
-    [FNE_F.MRC]: 'MRC',
-    [FNE_F.EST_COST]: 'Estimated Cost',
-    [FNE_F.VERTICAL]: 'Vertical',
-    [FNE_F.COMMENTS]: 'Comments',
-    [FNE_F.REQ_STATUS]: 'Request Status',
-    [FNE_F.CUST_ADDR]: 'Customer Address',
-    [FNE_F.ACC_CODE]: 'Account Code',
-    [FNE_F.ASSIGNED_BY]: 'Assigned By',
-    [FNE_F.PROJ_TYPE]: 'Connectivity Type',
-    [FNE_F.UNIT_NO]: 'Unit No',
-    [FNE_F.OTC]: 'OTC',
-    [FNE_F.TCV]: 'TCV',
-    [FNE_F.OSP_REQ]: 'OSP Civil',
-    [FNE_F.OSP_ET]: 'OSP ET (days)',
-    [FNE_F.FES_REF]: 'FES Reference',
-    [FNE_F.SURVEY_REF]: 'Site Survey Ref',
-    [FNE_F.GAID]: 'GAID',
-    [FNE_F.BID_REF]: 'Bid Number',
-    [FNE_F.WO_NUM]: 'WO Number',
-    [FNE_F.ACC_DIR]: 'Account Director',
-    [FNE_F.CONTRACT_DUR]: 'Contract Duration',
-    [FNE_F.FNE_MGR]: 'FNE Manager',
-    [FNE_F.RFS_BASELINE]: 'Actual RFS Date',
-    [FNE_F.CRITICAL_PROJ]: 'Critical Project',
-    [FNE_F.COMMENTS_NEW]: 'Comments (New)',
-    [FNE_F.IMPL_START]: 'Implementation Start Date',
-    [FNE_F.PROJ_HEALTH]: 'Project Health',
-    [FNE_F.SPI]: 'SPI',
-    [FNE_F.TEMP_CONN]: 'Temporary Connection',
-    [FNE_F.TARGET_MIG]: 'Target Migration Date',
-    [FNE_F.BLOCKER]: 'Blocker',
-    [FNE_F.PM_MAN_DAYS]: 'Project Duration',
-    'Account_x0020_Manager': 'Account Manager',
-  };
+  const opts={columnDefs:cols,rowData:data,defaultColDef:{sortable:true,filter:true,resizable:true,minWidth:100,wrapHeaderText:true,autoHeaderHeight:true},pagination:true,paginationPageSize:50,paginationPageSizeSelector:[25,50,100,250],rowHeight:44,headerHeight:56,animateRows:true,enableCellTextSelection:true,onGridReady:p=>{GRID_API=p.api;setTimeout(()=>{p.api.sizeColumnsToFit();},100);}};
+  if(GRID_API){try{GRID_API.destroy();}catch(e){}GRID_API=null;}
+  el('myGrid').innerHTML='';
+  agGrid.createGrid(el('myGrid'),opts);
+}
+function gridSearch(v){if(GRID_API)GRID_API.setGridOption('quickFilterText',v);}
 
-  let FNE_LIST_GUID = '';
+// ══════════════════════════════════════════════════════════════════
+//  ANALYTICS (Admin/Director only) — separate view
+// ══════════════════════════════════════════════════════════════════
 
-  function fneInjectHistoryModal() {
-    if (document.getElementById('fneEditHistoryModal')) return;
-    const modal = document.createElement('div');
-    modal.id = 'fneEditHistoryModal';
-    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:24px;';
-    modal.innerHTML = `
-      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:18px;max-width:1100px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.35);overflow:hidden;">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);background:var(--bg-secondary);">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;">Item Version History</div>
-            <div id="fneEditHistoryModalTitle" style="font-size:17px;font-weight:800;color:var(--t1);margin-top:4px;"></div>
-            <div style="font-size:12px;color:var(--t3);margin-top:4px;">Track who changed what and when — same data as SharePoint version history</div>
-          </div>
-          <button type="button" onclick="fneCloseItemHistory()" style="background:rgba(239,68,68,.12);border:none;border-radius:10px;width:36px;height:36px;cursor:pointer;color:#ef4444;font-size:20px;line-height:1;">×</button>
-        </div>
-        <div id="fneEditHistoryModalBody" style="padding:20px 22px;overflow-y:auto;flex:1;"></div>
-      </div>`;
-    modal.addEventListener('click', function(e) { if (e.target === modal) fneCloseItemHistory(); });
-    document.body.appendChild(modal);
-  }
-
-  function fneHistoryFmtDate(iso) {
-    if (!iso) return 'N/A';
-    const d = new Date(iso);
-    if (isNaN(d)) return String(iso);
-    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  }
-
-  function fneHistoryNorm(val) {
-    if (val === null || val === undefined) return '';
-    return String(val).replace(/\u00a0/g, ' ').trim();
-  }
-
-  function fneCleanSpHistoryValue(val) {
-    val = fneHistoryNorm(val);
-    if (val.indexOf(';#') >= 0) val = val.split(';#').pop();
-    if (val.includes('<')) val = fneHtmlToPlain(val);
-    return val;
-  }
-
-  function fneHistoryFieldLabel(raw) {
-    const key = String(raw || '').trim();
-    if (!key) return key;
-    if (FNE_HISTORY_FIELDS[key]) return FNE_HISTORY_FIELDS[key];
-    return key.replace(/_x0020_/g, ' ').replace(/_x002d_/g, '-').replace(/_/g, ' ').trim();
-  }
-
-  function fneParseVersionFields(data) {
-    if (!data || !data.d) return {};
-    const d = data.d;
-    if (d.FieldValuesAsText && typeof d.FieldValuesAsText === 'object' && !d.FieldValuesAsText.__deferred) {
-      return d.FieldValuesAsText;
-    }
-    const copy = Object.assign({}, d);
-    delete copy.__metadata;
-    if (copy.FieldValuesAsText && copy.FieldValuesAsText.__deferred) delete copy.FieldValuesAsText;
-    return copy;
-  }
-
-  function fneEditorFromFields(fields) {
-    return fneCleanSpHistoryValue(fields.Editor || fields['Modified By'] || fields.Author || '');
-  }
-
-  function fneHistoryVersionLabel(version) {
-    if (!version) return '';
-    if (version.VersionLabel) return version.VersionLabel;
-    if (version.VersionId) return (version.VersionId / 512).toFixed(1);
-    return String(version.ID || '');
-  }
-
-  function fneCompareVersionFields(newerFields, olderFields) {
-    const changes = [];
-    const checked = {};
-    function pushChange(key) {
-      if (checked[key] || !key || key.indexOf('__') === 0) return;
-      checked[key] = true;
-      const oldVal = fneCleanSpHistoryValue((olderFields || {})[key]);
-      const newVal = fneCleanSpHistoryValue((newerFields || {})[key]);
-      if (oldVal === newVal) return;
-      changes.push({
-        label: FNE_HISTORY_FIELDS[key] || fneHistoryFieldLabel(key),
-        oldVal: oldVal || '—',
-        newVal: newVal || '—',
-      });
-    }
-    Object.keys(FNE_HISTORY_FIELDS).forEach(pushChange);
-    Object.keys(newerFields || {}).forEach(pushChange);
-    Object.keys(olderFields || {}).forEach(pushChange);
-    return changes;
-  }
-
-  function fneHistoryFetch(url) {
-    return fetch(url, {
-      headers: { Accept: 'application/json;odata=verbose' },
-      credentials: 'include',
-    });
-  }
-
-  function fneGetListGuid() {
-    if (FNE_LIST_GUID) return Promise.resolve(FNE_LIST_GUID);
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')?$select=Id";
-    return fneHistoryFetch(url).then(function(res) {
-      if (!res.ok) throw new Error('Could not resolve SharePoint list ID');
-      return res.json();
-    }).then(function(data) {
-      FNE_LIST_GUID = data.d.Id;
-      return FNE_LIST_GUID;
-    });
-  }
-
-  function fneFetchItemVersions(itemId) {
-    const url = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items(" + itemId + ")/versions";
-    return fneHistoryFetch(url).then(function(res) {
-      if (!res.ok) throw new Error('Failed to load version history (' + res.status + ')');
-      return res.json();
-    }).then(function(data) {
-      const versions = data.d.results || [];
-      versions.sort(function(a, b) { return new Date(b.Created) - new Date(a.Created); });
-      return versions;
-    });
-  }
-
-  function fneFetchVersionFields(itemId, versionId) {
-    const textUrl = FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items(" + itemId + ")/versions(" + versionId + ")/FieldValuesAsText";
-    return fneHistoryFetch(textUrl).then(function(res) {
-      if (res.ok) return res.json().then(function(data) { return fneParseVersionFields(data); });
-      return fneHistoryFetch(
-        FNE_SP + "/_api/web/lists/getbytitle('" + encodeURIComponent(FNE_LIST) + "')/items(" + itemId + ")/versions(" + versionId + ")"
-      ).then(function(res2) {
-        if (!res2.ok) return {};
-        return res2.json().then(function(data) { return fneParseVersionFields(data); });
-      });
-    }).catch(function() { return {}; });
-  }
-
-  function fneBuildItemHistoryEntries(itemId) {
-    return fneFetchItemVersions(itemId).then(function(versions) {
-      if (!versions.length) return [];
-      return Promise.all(versions.map(function(v) { return fneFetchVersionFields(itemId, v.ID); })).then(function(fieldSets) {
-        return versions.map(function(v, idx) {
-          const fields = fieldSets[idx] || {};
-          const olderFields = idx < versions.length - 1 ? (fieldSets[idx + 1] || {}) : null;
-          const changes = olderFields ? fneCompareVersionFields(fields, olderFields) : [];
-          let editor = fneEditorFromFields(fields);
-          if (!editor && v.Editor && typeof v.Editor === 'object' && v.Editor.Title) editor = v.Editor.Title;
-          return {
-            versionId: v.ID,
-            versionLabel: fneHistoryVersionLabel(v),
-            created: v.Created,
-            editor: editor,
-            changes: changes,
-            isCurrent: idx === 0,
-          };
-        });
-      });
-    });
-  }
-
-  function fneRenderItemHistoryTimeline(entries, container) {
-    if (!entries.length) {
-      container.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--t3);">' +
-        '<div style="font-size:15px;font-weight:700;">No version history</div>' +
-        '<div style="font-size:13px;margin-top:6px;">This item has not been modified since creation.</div></div>';
-      return;
-    }
-
-    let html = '<div class="fne-history-timeline">';
-    entries.forEach(function(entry, idx) {
-      const hasChanges = entry.changes && entry.changes.length > 0;
-      const versionText = entry.versionLabel || ('v' + (idx + 1));
-      html += '<div class="fne-history-card">';
-      html += '<div class="fne-history-card-head">';
-      html += '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">';
-      html += '<span class="fne-history-version-badge">' + versionText + '</span>';
-      html += '<div><div style="font-size:13px;font-weight:700;color:var(--t1);">' +
-        (entry.isCurrent ? 'Current version' : 'Previous version') + '</div>';
-      html += '<div style="font-size:12px;color:var(--t3);margin-top:2px;">Modified by <strong style="color:var(--t2);">' +
-        (entry.editor || 'Unknown') + '</strong></div></div></div>';
-      html += '<div style="font-size:12px;color:var(--t3);font-weight:600;white-space:nowrap;">' +
-        fneHistoryFmtDate(entry.created) + '</div>';
-      html += '</div>';
-
-      if (hasChanges) {
-        const showValueOnly = entry.changes.every(function(ch) { return ch.oldVal === '—' || !ch.oldVal; });
-        html += '<table class="fne-history-changes-table"><thead><tr>';
-        if (showValueOnly) {
-          html += '<th style="width:40%;">Field</th><th style="width:60%;">Value</th>';
-        } else {
-          html += '<th style="width:28%;">Field</th><th style="width:36%;">Previous</th><th style="width:36%;">New value</th>';
-        }
-        html += '</tr></thead><tbody>';
-        entry.changes.forEach(function(ch) {
-          html += '<tr><td style="font-weight:700;color:var(--t1);">' + ch.label + '</td>';
-          if (showValueOnly) {
-            html += '<td><span class="fne-history-new">' + ch.newVal + '</span></td></tr>';
-          } else {
-            html += '<td><span class="fne-history-old">' + ch.oldVal + '</span></td>' +
-              '<td><span class="fne-history-new">' + ch.newVal + '</span></td></tr>';
-          }
-        });
-        html += '</tbody></table>';
-      } else if (idx === entries.length - 1) {
-        html += '<div style="padding:14px 16px;font-size:13px;color:var(--t3);">Initial item creation — no field details captured.</div>';
-      } else {
-        html += '<div style="padding:14px 16px;font-size:13px;color:var(--t3);">No tracked field changes in this version.</div>';
-      }
-      html += '</div>';
-    });
-    html += '</div>';
-    container.innerHTML = html;
-  }
-
-  function fneShowItemHistory() {
-    const itemId = FNE_EDIT_ID;
-    if (!itemId) {
-      fneToast('Open a record in edit mode to view history', 'error');
-      return;
-    }
-    const item = FNE_LIST_DATA.find(function(i) { return i.id === itemId; });
-    const modal = document.getElementById('fneEditHistoryModal');
-    const body = document.getElementById('fneEditHistoryModalBody');
-    const title = document.getElementById('fneEditHistoryModalTitle');
-    if (!modal || !body) return;
-
-    title.textContent = 'ID ' + itemId + (item && item.customerName ? ' · ' + item.customerName : '');
-    body.innerHTML = '<div style="text-align:center;padding:40px;"><svg style="width:24px;height:24px;stroke:var(--acc);fill:none;stroke-width:2;animation:spin 1s linear infinite" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><div style="margin-top:12px;font-size:13px;color:var(--t3);">Loading version history...</div></div>';
-    modal.style.display = 'flex';
-
-    fneBuildItemHistoryEntries(itemId).then(function(entries) {
-      fneRenderItemHistoryTimeline(entries, body);
-    }).catch(function(err) {
-      console.error('[fneShowItemHistory]', err);
-      fneGetListGuid().then(function(listGuid) {
-        const openLink = FNE_SP + '/_layouts/15/Versions.aspx?list=' + encodeURIComponent(listGuid) + '&ID=' + itemId;
-        body.innerHTML = '<div style="color:#ef4444;padding:16px;line-height:1.5;">Error loading item history: ' + err.message +
-          '<div style="font-size:12px;color:var(--t3);margin-top:8px;">Versioning must be enabled on the FNE Tracker list.</div>' +
-          '<div style="margin-top:12px;"><a href="' + openLink + '" target="_blank" rel="noopener" style="color:var(--acc);font-weight:600;">Open SharePoint Version History</a></div></div>';
-      }).catch(function() {
-        body.innerHTML = '<div style="color:#ef4444;padding:16px;line-height:1.5;">Error loading item history: ' + err.message +
-          '<div style="font-size:12px;color:var(--t3);margin-top:8px;">Versioning must be enabled on the FNE Tracker list.</div></div>';
-      });
-    });
-  }
-
-  function fneCloseItemHistory() {
-    const modal = document.getElementById('fneEditHistoryModal');
-    if (modal) modal.style.display = 'none';
-  }
+// ══════════════════════════════════════════════════════════════════
+//  VIEW NAVIGATION — Dashboard vs Portal Analytics (separate views)
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════════════════════════
+function exportExcel(){
+  const data=getViewItems();
+  const cols=['fneManager','amName','customerName','subRequest','implType','projectType','vertical','accountDirector','requestStatus','projectHealth','spi','sla','mrc','otc','tcv','estimatedCost','buildingStatus','startDate','expectedRFS','rfsBaseline','criticalProjects','contractDuration','ospRequired','ospCivilET','bidRef','woNumber','gaid','siteRef','fesRef','assignedBy','accountCode','commentsNew'];
+  const headers=['FNE Manager','Account Manager','Customer Name','Request Type','Implementation Type','Connectivity Type','Vertical','Account Director','Request Status','Project Health','SPI','SLA (days)','MRC','OTC','TCV','Estimated Cost','Building Status','Start Date','Expected RFS Date','Actual RFS Date','Critical Project','Duration (mo)','OSP Required','OSP Civil ET (days)','Bid Reference','WO Number','GAID','Site Survey Reference','FES / Shortfall Ref','Assigned By','Account Code','Comments'];
+  let html='<html><head><meta charset="utf-8"></head><body><table border="1" cellpadding="4" cellspacing="0">';
+  html+='<tr>'+headers.map(h=>'<th style="background:#2563eb;color:white;font-weight:bold;padding:10px;">'+h+'</th>').join('')+'</tr>';
+  data.forEach((row,i)=>{const bg=i%2===0?'#f0f7ff':'#ffffff';html+='<tr>'+cols.map(c=>{let v=row[c];if(v===undefined||v===null)v='—';if(['startDate','expectedRFS','rfsBaseline'].includes(c))v=fmtDate(v);if(['mrc','otc','tcv','estimatedCost'].includes(c))v=fmt(num(v));return'<td style="background:'+bg+';padding:8px;">'+v+'</td>';}).join('')+'</tr>';});
+  html+='</table></body></html>';
+  const blob=new Blob([html],{type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='FNE_Rollout_'+new Date().toISOString().split('T')[0]+'.xls';a.click();
+}
 
 
-  function fneInit() {
-    fneInjectViews();
-    fneInjectNav();
-    fneStartBannerClock();
-    fneFetchListItemType();
-  
-    // Wire health recalc for new form fields on change
-    setTimeout(() => {
-      fneSetActualRfsMaxDate();
-      fneApplyCriticalProjectsAccess();
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('.ms-wrap')) {
-          document.querySelectorAll('.ms-dropdown.open').forEach(function(d) { d.classList.remove('open'); });
-          document.querySelectorAll('.ms-trigger.open').forEach(function(t) { t.classList.remove('open'); });
-        }
-      });
-      const rfsEl = document.getElementById('fne_rfs_baseline');
-      if (rfsEl) {
-        rfsEl.addEventListener('change', function() {
-          if (fneIsFutureDate(rfsEl.value)) {
-            fneToast('Actual RFS Date cannot be in the future', 'error');
-            rfsEl.value = '';
-          }
-          fneCalcHealth();
-        });
-      }
-      ['fne_exp_rfs','fne_build_status','fne_req_status'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', fneCalcHealth);
-      });
-    }, 500);
+// ══════════════════════════════════════════════════════════════════
+//  RESET
+// ══════════════════════════════════════════════════════════════════
+function resetAll(){
+  selMgr=null; selStatusTile=null;
+  const rfsSel = el('dashRfsMigration'); if (rfsSel) rfsSel.value = '';
+  // Clear all multi-select states
+  Object.keys(MS_STATE).forEach(k=>{
+    MS_STATE[k].clear();
+    const drop = el(MS_CFG[k].dropId);
+    if(drop) drop.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.checked=false);
+    updateMsTriggerLabel(k);
+  });
+  applyAll();
+}
 
-    if (window.FNE_STANDALONE) {
-      fneLoadList(false, function() {
-        fneStartLivePoll();
-        const navList = document.getElementById('navFneList');
-        showFneView('list', navList);
-        if (typeof window.fneOnStandaloneReady === 'function') window.fneOnStandaloneReady();
-      });
-    } else {
-      fneStartLivePoll();
-    }
-  }
-  
-  // ── Expose globals ──────────────────────────────────────────────
-  window.fneOpenForm        = fneOpenForm;
-  window.fneResetForm       = fneResetForm;
-  window.fneCancelForm      = fneCancelForm;
-  window.fneSave            = fneSave;
-  window.fneDeleteItem      = fneDeleteItem;
-  window.fneLoadList        = fneLoadList;
-  window.fneEnsureList      = fneEnsureList;
-  window.fneRefreshList     = fneRefreshList;
-  window.fneStartLivePoll   = fneStartLivePoll;
-  window.fneStopLivePoll    = fneStopLivePoll;
-  window.fneListApplyFilter = fneListApplyFilter;
-  window.fneListReset       = fneListReset;
-  window.fneExportExcel     = fneExportExcel;
-  window.fneSetEntryMode     = fneSetEntryMode;
-  window.fneBulkAddRow       = fneBulkAddRow;
-  window.fneBulkAddRowCopyLast = fneBulkAddRowCopyLast;
-  window.fneBulkCopyRowAbove = fneBulkCopyRowAbove;
-  window.fneBulkRemoveRow    = fneBulkRemoveRow;
-  window.fneBulkClearTable   = fneBulkClearTable;
-  window.fneBulkUploadAll    = fneBulkUploadAll;
-  window.fneBulkEditOpen     = fneBulkEditOpen;
-  window.fneBulkEditClose    = fneBulkEditClose;
-  window.fneBulkEditSaveAll  = fneBulkEditSaveAll;
-  window.fneBulkDeleteSelected = fneBulkDeleteSelected;
-  window.showFneView        = showFneView;
-  window.fneTcvCalc         = fneTcvCalc;
-  window.fneInit            = fneInit;
-  window.fneIsPowerUser     = fneIsPowerUser;
-  window.fneEnsurePowerUserUi = fneEnsurePowerUserUi;
-  window.fneGetRfsMigrationFilter = fneGetRfsMigrationFilter;
-  window.fneOpenRfsReminder = fneOpenRfsReminder;
-  window.fneRfsAlertKind    = fneRfsAlertKind;
-  window.fneIsApproachingRfs = fneIsApproachingRfs;
-  window.fneIsOverdueRfs    = fneIsOverdueRfs;
-  window.fneReminderCellRenderer = fneReminderCellRenderer;
-  window.fneToggleListMs    = fneToggleListMs;
-  window.fneOnListMsChange  = fneOnListMsChange;
-  window.fneApplyHeaderSizing = fneApplyHeaderSizing;
-  window.fneHeaderMinWidth = fneHeaderMinWidth;
-  window.fneHandleAttachDrop = fneHandleAttachDrop;
-  window.fneRemovePendingAttach  = fneRemovePendingAttach;
-  window.fneRemoveExistingAttach = fneRemoveExistingAttach;
-  window.fneHtmlToPlain     = fneHtmlToPlain;
-  window.fneShowItemHistory = fneShowItemHistory;
-  window.fneCloseItemHistory = fneCloseItemHistory;
-  window.FNE_GRID_API       = null;
+// ══════════════════════════════════════════════════════════════════
+//  SIDEBAR / THEME
+// ══════════════════════════════════════════════════════════════════
+function toggleSidebar(){const sb=el('sidebar');sb.classList.toggle('collapsed');const collapsed=sb.classList.contains('collapsed');el('sidebarToggleIcon').innerHTML=collapsed?'<polyline points="9 18 15 12 9 6"/><polyline points="15 18 21 12 15 6"/>':'<polyline points="15 18 9 12 15 6"/><polyline points="9 18 3 12 9 6"/>';}
+function applyTheme(base,dark){if(base==='magenta')document.body.setAttribute('data-theme',dark?'magenta-dark':'magenta');else{if(dark)document.body.setAttribute('data-theme','dark');else document.body.removeAttribute('data-theme');}const icon=el('themeIcon');if(icon)icon.innerHTML=dark?'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>':'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';}
+function changeTheme(event){const base=event.target.value;const cur=document.body.getAttribute('data-theme')||'';const isDark=cur==='dark'||cur==='magenta-dark';applyTheme(base,isDark);try{localStorage.setItem('fne_base_theme',base);}catch(e){}setTimeout(()=>renderCharts(),100);}
+function toggleTheme(){const cur=document.body.getAttribute('data-theme')||'';const isDark=cur==='dark'||cur==='magenta-dark';const isMag=cur==='magenta'||cur==='magenta-dark';applyTheme(isMag?'magenta':'blue',!isDark);try{localStorage.setItem('fne_dark_mode',String(!isDark));}catch(e){}setTimeout(()=>renderCharts(),100);}
+function updateSelectionBadge(){const b=el('selectionBadge');if(!b)return;const parts=[];if(selMgr)parts.push('FNE: '+selMgr);if(selStatusTile)parts.push('Status: '+selStatusTile);if(parts.length){b.textContent=parts.join(' › ');b.style.display='flex';}else{b.textContent='';b.style.display='none';}}
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+window.addEventListener('resize', function(){
+  if(GRID_API) try{ GRID_API.sizeColumnsToFit(); }catch(e){}
+  if(ANA_GRID) try{ ANA_GRID.sizeColumnsToFit(); }catch(e){}
+});
+
+window.addEventListener('load',function(){
+  el('landingPage').style.display='flex';
+  try{const bt=localStorage.getItem('fne_base_theme')||'blue';const dm=localStorage.getItem('fne_dark_mode')==='true';const sel=el('colorSchemeSelector');if(sel)sel.value=bt;applyTheme(bt,dm);}catch(e){}
+  initAccess();
+});
+</script>
+ <script src="/sites/FGKA/SiteAssets/fnetracker.js?v=20260701a"></script>
+</body>
+</html>
