@@ -2492,7 +2492,9 @@ if (!fneIsAdmin()) {
     if (window.FNE_STANDALONE) return false;
     const raw = window.FNE_RAW_ITEMS;
     if (!Array.isArray(raw) || !raw.length) return false;
-    FNE_LIST_DATA = raw.map(fneMapItem);
+    // Dashboard fetches ascending (Id asc) for its own charts — re-sort
+    // descending here so the tracker list still shows newest-first.
+    FNE_LIST_DATA = raw.map(fneMapItem).sort(function(a, b) { return b.id - a.id; });
     FNE_LIST_LOADED = true;
     fneRecalcMaxListId();
     FNE_LAST_SYNC_ISO = new Date().toISOString();
@@ -2538,7 +2540,7 @@ if (!fneIsAdmin()) {
         if (onComplete) onComplete(err);
         return;
       }
-      FNE_LIST_DATA = all.map(fneMapItem);
+      FNE_LIST_DATA = all.map(fneMapItem).sort(function(a, b) { return b.id - a.id; });
       FNE_LIST_LOADED = true;
       fneRecalcMaxListId();
       FNE_LAST_SYNC_ISO = new Date().toISOString();
@@ -3667,7 +3669,7 @@ if (!fneIsAdmin()) {
   suppressSizeToFit: true,
   cellRenderer: params => adminUser ? editBtn(params) : null
 },
-      { field: 'id',              headerName: 'ID',             width: 70,  minWidth: 70,  maxWidth: 80,  type: 'numericColumn', pinned: 'left', suppressSizeToFit: true },
+      { field: 'id',              headerName: 'ID',             width: 70,  minWidth: 70,  maxWidth: 80,  type: 'numericColumn', pinned: 'left', suppressSizeToFit: true, sort: 'desc' },
       { field: 'fneManager',      headerName: 'FNE Manager',    width: 150, minWidth: 130, pinned: 'left' },
       { field: 'customerName',    headerName: 'Customer Name',  width: 200, minWidth: 160 },
       { field: 'requestStatus',   headerName: 'Request Status', width: 140, minWidth: 130, cellRenderer: p => statusBadge(p.value) },
