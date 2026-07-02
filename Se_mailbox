@@ -1,0 +1,1176 @@
+             /* ═══════════════════════════════════════════════════════════════
+   SEMAILBOX.JS — SE Mailbox Tracker v4.0
+   All issues fixed — BA/Director level visibility
+   ═══════════════════════════════════════════════════════════════ */
+'use strict';
+
+/* ── CONFIG ──────────────────────────────────────────────────── */
+const MB_CONFIG = {
+    SP_SITE:      (typeof _spPageContextInfo !== 'undefined' && _spPageContextInfo)
+                    ? _spPageContextInfo.webAbsoluteUrl
+                    : (window.location.origin + '/sites/SM'),
+    SP_DOC_LIB:  'Shared Documents',
+    SP_FILE_NAME: 'SEMailbox_Data.xlsx',
+    ACCT_MAP_LIST:'Account Mapping',
+    STORAGE_KEY:  'semailbox_last_file_name',
+};
+
+/* ── COLOURS ─────────────────────────────────────────────────── */
+const MB_CLR = {
+    unassigned: '#e74c3c',
+    inprogress: '#f39c12',
+    closed:     '#27ae60',
+    sent:       '#3498db',
+    acc:        '#a855f7',
+    acc2:       '#4c6fff',
+    grid:       'rgba(168,85,247,0.08)',
+    smColors:   ['#4c6fff','#a855f7','#c724b1','#27ae60','#e74c3c','#f39c12','#3498db','#9b59b6','#1abc9c','#e67e22','#16a085','#8e44ad'],
+};
+
+/* ── STATE ───────────────────────────────────────────────────── */
+let MB = {
+    allTickets:      [],   // all parsed (excl Sent tab)
+    sentTickets:     [],   // Sent tab only
+    filteredTickets: [],
+    accountMapping:  [],
+    charts:          {},
+    gridApi:         null,
+    chartsVisible:   false,
+    hasSentTab:      false,
+
+    // top filters — applied to everything
+    filterSMs:    [],   // [] = all
+    filterYears:  [],   // [] = all
+    filterMonths: [],   // [] = all (YYYY-MM)
+    filterWeeks:  [],   // [] = all (YYYY-Www)
+    filterDays:   [],   // [] = all (YYYY-MM-DD)
+
+    // secondary filters
+    activeKpiFilter: null,
+    ageFilter:       null,
+    ageStatusToggle: 'both',
+    workloadStatus:  'inprogress',  // toggle for SM workload chart
+    trendPeriod:     'M',
+
+    dataLoaded:   false,
+    lastFileName: localStorage.getItem(MB_CONFIG.STORAGE_KEY) || '',
+};
+
+/* ══════════════════════════════════════════════════════════════
+   CATEGORY / SM PARSER
+   ══════════════════════════════════════════════════════════════ */
+function mbParseCategories(raw) {
+    if (!raw || String(raw).trim() === '') return { category: '', smCode: '', smName: '' };
+    const s = String(raw).trim();
+    const match = s.match(/([A-Z0-9]{4,12})\s*[-–]\s*(.+)$/i);
+    let smCode = '', smName = '', category = '';
+    if (match) {
+        smCode = match[1].trim();
+        smName = match[2].trim();
+        const before = s.substring(0, s.indexOf(match[0])).replace(/[,;\s]+$/, '').trim();
+        category = before || 'General';
+    } else {
+        category = s;
+    }
+    return { category, smCode, smName };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STATUS LOGIC
+   ══════════════════════════════════════════════════════════════ */
+function mbResolveStatus(tabName, flagDate, catRaw) {
+    const tabL    = (tabName || '').toLowerCase().trim();
+    const hasFlag = flagDate && String(flagDate).trim() !== '' && String(flagDate).trim().toLowerCase() !== 'none';
+    const hasCat  = catRaw && String(catRaw).trim() !== '' && String(catRaw).trim().toLowerCase() !== 'none';
+    if (tabL === 'unassigned') return 'Unassigned';
+    if (tabL === 'assigned')   return hasFlag ? 'Completed' : 'In Progress';
+    if (tabL === 'closed') return 'Closed';
+    if (tabL === 'sent')   return 'Sent';
+    if (!hasCat)           return 'Unassigned';
+    if (hasCat && hasFlag) return 'Completed';
+    return 'In Progress';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DATE HELPERS
+   ══════════════════════════════════════════════════════════════ */
+function mbParseDate(val) {
+    if (!val || val === 'None') return null;
+    if (typeof val === 'string' && val.includes('/')) {
+        const parts = val.split(' ');
+        const [d, m, y] = parts[0].split('/');
+        if (!y) return null;
+        return new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${parts[1]||'00:00'}:00`);
+    }
+    if (typeof val === 'number') return new Date((val - 25569) * 86400 * 1000);
+    const d = new Date(val);
+    return isNaN(d) ? null : d;
+}
+function mbDaysSince(v) {
+    const d = mbParseDate(v); if (!d) return null;
+    return Math.floor((new Date() - d) / 86400000 * 10) / 10;
+}
+function mbFmtDate(v) {
+    const d = mbParseDate(v); if (!d) return '—';
+    return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})
+        + ' ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+function mbDateToYM(v)   { const d = mbParseDate(v); return d ? d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0') : null; }
+function mbDateToYear(v) { const d = mbParseDate(v); return d ? String(d.getFullYear()) : null; }
+function mbDateToDay(v)  { const d = mbParseDate(v); return d ? d.toISOString().split('T')[0] : null; }
+function mbDateToWeek(v) {
+    const d = mbParseDate(v); if (!d) return null;
+    const wk = Math.ceil((d - new Date(d.getFullYear(),0,1)) / 6048e5);
+    return `${d.getFullYear()}-W${String(wk).padStart(2,'0')}`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ACCOUNT MAPPING
+   ══════════════════════════════════════════════════════════════ */
+async function mbLoadAccountMapping() {
+    try {
+        const url = `${MB_CONFIG.SP_SITE}/_api/web/lists/getbytitle('${MB_CONFIG.ACCT_MAP_LIST}')/items?$select=User_ID,Service_Manager_Name,Email_ID,Team,Status&$top=500`;
+        const res = await fetch(url, { headers:{ Accept:'application/json;odata=verbose' }, credentials:'include' });
+        const json = await res.json();
+        MB.accountMapping = (json?.d?.results||[]).filter(r => r.Status !== 'Inactive');
+    } catch(e) { MB.accountMapping = []; }
+}
+/** Case-insensitive trim; match Owner (or any id string) to Account Mapping User_ID → Service_Manager_Name. */
+function mbMatchByUserId(rawId) {
+    if (!rawId || String(rawId).trim() === '') return null;
+    const id = String(rawId).trim().toLowerCase();
+    const rows = MB.accountMapping || [];
+    const uid = r => (r.User_ID != null ? String(r.User_ID).trim().toLowerCase() : '');
+    let r = rows.find(r => uid(r) && uid(r) === id);
+    if (r) return r;
+    r = rows.find(r => uid(r) && uid(r).includes(id));
+    if (r) return r;
+    r = rows.find(r => uid(r) && id.includes(uid(r)));
+    return r || null;
+}
+
+function mbMatchSM(smCode, smName) {
+    if (smCode) {
+        const code = String(smCode).trim().toLowerCase();
+        const r = MB.accountMapping.find(r => {
+            const u = r.User_ID != null ? String(r.User_ID).trim().toLowerCase() : '';
+            return u && u.includes(code);
+        });
+        if (r) return r;
+    }
+    if (smName) {
+        const first = smName.split(' ')[0].toLowerCase();
+        const r = MB.accountMapping.find(r => {
+            const n = r.Service_Manager_Name != null ? String(r.Service_Manager_Name).trim().toLowerCase() : '';
+            return n && n.includes(first);
+        });
+        if (r) return r;
+    }
+    return null;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   EXCEL PARSER
+   ══════════════════════════════════════════════════════════════ */
+function mbParseSheet(sheet, tabName) {
+    if (!sheet) return [];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval:'' });
+    const out  = [];
+    rows.forEach((row, idx) => {
+        const n = {};
+        Object.keys(row).forEach(k => { n[k.trim().toLowerCase()] = row[k]; });
+        const from     = String(n['from']||n['to']||n['sender']||'');
+        const subject  = String(n['subject']||n['title']||'');
+        const received = n['received']||n['date received']||n['date']||n['sent']||'';
+        const flagDate = n['completed date']||n['flag completed date']||n['flag completed']||'';
+        const catRaw   = String(n['categories']||n['category']||'').trim();
+        const pendingReason = String(n['pending reason']||n['pendingreason']||'').trim();
+        const owner = String(n['owner']||'').trim();
+        const status   = mbResolveStatus(tabName, flagDate, catRaw);
+        const { category, smCode, smName } = mbParseCategories(catRaw);
+        const age      = (status==='Unassigned'||status==='In Progress') ? mbDaysSince(received) : null;
+        const mapped   = mbMatchByUserId(owner) || mbMatchSM(smCode, smName);
+        let smFullName = smName || '';
+        if (mapped?.Service_Manager_Name) smFullName = mapped.Service_Manager_Name;
+        if (!smFullName && status === 'In Progress') smFullName = 'No SM Code';
+        if (!smFullName) smFullName = '';
+
+        const d = mbParseDate(received);
+        out.push({
+            id: `${tabName}-${idx}`, tab: tabName,
+            from, subject, received, receivedFmt: mbFmtDate(received),
+            flagDate, flagDateFmt: mbFmtDate(flagDate),
+            catRaw, category, smCode, smName, smFullName,
+            smEmail: mapped?.Email_ID||'', smTeam: mapped?.Team||'',
+            status, ageDays: age,
+            owner,
+            pendingReason,
+            // date parts for filters
+            recvYear:  d ? String(d.getFullYear()) : '',
+            recvYM:    mbDateToYM(received)   || '',
+            recvWeek:  mbDateToWeek(received) || '',
+            recvDay:   mbDateToDay(received)  || '',
+        });
+    });
+    return out;
+}
+
+function mbProcessWorkbook(wb) {
+    const knownMap = {
+        // new format
+        'Unassigned':'unassigned',
+        'Assigned':'assigned',
+        'Closed':'closed',
+        // legacy format
+        'Inbox':'inbox',
+        'Pending':'pending',
+        'Sent':'sent'
+    };
+    let all = [], sent = [];
+    let hasSent = false;
+    wb.SheetNames.forEach(name => {
+        const key = knownMap[name] || name.toLowerCase().replace(/\s+/g,'_');
+        const rows = mbParseSheet(wb.Sheets[name], key);
+        if (key === 'sent') { sent = sent.concat(rows); hasSent = true; }
+        else all = all.concat(rows);
+    });
+    MB.allTickets   = all;
+    MB.sentTickets  = sent;
+    MB.hasSentTab   = hasSent;
+    MB.selectedSM   = null;
+    MB.activeKpiFilter = null;
+    MB.ageFilter    = null;
+    MB.filterSMs    = [];
+    MB.filterYears  = [];
+    MB.filterMonths = [];
+    MB.filterWeeks  = [];
+    MB.filterDays   = [];
+    MB.dataLoaded   = true;
+    mbApplyFilters();
+    mbRenderAll();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SP SAVE / LOAD
+   ══════════════════════════════════════════════════════════════ */
+async function mbSaveToSP(arrayBuffer, fileName) {
+    try {
+        const digestRes = await fetch(`${MB_CONFIG.SP_SITE}/_api/contextinfo`,{ method:'POST', headers:{Accept:'application/json;odata=verbose'}, credentials:'include' });
+        const digest    = (await digestRes.json()).d.GetContextWebInformation.FormDigestValue;
+        const siteRel   = MB_CONFIG.SP_SITE.replace(window.location.origin,'');
+        const lib       = MB_CONFIG.SP_DOC_LIB.replace(/ /g,'%20');
+        const res       = await fetch(`${MB_CONFIG.SP_SITE}/_api/web/getfolderbyserverrelativeurl('${siteRel}/${lib}')/files/add(overwrite=true,url='${MB_CONFIG.SP_FILE_NAME}')`,{
+            method:'POST', headers:{Accept:'application/json;odata=verbose','X-RequestDigest':digest,'Content-Length':arrayBuffer.byteLength},
+            credentials:'include', body:arrayBuffer,
+        });
+        if (!res.ok) throw new Error('Upload failed');
+        localStorage.setItem(MB_CONFIG.STORAGE_KEY, fileName);
+        MB.lastFileName = fileName;
+        mbShowToast('✅ Saved to SharePoint','success');
+    } catch(e) { mbShowToast('⚠ SP save failed','warning'); }
+}
+async function mbLoadFromSP() {
+    try {
+        mbShowStatus('Loading mailbox data...');
+        const siteRel = MB_CONFIG.SP_SITE.replace(window.location.origin,'');
+        const lib     = MB_CONFIG.SP_DOC_LIB.replace(/ /g,'%20');
+        const file    = MB_CONFIG.SP_FILE_NAME.replace(/ /g,'%20');
+        const res     = await fetch(`${MB_CONFIG.SP_SITE}/_api/web/getfilebyserverrelativeurl('${siteRel}/${lib}/${file}')/$value`,{
+            headers:{Accept:'application/octet-stream'}, credentials:'include'
+        });
+        if (!res.ok) throw new Error('Not found');
+        const wb = XLSX.read(new Uint8Array(await res.arrayBuffer()),{type:'array',cellDates:false});
+        mbProcessWorkbook(wb);
+        mbShowStatus(''); return true;
+    } catch(e) { mbShowStatus(''); return false; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILE UPLOAD
+   ══════════════════════════════════════════════════════════════ */
+function mbHandleFile(file) {
+    if (!file) return;
+    const prev = MB.lastFileName;
+    const area = document.getElementById('mb-upload-area');
+    if (area) area.innerHTML = `<span style="font-size:12px;color:var(--t2);">${prev?`Replacing <b>${prev}</b> → `:''}⏳ Uploading <b>${file.name}</b></span>`;
+    const reader = new FileReader();
+    reader.onload = async(e) => {
+        try {
+            const buf = e.target.result;
+            await mbSaveToSP(buf, file.name);
+            const wb = XLSX.read(new Uint8Array(buf),{type:'array',cellDates:false});
+            mbProcessWorkbook(wb);
+            mbBuildUploadBtn(file.name);
+        } catch(err) { mbShowToast('❌ Failed to process file','error'); mbBuildUploadBtn(prev); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+function mbBuildUploadBtn(name) {
+    const area = document.getElementById('mb-upload-area');
+    if (!area) return;
+    area.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">
+        <button type="button" class="export-btn" id="mb-upload-btn" style="font-size:12px;padding:7px 14px;">
+            <i data-lucide="upload-cloud" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-right:4px;"></i>${name?'Replace File':'Upload Excel'}
+        </button>
+        <input type="file" id="mb-file-input" accept=".xlsx,.xls" style="display:none;">
+        ${name?`<span style="font-size:11px;color:var(--t3);">📄 <b style="color:var(--t2);">${name}</b></span>`:''}
+    </div>`;
+    const btn = document.getElementById('mb-upload-btn');
+    const inp = document.getElementById('mb-file-input');
+    if (btn&&inp) { btn.onclick=()=>inp.click(); inp.onchange=e=>{if(e.target.files[0])mbHandleFile(e.target.files[0]);}; }
+    if (typeof lucide!=='undefined') lucide.createIcons();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILTERS — applied in order: top filters → kpi filter → age filter
+   ══════════════════════════════════════════════════════════════ */
+function mbApplyFilters() {
+    let data = [...MB.allTickets];
+
+    // Top SM filter
+    if (MB.filterSMs.length > 0)
+        data = data.filter(t => MB.filterSMs.includes(t.smFullName));
+
+    // Top date filters — union within same type, intersection across types
+    if (MB.filterYears.length > 0)
+        data = data.filter(t => MB.filterYears.includes(t.recvYear));
+    if (MB.filterMonths.length > 0)
+        data = data.filter(t => MB.filterMonths.includes(t.recvYM));
+    if (MB.filterWeeks.length > 0)
+        data = data.filter(t => MB.filterWeeks.includes(t.recvWeek));
+    if (MB.filterDays.length > 0)
+        data = data.filter(t => MB.filterDays.includes(t.recvDay));
+
+    // KPI tile filter
+    if (MB.activeKpiFilter) {
+        const fn = {
+            unassigned: t => t.status==='Unassigned',
+            inprogress: t => t.status==='In Progress',
+            closed:     t => t.status==='Closed'||t.status==='Completed',
+        }[MB.activeKpiFilter];
+        if (fn) data = data.filter(fn);
+    }
+
+    // Age filter
+    if (MB.ageFilter) {
+        const statusOk = t => {
+            if (MB.ageStatusToggle==='unassigned') return t.status==='Unassigned';
+            if (MB.ageStatusToggle==='inprogress') return t.status==='In Progress';
+            return t.status==='Unassigned'||t.status==='In Progress';
+        };
+        const ageOk = t => {
+            if (t.ageDays===null||t.ageDays===undefined) return false;
+            if (MB.ageFilter==='0-2') return t.ageDays>=0&&t.ageDays<2;
+            if (MB.ageFilter==='2-5') return t.ageDays>=2&&t.ageDays<5;
+            return t.ageDays>=5;
+        };
+        data = data.filter(t => statusOk(t)&&ageOk(t));
+    }
+
+    MB.filteredTickets = data;
+    if (MB.gridApi) MB.gridApi.setGridOption('rowData', data);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   KPIs
+   ══════════════════════════════════════════════════════════════ */
+function mbGetKPIs(t) {
+    t = t || MB.filteredTickets;
+    return {
+        total:      t.length,
+        unassigned: t.filter(x=>x.status==='Unassigned').length,
+        inprogress: t.filter(x=>x.status==='In Progress').length,
+        closed:     t.filter(x=>x.status==='Closed'||x.status==='Completed').length,
+        notMoved:   t.filter(x=>x.status==='Completed').length,
+        sent:       MB.hasSentTab ? MB.sentTickets.length : 0,
+    };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER ALL
+   ══════════════════════════════════════════════════════════════ */
+function mbRenderAll() {
+    mbRenderTopFilters();
+    mbRenderKPIs();
+    mbRenderAgeTiles();
+    mbRenderSMTiles();
+    if (MB.chartsVisible) mbRenderCharts();
+    if (!MB.gridApi) mbRenderGrid();
+    else MB.gridApi.setGridOption('rowData', MB.filteredTickets);
+
+    // record count
+    const rc = document.getElementById('mb-record-count');
+    if (rc) rc.textContent = `${MB.filteredTickets.length} of ${MB.allTickets.length} emails`;
+}
+
+/* ── KPI TILES ───────────────────────────────────────────────── */
+function mbRenderKPIs() {
+    const k  = mbGetKPIs();
+    const af = MB.activeKpiFilter;
+    const tiles = [
+        { id:'mb-kpi-total',      val:k.total,      filter:null,         color:'#4c6fff', sub:'All received' },
+        { id:'mb-kpi-unassigned', val:k.unassigned, filter:'unassigned', color:'#e74c3c', sub:'Not yet assigned' },
+        { id:'mb-kpi-inprogress', val:k.inprogress, filter:'inprogress', color:'#f39c12', sub:'Assigned, ongoing' },
+        { id:'mb-kpi-closed',     val:k.closed,     filter:'closed',     color:'#27ae60', sub:`incl. ${k.notMoved} not moved` },
+        { id:'mb-kpi-sent',       val:k.sent,       filter:null,         color:'#3498db', sub:'Emails sent' },
+    ];
+    tiles.forEach(tile => {
+        const el   = document.getElementById(tile.id);
+        const sub  = document.getElementById(tile.id+'-sub');
+        if (el)  el.textContent  = tile.val;
+        if (sub) sub.textContent = tile.sub;
+        const card = el ? (el.closest('.kpi-card')||el.parentElement) : null;
+        if (!card||!tile.filter) return;
+        card.style.cursor     = 'pointer';
+        card.style.outline    = af===tile.filter ? `2px solid ${tile.color}` : '';
+        card.style.background = af===tile.filter ? `${tile.color}18` : '';
+        card.onclick = () => {
+            MB.activeKpiFilter = MB.activeKpiFilter===tile.filter ? null : tile.filter;
+            mbApplyFilters(); mbRenderAll();
+            if (MB.chartsVisible) mbRenderCharts();
+            // scroll to grid
+            const g = document.getElementById('mb-ag-grid');
+            if (g) g.scrollIntoView({behavior:'smooth',block:'start'});
+        };
+    });
+
+    // If there is no "Sent" tab in the workbook, hide the tile entirely (new format has no Sent).
+    const sentCard = document.getElementById('mb-kpi-sent')?.closest('.kpi-card');
+    if (sentCard) sentCard.style.display = MB.hasSentTab ? '' : 'none';
+}
+
+/* ── TOP FILTERS ─────────────────────────────────────────────── */
+function mbRenderTopFilters() {
+    const container = document.getElementById('mb-top-filters');
+    if (!container) return;
+
+    // Build option lists from allTickets
+    const allSMs    = [...new Set(MB.allTickets.map(t=>t.smFullName).filter(n=>n&&n!=='Unassigned'&&n!=='No SM Code'))].sort();
+    const allYears  = [...new Set(MB.allTickets.map(t=>t.recvYear).filter(Boolean))].sort().reverse();
+    const allYMs    = [...new Set(MB.allTickets.map(t=>t.recvYM).filter(Boolean))].sort().reverse();
+    const allWeeks  = [...new Set(MB.allTickets.map(t=>t.recvWeek).filter(Boolean))].sort().reverse().slice(0,20);
+    const allDays   = [...new Set(MB.allTickets.map(t=>t.recvDay).filter(Boolean))].sort().reverse().slice(0,30);
+
+    function dd(id, label, opts, selected, onChangeFn) {
+        const selCount = selected.length;
+        const btnLabel = selCount===0 ? `All ${label}` : `${selCount} ${label} selected`;
+        return `<div style="flex:1;min-width:140px;">
+            <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;color:var(--t3);letter-spacing:.05em;margin-bottom:4px;">${label}</div>
+            <div style="position:relative;">
+                <div id="${id}-trigger" onclick="mbToggleDD('${id}')" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);cursor:pointer;font-size:12px;color:var(--t1);white-space:nowrap;">
+                    <span style="overflow:hidden;text-overflow:ellipsis;">${btnLabel}</span>
+                    <i data-lucide="chevron-down" style="width:12px;height:12px;flex-shrink:0;margin-left:4px;"></i>
+                </div>
+                <div id="${id}-dd" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:180px;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:240px;overflow-y:auto;">
+                    <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
+                        <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;font-weight:700;color:var(--t1);">
+                            <input type="checkbox" ${selCount===0?'checked':''} onchange="${onChangeFn}('__all__',this)" style="accent-color:var(--acc);">All
+                        </label>
+                    </div>
+                    ${opts.map(o=>{
+                        const lbl = label==='Week' ? o : (label==='Day' ? new Date(o+'T00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : o);
+                        return `<div style="padding:5px 10px;">
+                            <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;color:var(--t1);">
+                                <input type="checkbox" value="${o}" ${selected.includes(o)?'checked':''} onchange="${onChangeFn}('${o}',this)" style="accent-color:var(--acc);">${lbl}
+                            </label>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    container.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--cs);margin-bottom:1rem;">
+        ${dd('mb-f-sm',    'Service Manager', allSMs,   MB.filterSMs,    'mbFilterSM')}
+        ${dd('mb-f-year',  'Year',            allYears, MB.filterYears,  'mbFilterYear')}
+        ${dd('mb-f-month', 'Month',           allYMs,   MB.filterMonths, 'mbFilterMonth')}
+        ${dd('mb-f-week',  'Week',            allWeeks, MB.filterWeeks,  'mbFilterWeek')}
+        ${dd('mb-f-day',   'Day',             allDays,  MB.filterDays,   'mbFilterDay')}
+        <button type="button" class="reset-btn" onclick="mbClearAllFilters()" style="padding:7px 12px;font-size:11px;align-self:flex-end;white-space:nowrap;">
+            <i data-lucide="rotate-ccw" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:3px;"></i>Clear All
+        </button>
+    </div>`;
+    if (typeof lucide!=='undefined') lucide.createIcons();
+}
+
+// Dropdown toggle
+window.mbToggleDD = function(id) {
+    const dd = document.getElementById(id+'-dd');
+    if (!dd) return;
+    // close all others
+    document.querySelectorAll('[id$="-dd"]').forEach(el => { if (el.id!==id+'-dd') el.style.display='none'; });
+    dd.style.display = dd.style.display==='none' ? 'block' : 'none';
+};
+document.addEventListener('click', e => {
+    if (!e.target.closest('[id$="-trigger"]')&&!e.target.closest('[id$="-dd"]'))
+        document.querySelectorAll('[id$="-dd"]').forEach(el=>el.style.display='none');
+});
+
+function _mbSetFilter(arr, val, cb) {
+    if (val==='__all__') { arr.length=0; }
+    else if (cb.checked) { if (!arr.includes(val)) arr.push(val); }
+    else { const i=arr.indexOf(val); if(i>-1) arr.splice(i,1); }
+    mbApplyFilters(); mbRenderAll(); if (MB.chartsVisible) mbRenderCharts();
+}
+window.mbFilterSM    = (v,cb) => _mbSetFilter(MB.filterSMs,    v, cb);
+window.mbFilterYear  = (v,cb) => _mbSetFilter(MB.filterYears,  v, cb);
+window.mbFilterMonth = (v,cb) => _mbSetFilter(MB.filterMonths, v, cb);
+window.mbFilterWeek  = (v,cb) => _mbSetFilter(MB.filterWeeks,  v, cb);
+window.mbFilterDay   = (v,cb) => _mbSetFilter(MB.filterDays,   v, cb);
+window.mbClearAllFilters = () => {
+    MB.filterSMs=[]; MB.filterYears=[]; MB.filterMonths=[]; MB.filterWeeks=[]; MB.filterDays=[];
+    MB.activeKpiFilter=null; MB.ageFilter=null;
+    mbApplyFilters(); mbRenderAll(); if(MB.chartsVisible) mbRenderCharts();
+};
+
+/* ── SM TILES — sorted desc by In Progress, no Unassigned ───── */
+function mbRenderSMTiles() {
+    const container = document.getElementById('mb-sm-tiles');
+    if (!container) return;
+
+    const smMap = {};
+    // Use allTickets for tile building (show full picture even when filtered)
+    MB.filteredTickets.forEach(t => {
+        // SKIP unassigned in SM tiles — unassigned has no SM
+        if (!t.smFullName || t.smFullName==='Unassigned' || t.smFullName==='') return;
+        const n = t.smFullName;
+        if (!smMap[n]) smMap[n] = { name:n, total:0, inprogress:0, closed:0, sent:0, team:t.smTeam, ages:[], cats:{} };
+        const s = smMap[n];
+        s.total++;
+        if (t.status==='In Progress') s.inprogress++;
+        if (t.status==='Closed'||t.status==='Completed') s.closed++;
+        if (t.ageDays!==null&&t.ageDays!==undefined) s.ages.push(t.ageDays);
+        if (t.category) s.cats[t.category]=(s.cats[t.category]||0)+1;
+    });
+    // Add sent count per SM from sentTickets
+    MB.sentTickets.forEach(t => {
+        const n = t.smFullName;
+        if (!n||n==='Unassigned'||n==='') return;
+        if (smMap[n]) smMap[n].sent++;
+    });
+
+    // Sort desc by In Progress
+    const smList = Object.values(smMap).sort((a,b)=>b.inprogress-a.inprogress||b.total-a.total);
+
+    if (!smList.length) {
+        container.innerHTML = '<div style="color:var(--t3);padding:20px;text-align:center;">No data loaded.</div>';
+        return;
+    }
+
+    container.innerHTML = smList.map((sm, i) => {
+        const isSelected = MB.filterSMs.length===1 && MB.filterSMs[0]===sm.name;
+        const topCats    = Object.entries(sm.cats).sort((a,b)=>b[1]-a[1]).slice(0,2);
+        const avgAge     = sm.ages.length ? (sm.ages.reduce((a,b)=>a+b,0)/sm.ages.length).toFixed(1) : '—';
+        const ageColor   = avgAge!=='—' ? (parseFloat(avgAge)>7?'#e74c3c':parseFloat(avgAge)>3?'#f39c12':'#27ae60') : 'var(--t3)';
+        const grad       = MB_CLR.smColors[i%MB_CLR.smColors.length];
+        const initials   = sm.name.split(' ').filter(Boolean).map(w=>w[0]).join('').substring(0,2).toUpperCase();
+        const safeN      = sm.name.replace(/'/g,"\\'");
+
+        return `<div class="manager-row ${isSelected?'selected':''}" onclick="mbSMTileClick('${safeN}')"
+            style="${isSelected?'border-color:var(--acc);background:rgba(168,85,247,0.06);':''}cursor:pointer;">
+
+            <!-- Avatar -->
+            <div style="display:flex;align-items:center;gap:10px;min-width:170px;flex-shrink:0;">
+                <div style="width:42px;height:42px;border-radius:50%;background:${grad};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;">${initials}</div>
+                <div>
+                    <div style="font-size:13px;font-weight:800;color:var(--t1);line-height:1.3;">${sm.name}</div>
+                    <div style="font-size:10px;color:var(--t3);">${sm.team||'TSM SE'}</div>
+                </div>
+            </div>
+
+            <!-- Status pills -->
+            <div style="display:flex;gap:5px;flex-wrap:wrap;min-width:260px;align-items:center;">
+                <span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(76,111,255,0.1);color:#4c6fff;">📬 ${sm.total} Total</span>
+                <span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(243,156,18,0.1);color:#f39c12;">🟡 ${sm.inprogress} In Progress</span>
+                <span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(39,174,96,0.1);color:#27ae60;">✅ ${sm.closed} Closed</span>
+                <span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(52,152,219,0.1);color:#3498db;">📤 ${sm.sent} Sent</span>
+            </div>
+
+            <!-- Avg days -->
+            <div style="min-width:90px;text-align:center;flex-shrink:0;">
+                <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--t3);letter-spacing:.04em;margin-bottom:2px;">Avg Days Open</div>
+                <div style="font-size:1.25rem;font-weight:900;color:${ageColor};">${avgAge}d</div>
+            </div>
+
+            <!-- Top issues -->
+            <div style="min-width:160px;flex-shrink:0;">
+                <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--t3);letter-spacing:.04em;margin-bottom:4px;">Top Issues</div>
+                ${topCats.map(([cat,cnt])=>`<div style="display:flex;justify-content:space-between;gap:4px;font-size:10px;margin-bottom:2px;">
+                    <span style="color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;">${cat}</span>
+                    <span style="color:var(--acc);font-weight:700;">${cnt}</span>
+                </div>`).join('')||'<span style="font-size:10px;color:var(--t3);">—</span>'}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window.mbSMTileClick = function(name) {
+    // Clicking SM tile sets the top SM filter
+    if (MB.filterSMs.length===1 && MB.filterSMs[0]===name) { MB.filterSMs=[]; }
+    else { MB.filterSMs=[name]; }
+    mbApplyFilters(); mbRenderAll(); if(MB.chartsVisible) mbRenderCharts();
+};
+
+/* ── AGE TILES ───────────────────────────────────────────────── */
+function mbRenderAgeTiles() {
+    const container = document.getElementById('mb-age-section');
+    if (!container) return;
+    const tog = MB.ageStatusToggle||'both';
+    const af  = MB.ageFilter;
+    const src = MB.filteredTickets.filter(x => {
+        if (tog==='unassigned') return x.status==='Unassigned';
+        if (tog==='inprogress') return x.status==='In Progress';
+        return x.status==='Unassigned'||x.status==='In Progress';
+    });
+    const b02 = src.filter(x=>x.ageDays!==null&&x.ageDays<2).length;
+    const b25 = src.filter(x=>x.ageDays!==null&&x.ageDays>=2&&x.ageDays<5).length;
+    const b5p = src.filter(x=>x.ageDays!==null&&x.ageDays>=5).length;
+
+    const togBtns = [['both','Both'],['unassigned','Unassigned'],['inprogress','In Progress']].map(([v,l])=>
+        `<button type="button" onclick="MB.ageStatusToggle='${v}';mbRenderAgeTiles();"
+        style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;
+        border:1px solid ${v===tog?'transparent':'var(--border)'};
+        background:${v===tog?'var(--grad)':'var(--bg-secondary)'};
+        color:${v===tog?'#fff':'var(--t3)'};">${l}</button>`
+    ).join('');
+
+    container.innerHTML = `
+    <div class="table-section" style="margin-bottom:1rem;">
+        <div class="table-header" style="margin-bottom:.75rem;">
+            <h3 class="table-title"><i data-lucide="clock" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Ticket Age Visibility</h3>
+            <div style="display:flex;gap:6px;align-items:center;">
+                <span style="font-size:11px;color:var(--t3);">Show:</span>${togBtns}
+                ${af?`<button type="button" class="reset-btn" onclick="MB.ageFilter=null;mbApplyFilters();mbRenderAll();if(MB.chartsVisible)mbRenderCharts();" style="padding:3px 9px;font-size:11px;">✕ Clear</button>`:''}
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1rem;">
+            ${[['0-2','0–2 Days',b02,'#27ae60','✅'],['2-5','2–5 Days',b25,'#f39c12','⚠️'],['5+','5+ Days',b5p,'#e74c3c','🔴']].map(([bucket,label,val,color,icon])=>`
+            <div onclick="mbToggleAgeFilter('${bucket}')"
+                style="background:var(--bg-card);border:2px solid ${af===bucket?color:'var(--border)'};border-radius:12px;padding:1rem;cursor:pointer;${af===bucket?`background:${color}18;`:''}box-shadow:var(--cs);transition:all .18s;">
+                <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;">${icon} ${label}</div>
+                <div style="font-size:1.7rem;font-weight:900;color:${color};line-height:1;">${val}</div>
+                <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">tickets</div>
+            </div>`).join('')}
+        </div>
+        <!-- SM age breakdown -->
+        <div style="font-size:.75rem;font-weight:700;color:var(--t2);margin-bottom:.5rem;">Breakdown per Service Manager</div>
+        <div style="position:relative;height:300px;overflow:hidden;"><canvas id="mb-chart-age"></canvas></div>
+    </div>`;
+    if (typeof lucide!=='undefined') lucide.createIcons();
+    mbRenderAgeChart();
+}
+
+window.mbToggleAgeFilter = function(bucket) {
+    MB.ageFilter = MB.ageFilter===bucket ? null : bucket;
+    mbApplyFilters(); mbRenderAll();
+    if (MB.chartsVisible) mbRenderCharts();
+    const g = document.getElementById('mb-ag-grid');
+    if (g) g.scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+function mbRenderAgeChart() {
+    const canvas = document.getElementById('mb-chart-age');
+    if (!canvas) return;
+    if (MB.charts['age']) { try{MB.charts['age'].destroy();}catch(e){} }
+    const tog = MB.ageStatusToggle||'both';
+    const src = MB.filteredTickets.filter(x=>{
+        if (tog==='unassigned') return x.status==='Unassigned';
+        if (tog==='inprogress') return x.status==='In Progress';
+        return x.status==='Unassigned'||x.status==='In Progress';
+    });
+    const smMap = {};
+    src.forEach(t=>{
+        const n = t.smFullName||'No SM';
+        if (!smMap[n]) smMap[n]={b02:0,b25:0,b5p:0};
+        if (t.ageDays===null||t.ageDays===undefined) return;
+        if (t.ageDays<2) smMap[n].b02++;
+        else if (t.ageDays<5) smMap[n].b25++;
+        else smMap[n].b5p++;
+    });
+    const names = Object.keys(smMap).sort((a,b)=>(smMap[b].b02+smMap[b].b25+smMap[b].b5p)-(smMap[a].b02+smMap[a].b25+smMap[a].b5p));
+    MB.charts['age'] = new Chart(canvas,{
+        type:'bar',
+        data:{ labels:names, datasets:[
+            {label:'0–2 Days',data:names.map(n=>smMap[n].b02),backgroundColor:'rgba(39,174,96,0.8)',borderRadius:3,borderSkipped:false},
+            {label:'2–5 Days',data:names.map(n=>smMap[n].b25),backgroundColor:'rgba(243,156,18,0.8)',borderRadius:3,borderSkipped:false},
+            {label:'5+ Days', data:names.map(n=>smMap[n].b5p),backgroundColor:'rgba(231,76,60,0.8)', borderRadius:3,borderSkipped:false},
+        ]},
+        options:{
+            indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:0},
+            plugins:{datalabels:{display:false},legend:{position:'top',labels:{font:{size:10},padding:8,boxWidth:9,boxHeight:9,color:'rgba(160,160,180,0.9)'}}},
+            scales:{
+                x:{stacked:true,grid:{color:'rgba(168,85,247,0.08)'},ticks:{font:{size:10},color:'rgba(160,160,180,0.8)',precision:0}},
+                y:{stacked:true,grid:{display:false},ticks:{font:{size:10},color:'rgba(160,160,180,0.8)'}},
+            },
+        },
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHARTS — only rendered when chartsVisible = true
+   ══════════════════════════════════════════════════════════════ */
+function mbMakeChart(key, config) {
+    const canvas = document.getElementById('mb-chart-'+key);
+    if (!canvas) return;
+    if (MB.charts[key]) { try{MB.charts[key].destroy();}catch(e){} }
+    if (!config.options) config.options={};
+    if (!config.options.plugins) config.options.plugins={};
+    config.options.plugins.datalabels = {display:false};
+    config.options.animation = {duration:0};
+    MB.charts[key] = new Chart(canvas, config);
+}
+function mbDestroyCharts() {
+    Object.keys(MB.charts).forEach(k=>{ try{MB.charts[k].destroy();}catch(e){} });
+    MB.charts={};
+    // Re-render age chart since it lives outside charts section
+    mbRenderAgeChart();
+}
+const MB_AX = {
+    x:{ grid:{display:false}, ticks:{font:{size:10},color:'rgba(160,160,180,0.8)'} },
+    y:{ grid:{color:'rgba(168,85,247,0.08)'}, ticks:{font:{size:10},color:'rgba(160,160,180,0.8)',precision:0} },
+};
+const MB_LEG = { position:'bottom', labels:{font:{size:10},padding:8,boxWidth:9,boxHeight:9,color:'rgba(160,160,180,0.9)'} };
+
+function mbRenderCharts() {
+    mbDestroyCharts();
+    const t = MB.filteredTickets;
+    mbChartTrend(t);
+    mbChartStatus(t);
+    mbChartWorkload(t);
+    mbChartAvgDays(t);
+    mbChartCategories(t);
+}
+
+/* 1 — Email trend line — PROPER labels, uses actual dates */
+function mbChartTrend(t) {
+    const per = MB.trendPeriod;
+    const now = new Date();
+
+    // Build buckets based on actual data range or last N periods
+    const bucketMap = {};
+    t.forEach(x => {
+        const d = mbParseDate(x.received); if (!d) return;
+        let bkt, lbl;
+        if (per==='D') {
+            bkt = d.toISOString().split('T')[0];
+            lbl = d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+        } else if (per==='W') {
+            const yr=d.getFullYear();
+            const wk=Math.ceil((d-new Date(yr,0,1))/6048e5);
+            bkt = `${yr}-W${String(wk).padStart(2,'0')}`;
+            lbl = `W${wk} ${String(yr).slice(2)}`;
+        } else {
+            bkt = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+            lbl = d.toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+        }
+        if (!bucketMap[bkt]) bucketMap[bkt]={lbl,count:0};
+        bucketMap[bkt].count++;
+    });
+
+    const sorted = Object.keys(bucketMap).sort();
+    const labels = sorted.map(k=>bucketMap[k].lbl);
+    const data   = sorted.map(k=>bucketMap[k].count);
+
+    // Render toggles
+    const wrap = document.getElementById('mb-trend-toggles');
+    if (wrap) wrap.innerHTML = [['D','Daily'],['W','Weekly'],['M','Monthly']].map(([v,l])=>
+        `<button type="button" onclick="MB.trendPeriod='${v}';if(MB.chartsVisible)mbChartTrend(MB.filteredTickets);"
+        style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;
+        border:1px solid ${v===per?'transparent':'var(--border)'};
+        background:${v===per?'var(--grad)':'var(--bg-secondary)'};
+        color:${v===per?'#fff':'var(--t3)'};">${l}</button>`
+    ).join('');
+
+    mbMakeChart('trend',{
+        type:'line',
+        data:{ labels, datasets:[{
+            label:'Emails Received', data,
+            borderColor:'#4c6fff', backgroundColor:'rgba(76,111,255,0.15)',
+            borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#4c6fff',
+            pointBorderColor:'#fff', pointBorderWidth:2, tension:0.3, fill:true,
+        }]},
+        options:{
+            responsive:true, maintainAspectRatio:false,
+            plugins:{datalabels:{display:false},legend:{display:false}},
+            scales:{
+                x:{...MB_AX.x, ticks:{...MB_AX.x.ticks,maxRotation:45,maxTicksLimit:20}},
+                y:{...MB_AX.y},
+            },
+        },
+    });
+}
+
+/* 2 — Status donut */
+function mbChartStatus(t) {
+    const u=t.filter(x=>x.status==='Unassigned').length;
+    const i=t.filter(x=>x.status==='In Progress').length;
+    const c=t.filter(x=>x.status==='Closed'||x.status==='Completed').length;
+    mbMakeChart('status',{
+        type:'doughnut',
+        data:{labels:['Unassigned','In Progress','Closed / Completed'],datasets:[{data:[u,i,c],backgroundColor:['#e74c3c','#f39c12','#27ae60'],borderWidth:3,borderColor:'var(--bg-card)',hoverOffset:8}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:MB_LEG}},
+    });
+}
+
+/* 3 — SM workload with toggle + numbers on bars */
+function mbChartWorkload(t) {
+    const ws = MB.workloadStatus||'inprogress';
+    const wrap = document.getElementById('mb-workload-toggles');
+    if (wrap) wrap.innerHTML = [['inprogress','In Progress'],['unassigned','Unassigned'],['closed','Closed'],['all','All']].map(([v,l])=>
+        `<button type="button" onclick="MB.workloadStatus='${v}';if(MB.chartsVisible)mbChartWorkload(MB.filteredTickets);"
+        style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;
+        border:1px solid ${v===ws?'transparent':'var(--border)'};
+        background:${v===ws?'var(--grad)':'var(--bg-secondary)'};
+        color:${v===ws?'#fff':'var(--t3)'};">${l}</button>`
+    ).join('');
+
+    const smMap={};
+    t.forEach(x=>{
+        const n=x.smFullName||'No SM';
+        if (n==='Unassigned'||n==='') return;
+        if (!smMap[n]) smMap[n]={unassigned:0,inprogress:0,closed:0,total:0};
+        smMap[n].total++;
+        if (x.status==='Unassigned')  smMap[n].unassigned++;
+        if (x.status==='In Progress') smMap[n].inprogress++;
+        if (x.status==='Closed'||x.status==='Completed') smMap[n].closed++;
+    });
+
+    let names;
+    if (ws==='inprogress') names=Object.keys(smMap).sort((a,b)=>smMap[b].inprogress-smMap[a].inprogress);
+    else if (ws==='unassigned') names=Object.keys(smMap).sort((a,b)=>smMap[b].unassigned-smMap[a].unassigned);
+    else if (ws==='closed') names=Object.keys(smMap).sort((a,b)=>smMap[b].closed-smMap[a].closed);
+    else names=Object.keys(smMap).sort((a,b)=>smMap[b].total-smMap[a].total);
+
+    const datasets = ws==='all' ? [
+        {label:'Unassigned',  data:names.map(n=>smMap[n].unassigned), backgroundColor:'rgba(231,76,60,0.85)',  borderRadius:4,borderSkipped:false},
+        {label:'In Progress', data:names.map(n=>smMap[n].inprogress), backgroundColor:'rgba(243,156,18,0.85)', borderRadius:4,borderSkipped:false},
+        {label:'Closed',      data:names.map(n=>smMap[n].closed),     backgroundColor:'rgba(39,174,96,0.85)',  borderRadius:4,borderSkipped:false},
+    ] : [{
+        label: ws==='inprogress'?'In Progress':ws==='unassigned'?'Unassigned':'Closed',
+        data: names.map(n=>smMap[n][ws]),
+        backgroundColor: ws==='inprogress'?'rgba(243,156,18,0.85)':ws==='unassigned'?'rgba(231,76,60,0.85)':'rgba(39,174,96,0.85)',
+        borderRadius:4, borderSkipped:false,
+    }];
+
+    mbMakeChart('workload',{
+        type:'bar',
+        data:{labels:names, datasets},
+        options:{
+            responsive:true,maintainAspectRatio:false,
+            plugins:{
+                datalabels:{display:false},
+                legend:{display:ws==='all',...MB_LEG},
+            },
+            scales:{
+                x:{...(ws==='all'?{stacked:true}:{}),grid:{display:false},ticks:{font:{size:10},color:'rgba(160,160,180,0.8)',maxRotation:35}},
+                y:{...(ws==='all'?{stacked:true}:{}),grid:{color:'rgba(168,85,247,0.08)'},ticks:{font:{size:10},color:'rgba(160,160,180,0.8)',precision:0}},
+            },
+        },
+        // Plugin to draw numbers on top of bars
+        plugins:[{
+            id:'barLabels',
+            afterDatasetsDraw(chart){
+                const ctx=chart.ctx;
+                chart.data.datasets.forEach((_,di)=>{
+                    const meta=chart.getDatasetMeta(di);
+                    meta.data.forEach((bar,idx)=>{
+                        const val=chart.data.datasets[di].data[idx];
+                        if (!val) return;
+                        ctx.save();
+                        ctx.font='bold 10px Inter,sans-serif';
+                        ctx.fillStyle='rgba(160,160,180,0.9)';
+                        ctx.textAlign='center';
+                        ctx.textBaseline='bottom';
+                        ctx.fillText(val, bar.x, bar.y-2);
+                        ctx.restore();
+                    });
+                });
+            }
+        }],
+    });
+}
+
+/* 4 — Avg days in progress per SM */
+function mbChartAvgDays(t) {
+    const smMap={};
+    t.filter(x=>x.status==='In Progress'&&x.ageDays!==null).forEach(x=>{
+        const n=x.smFullName||'No SM';
+        if (n==='Unassigned'||n==='') return;
+        if (!smMap[n]) smMap[n]=[];
+        smMap[n].push(x.ageDays);
+    });
+    const sorted=Object.keys(smMap).map(n=>({n,avg:+(smMap[n].reduce((a,b)=>a+b,0)/smMap[n].length).toFixed(1)})).sort((a,b)=>b.avg-a.avg);
+    mbMakeChart('avgdays',{
+        type:'bar',
+        data:{labels:sorted.map(x=>x.n),datasets:[{
+            label:'Avg Days In Progress',
+            data:sorted.map(x=>x.avg),
+            backgroundColor:sorted.map(x=>x.avg>7?'rgba(231,76,60,0.85)':x.avg>3?'rgba(243,156,18,0.85)':'rgba(39,174,96,0.85)'),
+            borderRadius:4,borderSkipped:false,
+        }]},
+        options:{
+            indexAxis:'y',responsive:true,maintainAspectRatio:false,
+            plugins:{datalabels:{display:false},legend:{display:false}},
+            scales:{x:{...MB_AX.x,grid:{color:'rgba(168,85,247,0.08)'}},y:{...MB_AX.y,grid:{display:false}}},
+        },
+    });
+}
+
+/* 5 — Top categories */
+function mbChartCategories(t) {
+    const counts={};
+    t.forEach(x=>{if(x.category)counts[x.category]=(counts[x.category]||0)+1;});
+    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    mbMakeChart('categories',{
+        type:'bar',
+        data:{labels:sorted.map(e=>e[0]),datasets:[{
+            label:'Count',data:sorted.map(e=>e[1]),
+            backgroundColor:sorted.map((_,i)=>MB_CLR.smColors[i%MB_CLR.smColors.length]+'cc'),
+            borderRadius:4,borderSkipped:false,
+        }]},
+        options:{
+            indexAxis:'y',responsive:true,maintainAspectRatio:false,
+            plugins:{datalabels:{display:false},legend:{display:false}},
+            scales:{x:{...MB_AX.x,grid:{color:'rgba(168,85,247,0.08)'}},y:{...MB_AX.y,grid:{display:false}}},
+        },
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TOGGLE CHARTS — proper show/hide
+   ══════════════════════════════════════════════════════════════ */
+window.mbToggleCharts = function() {
+    MB.chartsVisible = !MB.chartsVisible;
+    const section = document.getElementById('mb-charts-section');
+    const btn     = document.getElementById('mb-toggle-charts-btn');
+    if (section) section.style.display = MB.chartsVisible ? 'block' : 'none';
+    if (btn) {
+        btn.innerHTML = MB.chartsVisible
+            ? '<i data-lucide="eye-off" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Hide Analytics'
+            : '<i data-lucide="bar-chart-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Show Analytics';
+        if (typeof lucide!=='undefined') lucide.createIcons();
+    }
+    if (MB.chartsVisible) mbRenderCharts();
+    else { mbDestroyCharts(); }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   EXPORT CSV — based on current filtered data
+   ══════════════════════════════════════════════════════════════ */
+window.mbExportCSV = function() {
+    if (MB.gridApi) { MB.gridApi.exportDataAsCsv({ fileName:`SEMailbox_${new Date().toISOString().slice(0,10)}.csv` }); return; }
+    const headers=['Tab','From','Subject','Category','Pending Reason','Owner','SM','Team','Received','Completed Date','Age (Days)','Status'];
+    const rows=MB.filteredTickets.map(t=>[
+        t.tab,
+        t.from,
+        t.subject,
+        t.category,
+        t.pendingReason||'',
+        t.owner||'',
+        t.smFullName,
+        t.smTeam,
+        t.receivedFmt,
+        t.flagDateFmt,
+        t.ageDays??'',
+        t.status
+    ]);
+    const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download=`SEMailbox_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+};
+window.mbSearch = function(val) { if(MB.gridApi) MB.gridApi.setGridOption('quickFilterText',val); };
+
+/* ══════════════════════════════════════════════════════════════
+   AG GRID — export button inside grid
+   ══════════════════════════════════════════════════════════════ */
+function mbRenderGrid() {
+    const el = document.getElementById('mb-ag-grid');
+    if (!el) return;
+    const statusR = p => {
+        if (!p.value) return '—';
+        const cls={'Unassigned':'badge-danger','In Progress':'badge-warning','Closed':'badge-success','Completed':'badge-success'}[p.value]||'';
+        return `<span class="status-badge ${cls}" style="font-size:10px;">${p.value}</span>`;
+    };
+    const cols=[
+        {field:'status',     headerName:'Status',         width:150,pinned:'left',filter:'agSetColumnFilter',cellRenderer:statusR},
+        {field:'smFullName', headerName:'Service Manager',width:165,filter:'agSetColumnFilter'},
+        {field:'from',       headerName:'From',           width:200,filter:'agTextColumnFilter'},
+        {field:'subject',    headerName:'Subject',        flex:1,   filter:'agTextColumnFilter',tooltipField:'subject',minWidth:220},
+        {field:'category',   headerName:'Category',       width:200,filter:'agSetColumnFilter'},
+        {field:'pendingReason',headerName:'Pending Reason',width:170,filter:'agSetColumnFilter'},
+        {field:'owner',      headerName:'Owner',          width:140,filter:'agSetColumnFilter'},
+        {field:'smTeam',     headerName:'Team',           width:110,filter:'agSetColumnFilter'},
+        {field:'tab',        headerName:'Source Tab',     width:120,filter:'agSetColumnFilter',
+         cellRenderer:p=>`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,0.12);color:#a855f7;font-weight:600;">${p.value||''}</span>`},
+        {field:'receivedFmt',headerName:'Received',       width:165,filter:'agTextColumnFilter',sort:'desc'},
+        {field:'ageDays',    headerName:'Age (Days)',      width:105,filter:'agNumberColumnFilter',comparator:(a,b)=>(a||0)-(b||0),
+         cellRenderer:p=>p.value===null||p.value===undefined?'—':`<span style="font-size:12px;font-weight:700;color:${p.value>7?'#e74c3c':p.value>3?'#f39c12':'var(--t2)'};">${p.value}d</span>`},
+        {field:'flagDateFmt',headerName:'Completed Date', width:165,filter:'agTextColumnFilter'},
+    ];
+    if (MB.gridApi) { try{MB.gridApi.destroy();}catch(e){} MB.gridApi=null; }
+    el.innerHTML='';
+    agGrid.createGrid(el,{
+        columnDefs:cols, rowData:MB.filteredTickets,
+        defaultColDef:{sortable:true,resizable:true,minWidth:80},
+        pagination:true,paginationPageSize:50,paginationPageSizeSelector:[25,50,100,200],
+        rowHeight:44,headerHeight:44,animateRows:true,enableCellTextSelection:true,
+        getRowStyle:p=>p.data?.status==='Unassigned'?{background:'rgba(231,76,60,0.05)'}:null,
+        onGridReady:p=>{MB.gridApi=p.api;},
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UI HELPERS
+   ══════════════════════════════════════════════════════════════ */
+function mbShowStatus(msg) {
+    const el=document.getElementById('mb-status-bar');
+    if (!el) return;
+    el.textContent=msg; el.style.display=msg?'block':'none';
+}
+function mbShowToast(msg,type) {
+    if (typeof showToast==='function'){showToast(msg,type);return;}
+    console.log('[SEMailbox]',msg);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HTML SHELL
+   ══════════════════════════════════════════════════════════════ */
+function mbInjectShell() {
+    const root=document.getElementById('semailbox-root');
+    if (!root) return;
+    root.innerHTML=`
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;">
+        <div>
+            <h2 class="section-title" style="margin:0!important;">
+                <i data-lucide="inbox" style="width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:8px;"></i>SE Mailbox Tracker
+            </h2>
+            <div style="font-size:.75rem;color:var(--t3);">TSM Small Enterprise email ticket management</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+            <button type="button" id="mb-toggle-charts-btn" class="export-btn" style="padding:.45rem 1rem;font-size:.82rem;">
+                <i data-lucide="bar-chart-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Show Analytics
+            </button>
+            <button type="button" id="mb-export-btn" class="reset-btn" style="padding:.45rem 1rem;font-size:.82rem;">
+                <i data-lucide="download" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Export CSV
+            </button>
+        </div>
+    </div>
+
+    <div id="mb-status-bar" style="display:none;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--t2);margin-bottom:12px;"></div>
+    <div id="mb-upload-area" style="display:none;margin-bottom:1rem;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--cs);"></div>
+
+    <!-- Top Filters -->
+    <div id="mb-top-filters"></div>
+
+    <!-- KPI tiles — 5 -->
+    <div class="top-stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:1rem;">
+        <div class="stat-card kpi-card"><div class="stat-label">Total Emails</div><div class="stat-value" id="mb-kpi-total" style="color:var(--acc);">—</div><div class="stat-subtitle" id="mb-kpi-total-sub">All received</div></div>
+        <div class="stat-card kpi-card"><div class="stat-label">Unassigned</div><div class="stat-value" id="mb-kpi-unassigned" style="color:#e74c3c;">—</div><div class="stat-subtitle" id="mb-kpi-unassigned-sub">Not yet assigned</div></div>
+        <div class="stat-card kpi-card"><div class="stat-label">In Progress</div><div class="stat-value" id="mb-kpi-inprogress" style="color:#f39c12;">—</div><div class="stat-subtitle" id="mb-kpi-inprogress-sub">Assigned, ongoing</div></div>
+        <div class="stat-card kpi-card"><div class="stat-label">Closed / Completed</div><div class="stat-value" id="mb-kpi-closed" style="color:#27ae60;">—</div><div class="stat-subtitle" id="mb-kpi-closed-sub">Resolved</div></div>
+        <div class="stat-card kpi-card"><div class="stat-label">Sent</div><div class="stat-value" id="mb-kpi-sent" style="color:#3498db;">—</div><div class="stat-subtitle" id="mb-kpi-sent-sub">Emails sent</div></div>
+    </div>
+
+    <!-- Age tiles -->
+    <div id="mb-age-section" style="margin-bottom:1rem;"></div>
+
+    <!-- SM tiles -->
+    <div class="table-section" style="margin-bottom:1rem;">
+        <div class="table-header" style="margin-bottom:.75rem;">
+            <h3 class="table-title"><i data-lucide="users" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Service Manager Overview</h3>
+            <div style="font-size:12px;color:var(--t3);">Click a row to filter</div>
+        </div>
+        <div id="mb-sm-tiles" class="manager-list" style="max-height:420px;overflow-y:auto;padding-right:4px;">
+            <div style="text-align:center;padding:40px;color:var(--t3);">No data loaded.</div>
+        </div>
+    </div>
+
+    <!-- Analytics charts — hidden by default -->
+    <div id="mb-charts-section" style="display:none;margin-bottom:1rem;">
+        <!-- Trend -->
+        <div class="chart-card" style="margin-bottom:.85rem;">
+            <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <span><i data-lucide="trending-up" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Email Volume Trend</span>
+                <div id="mb-trend-toggles" style="display:flex;gap:5px;"></div>
+            </div>
+            <div style="position:relative;height:260px;overflow:hidden;"><canvas id="mb-chart-trend"></canvas></div>
+        </div>
+        <!-- Status + Workload -->
+        <div class="charts-section" style="grid-template-columns:1fr 2fr;margin-bottom:.85rem;">
+            <div class="chart-card">
+                <div class="chart-title"><i data-lucide="pie-chart" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Status Split</div>
+                <div style="position:relative;height:260px;overflow:hidden;"><canvas id="mb-chart-status"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                    <span><i data-lucide="bar-chart-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>SM Workload</span>
+                    <div id="mb-workload-toggles" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+                </div>
+                <div style="position:relative;height:260px;overflow:hidden;"><canvas id="mb-chart-workload"></canvas></div>
+            </div>
+        </div>
+        <!-- Avg days + categories -->
+        <div class="charts-section" style="grid-template-columns:1fr 1fr;margin-bottom:.85rem;">
+            <div class="chart-card">
+                <div class="chart-title"><i data-lucide="clock" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Avg Days In Progress per SM</div>
+                <div style="position:relative;height:300px;overflow:hidden;"><canvas id="mb-chart-avgdays"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i data-lucide="tag" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Top Issue Categories</div>
+                <div style="position:relative;height:300px;overflow:hidden;"><canvas id="mb-chart-categories"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AG Grid with Export button -->
+    <div class="table-section">
+        <div class="table-header">
+            <h3 class="table-title"><i data-lucide="inbox" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Email Tickets</h3>
+            <div class="table-actions">
+                <input type="text" class="search-box" id="mb-ag-search" placeholder="Search..." style="min-width:180px;">
+                <button type="button" class="export-btn" onclick="mbExportCSV()" style="padding:.45rem 1rem;font-size:.82rem;">
+                    <i data-lucide="file-spreadsheet" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Export Excel
+                </button>
+                <span id="mb-record-count" style="font-size:12px;color:var(--t3);white-space:nowrap;">No data</span>
+            </div>
+        </div>
+        <div id="mb-ag-grid" class="ag-theme-alpine" style="height:600px;width:100%;"></div>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════════════════════ */
+let _mbInited = false;
+
+const SEMailbox = {
+    async init() {
+        const isAdmin = window.USER_CONTEXT && window.USER_CONTEXT.isAdmin;
+        mbInjectShell();
+
+        document.getElementById('mb-toggle-charts-btn').onclick = mbToggleCharts;
+        document.getElementById('mb-export-btn').onclick        = mbExportCSV;
+        document.getElementById('mb-ag-search').oninput         = e => mbSearch(e.target.value);
+
+        if (isAdmin) {
+            const area = document.getElementById('mb-upload-area');
+            if (area) { area.style.display='block'; mbBuildUploadBtn(MB.lastFileName); }
+        }
+
+        if (typeof lucide!=='undefined') lucide.createIcons();
+
+        if (_mbInited && MB.dataLoaded) { mbRenderAll(); return; }
+        _mbInited = true;
+
+        await mbLoadAccountMapping();
+        const loaded = await mbLoadFromSP();
+        if (!loaded) mbShowStatus(isAdmin
+            ? 'No saved data — upload the TSM SE MailBox Excel file.'
+            : 'No mailbox data available.');
+    }
+};
+function initSEMailbox() { SEMailbox.init(); }
