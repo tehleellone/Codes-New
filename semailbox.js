@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SEMAILBOX.JS — SE Mailbox Intelligence v6.0
+   SEMAILBOX.JS — SE Mailbox Intelligence v6.1
    BA-grade: SLA · Agent drilldown · Forecasting · Insights
    Rules: Unassigned = no Agent/Citrix · Assigned = Agent/Citrix
           Completed = Flag date · Assigned date = Received + 1 day
@@ -37,6 +37,7 @@ let MB = {
     accountMapping:  [],
     charts:          {},
     gridApi:         null,
+    chartsVisible:   false,
     hasSentTab:      false,
 
     // top filters — applied to everything
@@ -534,11 +535,15 @@ function mbRenderAll() {
     mbRenderInsights();
     mbRenderKPIs();
     mbRenderSlaPanel();
-    mbRenderAgeTiles();
-    mbRenderTrend();
-    mbRenderForecast();
     mbRenderAgentTable();
-    mbRenderCategories();
+    if (MB.chartsVisible) {
+        mbRenderAgeTiles();
+        mbRenderTrend();
+        mbRenderForecast();
+        mbRenderCategories();
+    } else {
+        mbDestroyCharts();
+    }
     if (!MB.gridApi) mbRenderGrid();
     else MB.gridApi.setGridOption('rowData', MB.filteredTickets);
 
@@ -562,31 +567,29 @@ function mbRenderInsights() {
     if (k.slaOutside>0) {
         const pct = k.slaCompliance!=null ? (100-k.slaCompliance) : null;
         cards.push({icon:'shield-alert', color:'#e74c3c',
-            title:`${k.slaOutside} tickets outside SLA`,
-            sub: pct!=null?`${pct}% of open tickets breaching — needs attention`:'Open SLA breaches'});
+            title:`${k.slaOutside} emails outside SLA`,
+            sub: pct!=null?`${pct}% of open emails need action`:'Open SLA breaches'});
     }
-    // Busiest agent
     const load = {};
     t.filter(x=>x.status==='In Progress').forEach(x=>{ const n=x.smFullName; if(n&&n!=='Unknown Agent') load[n]=(load[n]||0)+1; });
     const top = Object.entries(load).sort((a,b)=>b[1]-a[1])[0];
-    if (top) cards.push({icon:'user', color:'#f39c12', title:`${top[0].split(' ').slice(0,2).join(' ')} is busiest`, sub:`${top[1]} open tickets assigned`});
+    if (top) cards.push({icon:'user', color:'#f39c12', title:`${top[0].split(' ').slice(0,2).join(' ')} has most open emails`, sub:`${top[1]} assigned and still open`});
 
-    // Volume trend WoW
-    const wk = mbBucketByPeriod(t,'W');
+    const wk = mbBucketByPeriod(t,'W').filter(b=>b.recv>0);
     if (wk.length>=2) {
-        const a=wk[wk.length-2].recv, b=wk[wk.length-1].recv;
-        const delta = a? Math.round((b-a)/a*100):0;
-        cards.push({icon: delta>=0?'trending-up':'trending-down', color: delta>=0?'#e67e22':'#27ae60',
-            title:`Volume ${delta>=0?'up':'down'} ${Math.abs(delta)}% WoW`, sub:`${b} received last week vs ${a} prior`});
+        const prev=wk[wk.length-2], cur=wk[wk.length-1];
+        cards.push({icon: cur.recv>=prev.recv?'trending-up':'trending-down', color: cur.recv>=prev.recv?'#e67e22':'#27ae60',
+            title:`${cur.recv} emails last week`,
+            sub:`${cur.recv>=prev.recv?'Up from':'Down from'} ${prev.recv} the week before`});
+    } else if (wk.length===1) {
+        cards.push({icon:'mail', color:'#4c6fff', title:`${wk[0].recv} emails last week`, sub:'Latest week in this file'});
     }
-    // Unassigned risk
     if (k.unassigned>0) {
         const un = t.filter(x=>x.status==='Unassigned');
         const oldest = Math.max(...un.map(x=>x.ageDays||0));
-        cards.push({icon:'inbox', color:'#9b59b6', title:`${k.unassigned} unassigned`, sub:`Oldest waiting ${oldest.toFixed(1)} days — assign now`});
+        cards.push({icon:'inbox', color:'#9b59b6', title:`${k.unassigned} unassigned emails`, sub:`Oldest waiting ${oldest.toFixed(1)} days — assign now`});
     }
-    // Avg age
-    if (k.avgAge!=null) cards.push({icon:'clock', color:'#4c6fff', title:`Avg ${k.avgAge.toFixed(1)} days open`, sub: k.avgResolve!=null?`Completed avg in ${k.avgResolve.toFixed(1)} days`:'Across open tickets'});
+    if (k.avgAge!=null) cards.push({icon:'clock', color:'#4c6fff', title:`Avg ${k.avgAge.toFixed(1)} days open`, sub: k.avgResolve!=null?`Completed emails avg ${k.avgResolve.toFixed(1)} days`:'Across open emails'});
 
     el.innerHTML = cards.slice(0,4).map(c=>`
         <div style="flex:1;min-width:200px;background:var(--bg-card);border:1px solid var(--border);border-left:3px solid ${c.color};border-radius:12px;padding:12px 14px;box-shadow:var(--cs);">
@@ -739,7 +742,7 @@ function mbRenderSlaPanel() {
     <div class="table-section" style="margin-bottom:1rem;">
         <div class="table-header" style="margin-bottom:.75rem;">
             <h3 class="table-title"><i data-lucide="shield-check" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>SLA Command Center</h3>
-            <div style="font-size:12px;color:var(--t3);">Open tickets only</div>
+            <div style="font-size:12px;color:var(--t3);">Open emails only</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;">
             <div onclick="mbToggleSla('within')" style="cursor:pointer;background:var(--bg-card);border:2px solid ${sf==='within'?'#27ae60':'var(--border)'};border-radius:12px;padding:1rem;${sf==='within'?'background:#27ae6018;':''}box-shadow:var(--cs);">
@@ -794,7 +797,7 @@ function mbRenderAgeTiles() {
     container.innerHTML = `
     <div class="table-section" style="margin-bottom:1rem;">
         <div class="table-header" style="margin-bottom:.75rem;">
-            <h3 class="table-title"><i data-lucide="clock" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Ticket Age Visibility</h3>
+            <h3 class="table-title"><i data-lucide="clock" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Email Age Visibility</h3>
             <div style="display:flex;gap:6px;align-items:center;">
                 <span style="font-size:11px;color:var(--t3);">Show:</span>${togBtns}
                 ${af?`<button type="button" class="reset-btn" onclick="MB.ageFilter=null;mbApplyFilters();mbRenderAll();" style="padding:3px 9px;font-size:11px;">✕ Clear</button>`:''}
@@ -805,7 +808,7 @@ function mbRenderAgeTiles() {
             <div onclick="mbToggleAgeFilter('${bucket}')" style="background:var(--bg-card);border:2px solid ${af===bucket?color:'var(--border)'};border-radius:12px;padding:1rem;cursor:pointer;${af===bucket?`background:${color}18;`:''}box-shadow:var(--cs);">
                 <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;">${icon} ${label}</div>
                 <div style="font-size:1.7rem;font-weight:900;color:${color};line-height:1;">${val}</div>
-                <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">tickets</div>
+                <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">emails</div>
             </div>`).join('')}
         </div>
         <div style="font-size:.75rem;font-weight:700;color:var(--t2);margin-bottom:.5rem;">Age breakdown per agent</div>
@@ -889,14 +892,14 @@ function mbRenderTrend() {
         data:{ labels, datasets:[
             {type:'bar', label:'Received', data:recv, backgroundColor:'rgba(76,111,255,0.75)', borderRadius:4, order:2},
             {type:'bar', label:'Completed', data:done, backgroundColor:'rgba(39,174,96,0.8)', borderRadius:4, order:2},
-            {type:'line', label:'Backlog (cumulative)', data:backlog, borderColor:'#e74c3c', backgroundColor:'rgba(231,76,60,0.1)', borderWidth:2.5, pointRadius:3, tension:0.3, fill:false, order:1, yAxisID:'y1'},
+            {type:'line', label:'Still open (running total)', data:backlog, borderColor:'#e74c3c', backgroundColor:'rgba(231,76,60,0.1)', borderWidth:2.5, pointRadius:3, tension:0.3, fill:false, order:1, yAxisID:'y1'},
         ]},
         options:{responsive:true,maintainAspectRatio:false,
             plugins:{legend:MB_LEG},
             scales:{
                 x:{...MB_AX.x, ticks:{...MB_AX.x.ticks,maxRotation:45,maxTicksLimit:20}},
-                y:{...MB_AX.y, title:{display:true,text:'Volume',font:{size:10},color:'rgba(160,160,180,0.7)'}},
-                y1:{position:'right',grid:{display:false},ticks:{font:{size:10},color:'rgba(231,76,60,0.8)',precision:0},title:{display:true,text:'Backlog',font:{size:10},color:'rgba(231,76,60,0.7)'}},
+                y:{...MB_AX.y, title:{display:true,text:'Emails',font:{size:10},color:'rgba(160,160,180,0.7)'}},
+                y1:{position:'right',grid:{display:false},ticks:{font:{size:10},color:'rgba(231,76,60,0.8)',precision:0},title:{display:true,text:'Still open',font:{size:10},color:'rgba(231,76,60,0.7)'}},
             }},
     });
 }
@@ -939,7 +942,7 @@ function mbRenderForecast() {
             <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem;box-shadow:var(--cs);">
                 <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;">Next Week (est.)</div>
                 <div style="font-size:1.6rem;font-weight:900;color:${dirColor};line-height:1;">${proj[0]}</div>
-                <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">volume ${dir}</div>
+                <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">emails per week</div>
             </div>
             <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem;box-shadow:var(--cs);">
                 <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;">Avg Intake / wk</div>
@@ -947,12 +950,12 @@ function mbRenderForecast() {
                 <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">vs ${avgClosure.toFixed(0)} closed</div>
             </div>
             <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem;box-shadow:var(--cs);">
-                <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;">Backlog Trend</div>
+                <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;">Open queue trend</div>
                 <div style="font-size:1.6rem;font-weight:900;color:${netPerWk>0?'#e74c3c':'#27ae60'};line-height:1;">${netPerWk>0?'+':''}${netPerWk.toFixed(0)}/wk</div>
                 <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">${netPerWk>0?'growing':'shrinking'}</div>
             </div>
             <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem;box-shadow:var(--cs);">
-                <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;">Clear Backlog In</div>
+                <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;">Time to clear open</div>
                 <div style="font-size:1.6rem;font-weight:900;color:#a855f7;line-height:1;">${clearWeeks!=null?clearWeeks+'w':'—'}</div>
                 <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">${openNow} open @ current rate</div>
             </div>
@@ -1033,6 +1036,7 @@ function mbRenderAgentTable() {
     }).join('');
 
     el.innerHTML = `
+    <div style="max-height:420px;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:10px;">
     <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="border-bottom:2px solid var(--border);">
             <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--t3);font-weight:700;">Agent</th>
@@ -1044,7 +1048,8 @@ function mbRenderAgentTable() {
             <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--t3);font-weight:700;">Top Issue</th>
         </tr></thead>
         <tbody>${rows}</tbody>
-    </table>`;
+    </table>
+    </div>`;
 
     mbRenderAgentDrill();
 }
@@ -1085,7 +1090,7 @@ function mbRenderAgentDrill() {
                 ${topCats.map(([c,n])=>`<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${c}</span><span style="color:var(--acc);font-weight:700;">${n}</span></div>`).join('')||'<span style="font-size:11px;color:var(--t3);">—</span>'}
             </div>
             <div>
-                <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:.5rem;">Oldest open tickets</div>
+                <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:.5rem;">Oldest open emails</div>
                 ${openList.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;margin-bottom:4px;">
                     <span style="color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${x.subject||x.from||'—'}</span>
                     <span style="color:${(x.ageDays||0)>5?'#e74c3c':'var(--t3)'};font-weight:700;white-space:nowrap;">${x.ageDays!=null?x.ageDays.toFixed(1)+'d':'—'}</span>
@@ -1164,23 +1169,135 @@ function mbRenderWorkloadChart() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   EXPORT
+   GRID SEARCH
    ══════════════════════════════════════════════════════════════ */
-window.mbExportCSV = function() {
-    if (MB.gridApi) { MB.gridApi.exportDataAsCsv({ fileName:`SEMailbox_${new Date().toISOString().slice(0,10)}.csv` }); return; }
-    const headers=['Status','Agent','Citrix ID','Location','From','Subject','Category','SLA Status','Received','Assigned Date','Completed Date','Age (Days)','Ageing Hours','SLA Due'];
-    const rows=MB.filteredTickets.map(t=>[t.status,t.smFullName,t.citrixId||'',t.location||'',t.from,t.subject,t.category,t.slaStatus||'',t.receivedFmt,t.assignedDateFmt,t.flagDateFmt,t.ageDays??'',t.ageingHours??'',t.slaDueFmt]);
-    const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-    a.download=`SEMailbox_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-};
 window.mbSearch = function(val) { if(MB.gridApi) MB.gridApi.setGridOption('quickFilterText',val); };
 
 /* ══════════════════════════════════════════════════════════════
-   AG GRID
+   SHOW / HIDE GRAPHS
    ══════════════════════════════════════════════════════════════ */
+window.mbToggleCharts = function() {
+    MB.chartsVisible = !MB.chartsVisible;
+    const section = document.getElementById('mb-charts-section');
+    const btn     = document.getElementById('mb-toggle-charts-btn');
+    if (section) section.style.display = MB.chartsVisible ? 'block' : 'none';
+    if (btn) {
+        btn.innerHTML = MB.chartsVisible
+            ? '<i data-lucide="eye-off" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Hide Analytics Charts'
+            : '<i data-lucide="bar-chart-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Show Analytics Charts';
+        if (typeof lucide!=='undefined') lucide.createIcons();
+    }
+    if (MB.chartsVisible) {
+        mbRenderAgeTiles();
+        mbRenderTrend();
+        mbRenderForecast();
+        mbRenderCategories();
+    } else {
+        mbDestroyCharts();
+    }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   AG GRID — SM-style set filter (checkbox list, not "contains")
+   ══════════════════════════════════════════════════════════════ */
+function MbSetColumnFilter() {}
+MbSetColumnFilter.prototype.init = function(params) {
+    this.params = params;
+    this.selected = new Set();
+    this.gui = document.createElement('div');
+    this.gui.className = 'sm-ag-set-filter';
+    this._buildGui();
+};
+MbSetColumnFilter.prototype._cellValue = function(data) {
+    const field = this.params.colDef.field;
+    let v = data[field];
+    if (v === null || v === undefined || v === '') return '—';
+    if (field === 'ageDays' && typeof v === 'number') return v + 'd';
+    return String(v);
+};
+MbSetColumnFilter.prototype._allValues = function() {
+    const values = new Set(), self = this;
+    this.params.api.forEachNode(function(node) {
+        if (node.data) values.add(self._cellValue(node.data));
+    });
+    return Array.from(values).sort((a,b)=>a.localeCompare(b));
+};
+MbSetColumnFilter.prototype._buildGui = function() {
+    const self = this, all = this._allValues();
+    this.gui.innerHTML = '';
+    const search = document.createElement('input');
+    search.type = 'text';
+    search.placeholder = 'Search...';
+    search.className = 'sm-ag-set-search';
+    this.gui.appendChild(search);
+    const list = document.createElement('div');
+    list.className = 'sm-ag-set-list';
+    this.gui.appendChild(list);
+    const render = function(term) {
+        list.innerHTML = '';
+        all.filter(v => !term || v.toLowerCase().includes(term.toLowerCase())).forEach(v => {
+            const row = document.createElement('label');
+            row.className = 'sm-ag-set-option';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = self.selected.has(v);
+            cb.onchange = function() {
+                if (cb.checked) self.selected.add(v); else self.selected.delete(v);
+                self.params.filterChangedCallback();
+            };
+            row.appendChild(cb);
+            row.appendChild(document.createTextNode(' ' + v));
+            list.appendChild(row);
+        });
+    };
+    render('');
+    search.oninput = function() { render(search.value); };
+    const actions = document.createElement('div');
+    actions.className = 'sm-ag-set-actions';
+    const btnAll = document.createElement('button');
+    btnAll.type = 'button'; btnAll.textContent = 'Select all';
+    btnAll.onclick = function() { all.forEach(v => self.selected.add(v)); render(search.value); self.params.filterChangedCallback(); };
+    const btnClear = document.createElement('button');
+    btnClear.type = 'button'; btnClear.textContent = 'Clear';
+    btnClear.onclick = function() { self.selected.clear(); render(search.value); self.params.filterChangedCallback(); };
+    actions.appendChild(btnAll); actions.appendChild(btnClear);
+    this.gui.appendChild(actions);
+};
+MbSetColumnFilter.prototype.getGui = function() { return this.gui; };
+MbSetColumnFilter.prototype.isFilterActive = function() { return this.selected.size > 0; };
+MbSetColumnFilter.prototype.doesFilterPass = function(params) {
+    if (!this.selected.size) return true;
+    return this.selected.has(this._cellValue(params.data));
+};
+MbSetColumnFilter.prototype.getModel = function() { return this.selected.size ? { values: Array.from(this.selected) } : null; };
+MbSetColumnFilter.prototype.setModel = function(model) {
+    this.selected = new Set(model && model.values ? model.values : []);
+    this._buildGui();
+};
+MbSetColumnFilter.prototype.destroy = function() {};
+
+function mbEnhanceCol(col) {
+    col.filter = MbSetColumnFilter;
+    col.floatingFilter = false;
+    col.menuTabs = ['filterMenuTab'];
+    return col;
+}
+
+function mbInjectGridStyles() {
+    if (document.getElementById('mb-ag-grid-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'mb-ag-grid-styles';
+    style.textContent = `
+        .sm-ag-set-filter { padding:.5rem; min-width:200px; max-width:260px; }
+        .sm-ag-set-search { width:100%; box-sizing:border-box; margin-bottom:.45rem; padding:.35rem .5rem; border:1px solid var(--border); border-radius:8px; font-size:.75rem; background:var(--bg-card); color:var(--t1); }
+        .sm-ag-set-list { max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:.2rem; }
+        .sm-ag-set-option { display:flex; align-items:center; gap:.35rem; font-size:.75rem; cursor:pointer; padding:.15rem 0; color:var(--t1); }
+        .sm-ag-set-actions { display:flex; gap:.35rem; margin-top:.45rem; }
+        .sm-ag-set-actions button { flex:1; padding:.25rem .4rem; font-size:.68rem; font-weight:700; border:1px solid var(--border); border-radius:6px; background:rgba(168,85,247,.08); color:var(--acc); cursor:pointer; }
+    `;
+    document.head.appendChild(style);
+}
+
 function mbRenderGrid() {
     const el = document.getElementById('mb-ag-grid');
     if (!el || typeof agGrid==='undefined') return;
@@ -1195,27 +1312,28 @@ function mbRenderGrid() {
         const color = v.toLowerCase().includes('outside')?'#e74c3c':v.toLowerCase().includes('within')?'#27ae60':'var(--t2)';
         return `<span style="font-size:10px;font-weight:700;color:${color};">${v}</span>`;
     };
+    mbInjectGridStyles();
     const cols=[
-        {field:'status',        headerName:'Status',        width:130,pinned:'left',filter:'agSetColumnFilter',cellRenderer:statusR},
-        {field:'smFullName',    headerName:'Agent',         width:160,filter:'agSetColumnFilter'},
-        {field:'citrixId',      headerName:'Citrix ID',     width:105,filter:'agSetColumnFilter'},
-        {field:'location',      headerName:'Location',      width:95, filter:'agSetColumnFilter'},
-        {field:'slaStatus',     headerName:'SLA Status',    width:150,filter:'agSetColumnFilter',cellRenderer:slaR},
-        {field:'from',          headerName:'From',          width:170,filter:'agTextColumnFilter'},
-        {field:'subject',       headerName:'Subject',       flex:1,   filter:'agTextColumnFilter',tooltipField:'subject',minWidth:220},
-        {field:'category',      headerName:'Category',      width:185,filter:'agSetColumnFilter'},
-        {field:'receivedFmt',   headerName:'Received',      width:150,filter:'agTextColumnFilter',sort:'desc'},
-        {field:'assignedDateFmt',headerName:'Assigned',     width:150,filter:'agTextColumnFilter'},
-        {field:'ageDays',       headerName:'Age (d)',        width:95, filter:'agNumberColumnFilter',comparator:(a,b)=>(a||0)-(b||0),
-         cellRenderer:p=>p.value==null?'—':`<span style="font-size:12px;font-weight:700;color:${p.value>7?'#e74c3c':p.value>3?'#f39c12':'var(--t2)'};">${p.value}d</span>`},
-        {field:'slaDueFmt',     headerName:'SLA Due',       width:150,filter:'agTextColumnFilter'},
-        {field:'flagDateFmt',   headerName:'Completed',     width:150,filter:'agTextColumnFilter'},
+        mbEnhanceCol({field:'status',        headerName:'Status',        width:130,pinned:'left',cellRenderer:statusR}),
+        mbEnhanceCol({field:'smFullName',    headerName:'Agent',         width:160}),
+        mbEnhanceCol({field:'citrixId',      headerName:'Citrix ID',     width:105}),
+        mbEnhanceCol({field:'location',      headerName:'Location',      width:95}),
+        mbEnhanceCol({field:'slaStatus',     headerName:'SLA Status',    width:150,cellRenderer:slaR}),
+        mbEnhanceCol({field:'from',          headerName:'From',          width:170}),
+        mbEnhanceCol({field:'subject',       headerName:'Subject',       flex:1,tooltipField:'subject',minWidth:220}),
+        mbEnhanceCol({field:'category',      headerName:'Category',      width:185}),
+        mbEnhanceCol({field:'receivedFmt',   headerName:'Received',      width:150,sort:'desc'}),
+        mbEnhanceCol({field:'assignedDateFmt',headerName:'Assigned',     width:150}),
+        mbEnhanceCol({field:'ageDays',       headerName:'Age (d)',       width:95,comparator:(a,b)=>(a||0)-(b||0),
+         cellRenderer:p=>p.value==null?'—':`<span style="font-size:12px;font-weight:700;color:${p.value>7?'#e74c3c':p.value>3?'#f39c12':'var(--t2)'};">${p.value}d</span>`}),
+        mbEnhanceCol({field:'slaDueFmt',     headerName:'SLA Due',       width:150}),
+        mbEnhanceCol({field:'flagDateFmt',   headerName:'Completed',     width:150}),
     ];
     if (MB.gridApi) { try{MB.gridApi.destroy();}catch(e){} MB.gridApi=null; }
     el.innerHTML='';
     agGrid.createGrid(el,{
         columnDefs:cols, rowData:MB.filteredTickets,
-        defaultColDef:{sortable:true,resizable:true,minWidth:80},
+        defaultColDef:{sortable:true,resizable:true,minWidth:80,filter:true,floatingFilter:false},
         pagination:true,paginationPageSize:50,paginationPageSizeSelector:[25,50,100,200],
         rowHeight:42,headerHeight:42,animateRows:true,enableCellTextSelection:true,
         getRowStyle:p=>p.data?.status==='Unassigned'?{background:'rgba(231,76,60,0.05)'}:null,
@@ -1250,11 +1368,6 @@ function mbInjectShell() {
             </h2>
             <div style="font-size:.75rem;color:var(--t3);">Agent/Citrix assignment · Assigned date = Received + 1 day</div>
         </div>
-        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
-            <button type="button" id="mb-export-btn" class="reset-btn" style="padding:.45rem 1rem;font-size:.82rem;">
-                <i data-lucide="download" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Export CSV
-            </button>
-        </div>
     </div>
 
     <div id="mb-status-bar" style="display:none;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--t2);margin-bottom:12px;"></div>
@@ -1278,65 +1391,67 @@ function mbInjectShell() {
     <!-- SLA panel -->
     <div id="mb-sla-panel"></div>
 
-    <!-- Age visibility -->
-    <div id="mb-age-section"></div>
-
-    <!-- Trend -->
-    <div class="chart-card" style="margin-bottom:1rem;">
-        <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-            <span><i data-lucide="activity" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Received vs Completed &amp; Backlog</span>
-            <div id="mb-trend-toggles" style="display:flex;gap:5px;"></div>
-        </div>
-        <div style="position:relative;height:280px;overflow:hidden;"><canvas id="mb-chart-trend"></canvas></div>
-    </div>
-
-    <!-- Forecast -->
-    <div id="mb-forecast"></div>
-
     <!-- Agent leaderboard -->
     <div class="table-section" style="margin-bottom:1rem;">
         <div class="table-header" style="margin-bottom:.75rem;">
             <h3 class="table-title"><i data-lucide="users" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Agent Leaderboard</h3>
             <div style="font-size:12px;color:var(--t3);">Click a row to drill down</div>
         </div>
-        <div style="overflow-x:auto;"><div id="mb-agent-table"></div></div>
+        <div id="mb-agent-table"></div>
         <div id="mb-agent-drill" style="display:none;"></div>
     </div>
 
-    <!-- Distribution charts -->
-    <div class="charts-section" style="grid-template-columns:1fr 1fr 2fr;margin-bottom:1rem;">
-        <div class="chart-card">
-            <div class="chart-title"><i data-lucide="pie-chart" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Status Split</div>
-            <div style="position:relative;height:240px;overflow:hidden;"><canvas id="mb-chart-status"></canvas></div>
-        </div>
-        <div class="chart-card">
-            <div class="chart-title"><i data-lucide="map-pin" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>By Location</div>
-            <div style="position:relative;height:240px;overflow:hidden;"><canvas id="mb-chart-location"></canvas></div>
-        </div>
-        <div class="chart-card">
-            <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-                <span><i data-lucide="bar-chart-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Agent Workload</span>
-                <div id="mb-workload-toggles" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
-            </div>
-            <div style="position:relative;height:240px;overflow:hidden;"><canvas id="mb-chart-workload"></canvas></div>
-        </div>
+    <!-- Show / hide charts -->
+    <div style="text-align:center;margin-bottom:1rem;">
+        <button type="button" id="mb-toggle-charts-btn" class="export-btn" onclick="mbToggleCharts()" style="padding:12px 24px;font-size:14px;">
+            <i data-lucide="bar-chart-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Show Analytics Charts
+        </button>
     </div>
 
-    <!-- Categories -->
-    <div class="chart-card" style="margin-bottom:1rem;">
-        <div class="chart-title"><i data-lucide="tag" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Top Issue Categories (Total vs Outside SLA)</div>
-        <div style="position:relative;height:320px;overflow:hidden;"><canvas id="mb-chart-categories"></canvas></div>
+    <!-- All charts (hidden by default) -->
+    <div id="mb-charts-section" style="display:none;">
+        <div id="mb-age-section"></div>
+
+        <div class="chart-card" style="margin-bottom:1rem;">
+            <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <span><i data-lucide="activity" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Received vs Completed &amp; Open Queue</span>
+                <div id="mb-trend-toggles" style="display:flex;gap:5px;"></div>
+            </div>
+            <div style="position:relative;height:280px;overflow:hidden;"><canvas id="mb-chart-trend"></canvas></div>
+        </div>
+
+        <div id="mb-forecast"></div>
+
+        <div class="charts-section" style="grid-template-columns:1fr 1fr 2fr;margin-bottom:1rem;">
+            <div class="chart-card">
+                <div class="chart-title"><i data-lucide="pie-chart" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Status Split</div>
+                <div style="position:relative;height:240px;overflow:hidden;"><canvas id="mb-chart-status"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i data-lucide="map-pin" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>By Location</div>
+                <div style="position:relative;height:240px;overflow:hidden;"><canvas id="mb-chart-location"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                    <span><i data-lucide="bar-chart-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Agent Workload</span>
+                    <div id="mb-workload-toggles" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+                </div>
+                <div style="position:relative;height:240px;overflow:hidden;"><canvas id="mb-chart-workload"></canvas></div>
+            </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom:1rem;">
+            <div class="chart-title"><i data-lucide="tag" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Top Issue Categories (Total vs Outside SLA)</div>
+            <div style="position:relative;height:320px;overflow:hidden;"><canvas id="mb-chart-categories"></canvas></div>
+        </div>
     </div>
 
     <!-- Grid -->
     <div class="table-section">
         <div class="table-header">
-            <h3 class="table-title"><i data-lucide="table" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Email Tickets</h3>
+            <h3 class="table-title"><i data-lucide="table" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>All Emails</h3>
             <div class="table-actions">
-                <input type="text" class="search-box" id="mb-ag-search" placeholder="Search..." style="min-width:180px;">
-                <button type="button" class="export-btn" onclick="mbExportCSV()" style="padding:.45rem 1rem;font-size:.82rem;">
-                    <i data-lucide="file-spreadsheet" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>Export
-                </button>
+                <input type="text" class="search-box" id="mb-ag-search" placeholder="Search all columns..." style="min-width:180px;">
                 <span id="mb-record-count" style="font-size:12px;color:var(--t3);white-space:nowrap;">No data</span>
             </div>
         </div>
@@ -1353,7 +1468,6 @@ const SEMailbox = {
         const isAdmin = window.USER_CONTEXT && window.USER_CONTEXT.isAdmin;
         mbInjectShell();
 
-        document.getElementById('mb-export-btn').onclick = mbExportCSV;
         document.getElementById('mb-ag-search').oninput   = e => mbSearch(e.target.value);
 
         if (isAdmin) {
