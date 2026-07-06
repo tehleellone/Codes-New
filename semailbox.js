@@ -544,7 +544,7 @@ function mbRenderAll() {
     } else {
         mbDestroyCharts();
     }
-    if (!MB.gridApi) mbRenderGrid();
+    if (mbGridNeedsInit()) mbRenderGrid();
     else MB.gridApi.setGridOption('rowData', MB.filteredTickets);
 
     const rc = document.getElementById('mb-record-count');
@@ -830,6 +830,24 @@ const MB_AX = {
     y:{ grid:{color:'rgba(168,85,247,0.08)'}, ticks:{font:{size:10},color:'rgba(160,160,180,0.8)',precision:0} },
 };
 const MB_LEG = { position:'bottom', labels:{font:{size:10},padding:8,boxWidth:9,boxHeight:9,color:'rgba(160,160,180,0.9)'} };
+function mbDestroyCharts() {
+    Object.keys(MB.charts).forEach(k => { try { MB.charts[k].destroy(); } catch (e) {} });
+    MB.charts = {};
+}
+
+function mbGridNeedsInit() {
+    const el = document.getElementById('mb-ag-grid');
+    if (!el) return false;
+    return !MB.gridApi || !el.isConnected || !el.querySelector('.ag-root-wrapper');
+}
+
+function mbDestroyGrid() {
+    if (MB.gridApi) {
+        try { MB.gridApi.destroy(); } catch (e) {}
+        MB.gridApi = null;
+    }
+}
+
 function mbMakeChart(key, config) {
     const canvas = document.getElementById('mb-chart-'+key);
     if (!canvas || typeof Chart==='undefined') return;
@@ -1209,6 +1227,7 @@ MbSetColumnFilter.prototype.init = function(params) {
     this._buildGui();
 };
 MbSetColumnFilter.prototype._cellValue = function(data) {
+    if (!data) return '—';
     const field = this.params.colDef.field;
     let v = data[field];
     if (v === null || v === undefined || v === '') return '—';
@@ -1267,6 +1286,7 @@ MbSetColumnFilter.prototype.getGui = function() { return this.gui; };
 MbSetColumnFilter.prototype.isFilterActive = function() { return this.selected.size > 0; };
 MbSetColumnFilter.prototype.doesFilterPass = function(params) {
     if (!this.selected.size) return true;
+    if (!params.data) return true;
     return this.selected.has(this._cellValue(params.data));
 };
 MbSetColumnFilter.prototype.getModel = function() { return this.selected.size ? { values: Array.from(this.selected) } : null; };
@@ -1331,14 +1351,18 @@ function mbRenderGrid() {
     ];
     if (MB.gridApi) { try{MB.gridApi.destroy();}catch(e){} MB.gridApi=null; }
     el.innerHTML='';
-    agGrid.createGrid(el,{
-        columnDefs:cols, rowData:MB.filteredTickets,
-        defaultColDef:{sortable:true,resizable:true,minWidth:80,filter:true,floatingFilter:false},
-        pagination:true,paginationPageSize:50,paginationPageSizeSelector:[25,50,100,200],
-        rowHeight:42,headerHeight:42,animateRows:true,enableCellTextSelection:true,
-        getRowStyle:p=>p.data?.status==='Unassigned'?{background:'rgba(231,76,60,0.05)'}:null,
-        onGridReady:p=>{MB.gridApi=p.api;},
-    });
+    try {
+        MB.gridApi = agGrid.createGrid(el,{
+            columnDefs:cols, rowData:MB.filteredTickets,
+            defaultColDef:{sortable:true,resizable:true,minWidth:80,filter:true,floatingFilter:false},
+            pagination:true,paginationPageSize:50,paginationPageSizeSelector:[25,50,100,200],
+            rowHeight:42,headerHeight:42,animateRows:true,enableCellTextSelection:true,
+            getRowStyle:p=>p.data?.status==='Unassigned'?{background:'rgba(231,76,60,0.05)'}:null,
+        });
+    } catch (err) {
+        console.error('[SEMailbox] Grid init failed:', err);
+        el.innerHTML = '<div style="padding:20px;color:#e74c3c;font-size:13px;">Grid failed to load. Check console.</div>';
+    }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1360,6 +1384,7 @@ function mbShowToast(msg,type) {
 function mbInjectShell() {
     const root=document.getElementById('semailbox-root');
     if (!root) return;
+    mbDestroyGrid();
     root.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;">
         <div>
