@@ -134,9 +134,10 @@ select,input,textarea,button{font-family:inherit}
 
 /* ═══════ PORTAL SHELL ══════════════════════════════════════════════════ */
 .portal-shell{
-  width:100%;min-height:100vh;
+  width:100%;max-width:none;min-height:100vh;margin:0;
   display:flex;flex-direction:column;background:var(--bg-body);
 }
+.main-container{display:flex;flex:1;min-height:0;position:relative;width:100%;min-width:0;}
 
 /* ═══════ HEADER ════════════════════════════════════════════════════════ */
 .header{
@@ -223,8 +224,9 @@ body[data-theme="dark"] .status-dot,body[data-theme="duralux-dark"] .status-dot{
 .nav-item.active{background:var(--nab);border-color:var(--nab2);color:var(--t1);font-weight:600}
 
 /* ═══════ CONTENT ═══════════════════════════════════════════════════════ */
-.content{flex:1;overflow-y:auto;min-width:0;background:var(--bg-content);padding:1.1rem 1.25rem}
-.dashboard-section{animation:fadeSection .25s ease;padding:.5rem 0}
+.content{width:100%;flex:1;overflow-y:auto;min-width:0;background:var(--bg-content);padding:1.1rem 1.25rem;}
+#dashboard-view,#revenue-forecast-view{width:100%;max-width:100%;min-width:0;}
+.dashboard-section{animation:fadeSection .25s ease;padding:.5rem 0;width:100%;}
 @keyframes fadeSection{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
 /* ═══════ SECTION TITLE ══════════════════════════════════════════════════ */
@@ -952,10 +954,7 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
             </div>
           </div>
            
-          </div>
-        
-    </div>
-      <div id="analytics-nav" style="display:none;"></div>
+          </div><!-- /charts-nav -->
 
         <!-- TABLE -->
         <div id="table-nav" class="table-section" style="margin-top:1rem;">
@@ -976,6 +975,7 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
         </div>
 
       </div><!-- /dashboard-view -->
+      <div id="analytics-nav" style="display:none;"></div>
 
       <!-- ═══════ REVENUE FORECAST VIEW ═══════ -->
       <div id="revenue-forecast-view" style="display:none;">
@@ -3124,8 +3124,24 @@ const rfCurrentMonthIdx=RF_TODAY.getMonth();
 const rfCurrentYear=RF_TODAY.getFullYear();
 let rfFiltersBuilt=false;
 
+function rfEnsureDefaultYear(){
+  const yearKey='rf_year';
+  const drop=el('msd_'+yearKey);
+  if(!drop) return;
+  if(getChecked(yearKey).length) return;
+  const target=drop.querySelector('input[value="'+String(rfCurrentYear)+'"]');
+  if(target){ target.checked=true; updateMsText(yearKey); }
+}
+function rfApplyDefaultFilters(){
+  rfEnsureDefaultYear();
+  rfHidePast=true;
+  const cb=el('rfHidePastToggle'); if(cb) cb.checked=true;
+  try{ localStorage.setItem('glk_rf_hidepast','true'); }catch(e){}
+}
+
 function rfInit(){
   if(!el('rfFiltersGrid') || !el('rfFiltersGrid').children.length){ rfBuildFilters(); rfBuildTabs(); }
+  else { rfEnsureDefaultYear(); }
   const cb=el('rfHidePastToggle'); if(cb) cb.checked=rfHidePast;
   rfRenderAll();
 }
@@ -3197,6 +3213,12 @@ function rfCascadeMonthVisible(year,m){
   if(y<rfCurrentYear) return false;
   return m>=rfCurrentMonthIdx;
 }
+function rfCascadeOriginVisible(year,origin){
+  if(!rfHidePast) return true;
+  if(Number(year)>rfCurrentYear) return true;
+  if(Number(year)<rfCurrentYear) return false;
+  return origin>=rfCurrentMonthIdx;
+}
 function rfSetHidePast(v){ rfHidePast=v; try{ localStorage.setItem('glk_rf_hidepast',String(v)); }catch(e){} rfRenderAll(); }
 function rfVisibleBidsForCharts(){
   let bids=rfActiveBids();
@@ -3229,13 +3251,15 @@ function rfBuildFilters(){
       drop.appendChild(opt);
     });
     wrap.appendChild(trig); wrap.appendChild(drop); div.appendChild(wrap); grid.appendChild(div);
-    updateMsText(fd.key);
   });
+  rfEnsureDefaultYear();
+  RF_FILTER_DEFS.forEach(fd=>updateMsText(fd.key));
   rfFiltersBuilt=true;
 }
 function rfOnFilterChange(key){ updateMsText(key); rfRenderAll(); }
 function rfClearAllFilters(){
   document.querySelectorAll('#rfFiltersGrid .ms-dropdown input').forEach(cb=>cb.checked=false);
+  rfApplyDefaultFilters();
   RF_FILTER_DEFS.forEach(fd=>updateMsText(fd.key));
   rfRenderAll();
 }
@@ -3325,13 +3349,18 @@ function rfRenderCascade(){
 
     html+='<tr><td>New This Month</td>';
     let baseVisTotal=0;
-    visibleMonths.forEach(function(m){ baseVisTotal+=base[m]; html+= base[m] ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+m+',\''+year+'\')">'+rfFmtVal(base[m])+'</td>' : '<td class="rf-cell-empty">—</td>'; });
+    visibleMonths.forEach(function(m){
+      if(!rfCascadeOriginVisible(year,m)) return;
+      baseVisTotal+=base[m];
+      html+= base[m] ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+m+',\''+year+'\')">'+rfFmtVal(base[m])+'</td>' : '<td class="rf-cell-empty">—</td>';
+    });
     html+='<td class="rf-total-col">'+rfFmtVal(baseVisTotal)+'</td></tr>';
 
     const colTotals={}; visibleMonths.forEach(m=>colTotals[m]=0);
     let grand=0;
     for(let origin=0; origin<11; origin++){
       if(!base[origin]) continue;
+      if(!rfCascadeOriginVisible(year,origin)) continue;
       const rowCells={};
       for(let target=origin+1; target<12; target++) rowCells[target]=base[origin];
       let rowTotal=0, hasVisibleCell=false;
