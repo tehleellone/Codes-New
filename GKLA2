@@ -134,7 +134,7 @@ select,input,textarea,button{font-family:inherit}
 
 /* ═══════ PORTAL SHELL ══════════════════════════════════════════════════ */
 .portal-shell{
-  max-width:1800px;margin:0 auto;min-height:100vh;
+  width:100%;min-height:100vh;
   display:flex;flex-direction:column;background:var(--bg-body);
 }
 
@@ -578,18 +578,44 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 .stat-card.tile-active::after{content:'✓';position:absolute;top:6px;right:8px;font-size:.7rem;font-weight:900;color:var(--acc);}
 
 /* ═══════ REVENUE FORECAST ═══════════════════════════════════════════ */
-.rf-table{width:100%;border-collapse:collapse;font-size:.8rem;white-space:nowrap;}
-.rf-table th,.rf-table td{padding:.5rem .7rem;border:1px solid var(--border);text-align:right;}
-.rf-table th{background:var(--bg-secondary);color:var(--t2);font-weight:700;position:sticky;top:0;z-index:2;}
-.rf-table td:first-child,.rf-table th:first-child{text-align:left;position:sticky;left:0;background:var(--bg-card);z-index:1;font-weight:600;color:var(--t1);}
-.rf-table th:first-child{z-index:3;background:var(--bg-secondary);}
-.rf-table tr.rf-total-row td{background:var(--bg-secondary);font-weight:800;color:var(--t1);}
-.rf-table td.rf-total-col{background:var(--bg-secondary);font-weight:800;}
-.rf-cell-btn{cursor:pointer;border-radius:6px;transition:background .15s,color .15s;color:var(--t1);}
-.rf-cell-btn:hover{background:var(--nab);color:var(--acc);}
+.rf-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--cs);overflow:hidden;margin-bottom:1.25rem;}
+.rf-panel-head{padding:1rem 1.1rem .8rem;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+.rf-panel-sub{font-size:.68rem;color:var(--t3);margin-top:.3rem;font-style:italic;}
+.rf-table-scroll{max-height:540px;overflow:auto;border-top:1px solid var(--border);}
+.rf-cascade-block{margin-bottom:1.25rem;}
+.rf-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.8rem;white-space:nowrap;}
+.rf-table th,.rf-table td{padding:.5rem .7rem;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:right;background:var(--bg-card);}
+.rf-table thead th{position:sticky;top:0;z-index:5;background:var(--bg-secondary);color:var(--t2);font-weight:700;border-bottom:2px solid var(--border-s);}
+.rf-table td:first-child,.rf-table th:first-child{text-align:left;position:sticky;left:0;z-index:4;background:var(--bg-card);font-weight:600;color:var(--t1);}
+.rf-table thead th:first-child{z-index:6;background:var(--bg-secondary);}
+.rf-table td.rf-total-col,.rf-table th.rf-total-col{position:sticky;right:0;z-index:4;background:var(--bg-secondary);font-weight:800;border-left:2px solid var(--border-s);}
+.rf-table thead th.rf-total-col{z-index:6;}
+.rf-table tr.rf-total-row td{position:sticky;bottom:0;z-index:4;background:var(--bg-secondary);font-weight:800;color:var(--t1);border-top:2px solid var(--border-s);}
+.rf-table tr.rf-total-row td:first-child{z-index:6;}
+.rf-table tr.rf-total-row td.rf-total-col{z-index:6;}
+.rf-cell-btn{cursor:pointer;border-radius:0;transition:background .15s,color .15s;color:var(--t1);}
+.rf-cell-btn:hover{background:var(--nab)!important;color:var(--acc)!important;}
 .rf-cell-empty{color:var(--t3);cursor:default;}
-.rf-cascade-block{margin-bottom:1.5rem;}
-.rf-cascade-block-title{font-weight:800;font-size:.85rem;margin-bottom:.5rem;color:var(--t1);}
+.rf-cascade-block-title{font-weight:800;font-size:.85rem;margin:0 0 .5rem 1.1rem;color:var(--t1);}
+.rf-controls-row{display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-end;margin:1rem 0;}
+.rf-control-group .filter-label{margin-bottom:.4rem;}
+.rf-switch-wrap{display:flex;align-items:center;gap:.55rem;cursor:pointer;user-select:none;padding-bottom:.35rem;}
+.rf-switch{position:relative;width:38px;height:21px;flex-shrink:0;}
+.rf-switch input{opacity:0;width:0;height:0;position:absolute;}
+.rf-switch-track{position:absolute;inset:0;background:var(--bg-secondary);border:1px solid var(--border);border-radius:20px;transition:all .2s;}
+.rf-switch-track::before{content:'';position:absolute;width:15px;height:15px;left:2px;top:2px;background:var(--t3);border-radius:50%;transition:all .2s;}
+.rf-switch input:checked + .rf-switch-track{background:var(--grad);border-color:transparent;}
+.rf-switch input:checked + .rf-switch-track::before{transform:translateX(17px);background:#fff;}
+.rf-switch-label{font-size:.78rem;font-weight:600;color:var(--t2);}
+.rf-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-bottom:1rem;}
+.rf-kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:.9rem 1rem;box-shadow:var(--cs);position:relative;overflow:hidden;}
+.rf-kpi-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--kpi-color,var(--grad));}
+.rf-kpi-label{font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.35rem;}
+.rf-kpi-value{font-size:1.3rem;font-weight:800;color:var(--t1);line-height:1.1;}
+.rf-kpi-sub{font-size:.68rem;color:var(--t3);margin-top:.3rem;}
+.rf-charts-grid{display:grid;grid-template-columns:1fr;gap:.85rem;}
+.rf-charts-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;}
+@media(max-width:900px){.rf-charts-grid-2{grid-template-columns:1fr;}}
 .rf-modal-overlay{position:fixed;inset:0;background:rgba(10,4,20,.55);backdrop-filter:blur(2px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:2rem;}
 .rf-modal{background:var(--bg-card);border-radius:16px;border:1px solid var(--border-s);box-shadow:0 20px 60px rgba(0,0,0,.4);width:min(1150px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;}
 .rf-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -969,29 +995,38 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
           </div>
         </div>
 
-        <!-- Row grouping + Metric toggle -->
-        <div style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-start;margin:1rem 0;">
-          <div>
-            <div class="filter-label" style="margin-bottom:.4rem;">Group Rows By</div>
-            <div id="rfRowDimTabs" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
+        <!-- Row grouping + Metric + Hide-past toggle -->
+        <div class="rf-controls-row">
+          <div class="rf-control-group">
+            <div class="filter-label">Group Rows By</div>
+            <div id="rfRowDimTabs"></div>
           </div>
-          <div>
-            <div class="filter-label" style="margin-bottom:.4rem;">Metric</div>
-            <div id="rfMetricTabs" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
+          <div class="rf-control-group">
+            <div class="filter-label">Metric</div>
+            <div id="rfMetricTabs"></div>
           </div>
+          <label class="rf-switch-wrap" for="rfHidePastToggle">
+            <span class="rf-switch"><input type="checkbox" id="rfHidePastToggle" onchange="rfSetHidePast(this.checked)"><span class="rf-switch-track"></span></span>
+            <span class="rf-switch-label">Hide past months — remaining year only</span>
+          </label>
         </div>
+        <div style="font-size:.68rem;color:var(--t3);margin:-.6rem 0 1rem;font-style:italic;">Months are based on Expected Activation. Recurring revenue below always starts billing the month after activation.</div>
 
         <!-- Excluded items banner -->
         <div id="rfExcludedBanner" style="margin-bottom:1rem;"></div>
 
         <!-- TABLE 1: PIVOT -->
-        <div class="chart-card" style="margin-bottom:1.25rem;">
-          <div class="chart-title">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-            <span id="rfPivotTitle">Pivot</span>
+        <div class="rf-panel">
+          <div class="rf-panel-head">
+            <div>
+              <div class="chart-title" style="margin-bottom:0;">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                <span id="rfPivotTitle">Pivot</span>
+              </div>
+              <div class="rf-panel-sub">Click any cell to drill down into the underlying opportunities. Headers, totals and the Grand Total row/column stay fixed while you scroll.</div>
+            </div>
           </div>
-          <div id="rfPivotTable" style="overflow-x:auto;"></div>
-          <div style="font-size:.68rem;color:var(--t3);margin-top:.6rem;font-style:italic;">Click any cell to drill down into the underlying opportunities.</div>
+          <div id="rfPivotTable" class="rf-table-scroll"></div>
         </div>
 
         <!-- TABLE 2: RECURRING REVENUE ROLL-FORWARD -->
@@ -1002,6 +1037,52 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
           </h2>
           <div style="font-size:.72rem;color:var(--t3);margin:-.4rem 0 .75rem;">Each month's new revenue keeps recurring every month after it activates, through December. Click any cell to see which cohort of deals it came from.</div>
           <div id="rfCascadeTables"></div>
+        </div>
+
+        <!-- FORECAST CHARTS -->
+        <div style="text-align:center;margin:1.25rem 0 .85rem;">
+          <button type="button" class="export-btn" onclick="rfToggleCharts()">
+            <svg id="rfChartsToggleIcon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="6" x2="15" y2="15"/><line x1="12" y1="12" x2="12" y2="15"/></svg>
+            <span id="rfChartsToggleText">Show Forecast Charts</span>
+          </button>
+        </div>
+        <div id="rfChartsSection" style="display:none;">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+            Budget &amp; Forecast Insights
+          </h2>
+          <div style="font-size:.72rem;color:var(--t3);margin:-.4rem 0 .85rem;">A high-level view of where the pipeline stands today and where it's trending by year end.</div>
+
+          <div class="rf-kpi-grid" id="rfKpiGrid"></div>
+
+          <div class="rf-charts-grid" style="margin-bottom:.85rem;">
+            <div class="chart-card">
+              <div class="chart-title"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>Run-Rate Build-Up — New Business vs Cumulative Run-Rate</div>
+              <div class="chart-container" style="height:320px;"><canvas id="rfChartRunRate"></canvas></div>
+            </div>
+          </div>
+
+          <div class="rf-charts-grid-2" style="margin-bottom:.85rem;">
+            <div class="chart-card">
+              <div class="chart-title"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 2v10l7 4"/></svg>Forecast Confidence — Best Case vs Weighted vs Committed</div>
+              <div class="chart-container" style="height:300px;"><canvas id="rfChartConfidence"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg><span id="rfGroupChartTitle">Pipeline by Group</span></div>
+              <div class="chart-container" style="height:300px;"><canvas id="rfChartGroup"></canvas></div>
+            </div>
+          </div>
+
+          <div class="rf-charts-grid-2">
+            <div class="chart-card">
+              <div class="chart-title"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Status Mix — Realized vs Pipeline vs Dead</div>
+              <div class="chart-container" style="height:300px;"><canvas id="rfChartStatusMix"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Closure Probability Breakdown</div>
+              <div class="chart-container" style="height:300px;"><canvas id="rfChartProb"></canvas></div>
+            </div>
+          </div>
         </div>
       </div><!-- /revenue-forecast-view -->
     </div><!-- /content -->
@@ -2953,7 +3034,7 @@ function changeTheme(event){
   const isDark=cur==='dark'||cur==='duralux-dark';
   applyTheme(base,isDark);
   try{localStorage.setItem('glk_base_theme',base);}catch(e){}
-  setTimeout(()=>renderCharts(),100);
+  setTimeout(()=>{renderCharts();rfRenderCharts();},100);
 }
 function toggleTheme(){
   const cur=document.body.getAttribute('data-theme')||'';
@@ -2961,7 +3042,7 @@ function toggleTheme(){
   const isDural=cur==='duralux'||cur==='duralux-dark';
   applyTheme(isDural?'duralux':'magenta',!isDark);
   try{localStorage.setItem('glk_dark_mode',String(!isDark));}catch(e){}
-  setTimeout(()=>renderCharts(),100);
+  setTimeout(()=>{renderCharts();rfRenderCharts();},100);
 }
 function updateSelectionBadge(){
   const b=el('selectionBadge'); if(!b) return;
@@ -2979,15 +3060,30 @@ function updateSelectionBadge(){
 // ══════════════════════════════════════════════════════════════════
 const RF_ROW_DIMS=[
   {key:'typeOfRequest',label:'Type of Request'},
+  {key:'typeOfContract',label:'Type of Contract'},
   {key:'vertical',label:'Vertical'},
+  {key:'productFamily',label:'Product Family'},
   {key:'productCategory',label:'Product Category'},
+  {key:'services',label:'Services'},
   {key:'headDirector',label:'Head Director'},
+  {key:'accountDirector',label:'Account Director'},
+  {key:'amName',label:'Account Manager'},
+  {key:'status',label:'Status'},
+  {key:'closureProb',label:'Closure Probability'},
+  {key:'complexity',label:'Complexity'},
+  {key:'prepaidPostpaid',label:'Pre/Postpaid'},
+  {key:'customerCode',label:'Customer Code'},
+  {key:'bidManager',label:'Bid Manager'},
+  {key:'projectManager',label:'Project Manager'},
+  {key:'customerName',label:'Customer'},
 ];
 const RF_METRICS=[
   {key:'mrc',label:'MRC'},
   {key:'otc',label:'OTC'},
   {key:'tcv',label:'TCV'},
+  {key:'pcv',label:'Cat. Value (PCV)'},
   {key:'gaPoints',label:'GA Points'},
+  {key:'count',label:'Count of Opportunities'},
 ];
 const RF_FILTER_DEFS=[
   {key:'rf_typeOfRequest',field:'typeOfRequest',label:'Type of Request'},
@@ -3002,10 +3098,11 @@ const RF_MODAL_COLS=[
   {key:'amName',label:'Account Manager'},
   {key:'headDirector',label:'Head Director'},
   {key:'accountDirector',label:'Account Director'},
-  {key:'expectedActivation',label:'Expected Activation',fmt:v=>fmtDate(v)},
-  {key:'mrc',label:'MRC',fmt:v=>fmt(v)},
-  {key:'otc',label:'OTC',fmt:v=>fmt(v)},
-  {key:'tcv',label:'TCV',fmt:v=>fmt(v)},
+  {key:'expectedActivation',label:'Expected Activation',fmt:(v)=>fmtDate(v)},
+  {key:'mrc',label:'MRC',fmt:(v)=>fmt(v)},
+  {key:'otc',label:'OTC',fmt:(v)=>fmt(v)},
+  {key:'tcv',label:'TCV',fmt:(v)=>fmt(v)},
+  {key:'pcv',label:'Cat. Value',fmt:(v)=>fmt(v)},
   {key:'status',label:'Status'},
   {key:'closureProb',label:'Closure Prob.'},
 ];
@@ -3015,18 +3112,30 @@ let rfModalCtx=null;      // {rowVal, monthIdx, year, excludedOnly}
 let rfModalSortKey='customerName';
 let rfModalSortDir=1;
 let rfModalSearch='';
+let rfChartsVisible=false;
 let RF_EXCLUDED=new Set();
 try{ RF_EXCLUDED=new Set(JSON.parse(localStorage.getItem('glk_rf_excluded')||'[]')); }catch(e){ RF_EXCLUDED=new Set(); }
 function rfSaveExcluded(){ try{ localStorage.setItem('glk_rf_excluded', JSON.stringify([...RF_EXCLUDED])); }catch(e){} }
+// Default to "remaining year only" — most useful default for a forward-looking forecast.
+let rfHidePast=true;
+try{ const saved=localStorage.getItem('glk_rf_hidepast'); if(saved!==null) rfHidePast=(saved==='true'); }catch(e){}
+const RF_TODAY=new Date();
+const rfCurrentMonthIdx=RF_TODAY.getMonth();
+const rfCurrentYear=RF_TODAY.getFullYear();
+let rfFiltersBuilt=false;
 
 function rfInit(){
   if(!el('rfFiltersGrid') || !el('rfFiltersGrid').children.length){ rfBuildFilters(); rfBuildTabs(); }
+  const cb=el('rfHidePastToggle'); if(cb) cb.checked=rfHidePast;
   rfRenderAll();
 }
 
 // ── data helpers ─────────────────────────────────────────────────
+// Table 1 & 2 both key off Expected Activation directly; the cascade (Table 2)
+// already models "billed the month after activation" via its origin+1 roll-forward.
 function rfGetYear(bid){ if(!bid.expectedActivation) return null; const d=new Date(bid.expectedActivation); return isNaN(d)?null:String(d.getFullYear()); }
 function rfGetMonthIdx(bid){ if(!bid.expectedActivation) return null; const d=new Date(bid.expectedActivation); return isNaN(d)?null:d.getMonth(); }
+function probToFraction(p){ if(!p) return 0; const n=parseFloat(p); return isNaN(n)?0:n/100; }
 function rfGetBaseBids(){
   let bids=ALL_BIDS.filter(b=>b.expectedActivation && !isNaN(new Date(b.expectedActivation)));
   if(USER.role==='Head Director'){
@@ -3068,8 +3177,38 @@ function rfGetCellBids(rowVal,monthIdx,year,includeExcluded){
   if(year!=null) bids=bids.filter(b=>rfGetYear(b)===year);
   return bids;
 }
-function rfSum(bids){ return bids.reduce((s,b)=>s+num(b[rfMetric]),0); }
-function rfFmtVal(v){ return rfMetric==='gaPoints'?fmtGA(v):fmt(v); }
+function rfMetricVal(b){ return rfMetric==='count' ? 1 : num(b[rfMetric]); }
+function rfSum(bids){ return bids.reduce((s,b)=>s+rfMetricVal(b),0); }
+function rfFmtVal(v){ if(rfMetric==='count') return String(Math.round(v*10)/10); if(rfMetric==='gaPoints') return fmtGA(v); return fmt(v); }
+function rfYearBase(bids,year){
+  const yb=bids.filter(b=>rfGetYear(b)===year);
+  const arr=new Array(12).fill(0);
+  for(let m=0;m<12;m++) arr[m]=rfSum(yb.filter(b=>rfGetMonthIdx(b)===m));
+  return arr;
+}
+// "Hide past months" visibility rules — Table 1 aggregates by calendar month across years,
+// Table 2 is per calendar year, so a whole past year can be hidden outright.
+function rfPivotMonthVisible(m){ return !rfHidePast || m>=rfCurrentMonthIdx; }
+function rfCascadeYearVisible(year){ return !rfHidePast || Number(year)>=rfCurrentYear; }
+function rfCascadeMonthVisible(year,m){
+  if(!rfHidePast) return true;
+  const y=Number(year);
+  if(y>rfCurrentYear) return true;
+  if(y<rfCurrentYear) return false;
+  return m>=rfCurrentMonthIdx;
+}
+function rfSetHidePast(v){ rfHidePast=v; try{ localStorage.setItem('glk_rf_hidepast',String(v)); }catch(e){} rfRenderAll(); }
+function rfVisibleBidsForCharts(){
+  let bids=rfActiveBids();
+  if(rfHidePast){
+    bids=bids.filter(function(b){
+      const y=rfGetYear(b), m=rfGetMonthIdx(b);
+      if(y==null||m==null) return false;
+      return rfCascadeMonthVisible(y,m);
+    });
+  }
+  return bids;
+}
 
 // ── filters UI (reuses existing ms-dropdown engine via 'rf_' prefixed keys) ──
 function rfBuildFilters(){
@@ -3085,11 +3224,14 @@ function rfBuildFilters(){
     rfGetFilterVals(fd).forEach(function(v){
       const opt=document.createElement('div'); opt.className='ms-option';
       const cid='cb_'+fd.key+'_'+v.toString().replace(/[^a-zA-Z0-9]/g,'_');
-      opt.innerHTML='<input type="checkbox" id="'+cid+'" value="'+v+'" onchange="rfOnFilterChange(\''+fd.key+'\')"><label for="'+cid+'">'+v+'</label>';
+      const preCheck = (fd.field==='_rfyear' && v===String(rfCurrentYear) && !rfFiltersBuilt);
+      opt.innerHTML='<input type="checkbox" id="'+cid+'" value="'+v+'"'+(preCheck?' checked':'')+' onchange="rfOnFilterChange(\''+fd.key+'\')"><label for="'+cid+'">'+v+'</label>';
       drop.appendChild(opt);
     });
     wrap.appendChild(trig); wrap.appendChild(drop); div.appendChild(wrap); grid.appendChild(div);
+    updateMsText(fd.key);
   });
+  rfFiltersBuilt=true;
 }
 function rfOnFilterChange(key){ updateMsText(key); rfRenderAll(); }
 function rfClearAllFilters(){
@@ -3097,26 +3239,23 @@ function rfClearAllFilters(){
   RF_FILTER_DEFS.forEach(fd=>updateMsText(fd.key));
   rfRenderAll();
 }
+// Group-by / Metric are single dropdowns exposing every available dimension — no artificial limits.
 function rfBuildTabs(){
   const rowWrap=el('rfRowDimTabs');
   if(rowWrap){
-    rowWrap.innerHTML='';
-    RF_ROW_DIMS.forEach(function(rd){
-      const b=document.createElement('button'); b.type='button'; b.className='pf-tab'+(rd.key===rfRowDim?' active':'');
-      b.textContent=rd.label; b.onclick=function(){ rfRowDim=rd.key; rfBuildTabs(); rfRenderAll(); };
-      rowWrap.appendChild(b);
-    });
+    rowWrap.innerHTML='<select class="color-scheme-selector" id="rfRowDimSelect" onchange="rfSetRowDim(this.value)" style="min-width:210px;">'+
+      RF_ROW_DIMS.map(function(rd){ return '<option value="'+rd.key+'"'+(rd.key===rfRowDim?' selected':'')+'>'+rd.label+'</option>'; }).join('')+
+      '</select>';
   }
   const metWrap=el('rfMetricTabs');
   if(metWrap){
-    metWrap.innerHTML='';
-    RF_METRICS.forEach(function(m){
-      const b=document.createElement('button'); b.type='button'; b.className='pf-tab'+(m.key===rfMetric?' active':'');
-      b.textContent=m.label; b.onclick=function(){ rfMetric=m.key; rfBuildTabs(); rfRenderAll(); };
-      metWrap.appendChild(b);
-    });
+    metWrap.innerHTML='<select class="color-scheme-selector" id="rfMetricSelect" onchange="rfSetMetric(this.value)" style="min-width:190px;">'+
+      RF_METRICS.map(function(m){ return '<option value="'+m.key+'"'+(m.key===rfMetric?' selected':'')+'>'+m.label+'</option>'; }).join('')+
+      '</select>';
   }
 }
+function rfSetRowDim(k){ rfRowDim=k; rfRenderAll(); }
+function rfSetMetric(k){ rfMetric=k; rfRenderAll(); }
 
 // ── render: everything ───────────────────────────────────────────
 function rfRenderAll(){
@@ -3124,36 +3263,41 @@ function rfRenderAll(){
   rfRenderPivot();
   rfRenderCascade();
   if(rfModalCtx) rfRenderModal();
+  rfRenderCharts();
 }
 
 // ── TABLE 1: pivot ────────────────────────────────────────────────
 function rfRenderPivot(){
   const container=el('rfPivotTable'); if(!container) return;
   const rowLabel=RF_ROW_DIMS.find(r=>r.key===rfRowDim).label;
-  set('rfPivotTitle', 'New '+RF_METRICS.find(m=>m.key===rfMetric).label+' by '+rowLabel+' & Month (Expected Activation)');
+  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+  set('rfPivotTitle', metricLabel+' by '+rowLabel+' & Month (Expected Activation)'+(rfHidePast?' — remaining year':''));
   const bids=rfActiveBids();
   if(!bids.length){ container.innerHTML='<div style="padding:2rem;text-align:center;color:var(--t3);">No data matches the current filters.</div>'; return; }
+  const visibleMonths=[]; for(let m=0;m<12;m++) if(rfPivotMonthVisible(m)) visibleMonths.push(m);
+  if(!visibleMonths.length){ container.innerHTML='<div style="padding:2rem;text-align:center;color:var(--t3);">No months to show — try turning off "Hide past months".</div>'; return; }
+  const totalLabel = rfHidePast ? 'Remaining Total' : 'Grand Total';
   const rows=[...new Set(bids.map(b=>b[rfRowDim]).filter(v=>v&&v!=='—'))].sort();
   let html='<table class="rf-table"><thead><tr><th>'+rowLabel+'</th>';
-  MONTH_NAMES.forEach(m=>html+='<th>'+m+'</th>');
-  html+='<th class="rf-total-col">Grand Total</th></tr></thead><tbody>';
-  const colTotals=new Array(12).fill(0);
+  visibleMonths.forEach(m=>html+='<th>'+MONTH_NAMES[m]+'</th>');
+  html+='<th class="rf-total-col">'+totalLabel+'</th></tr></thead><tbody>';
+  const colTotals={}; visibleMonths.forEach(m=>colTotals[m]=0);
   let grandTotal=0;
   rows.forEach(function(rowVal){
     html+='<tr><td>'+rowVal+'</td>';
     let rowTotal=0;
-    for(let m=0;m<12;m++){
+    visibleMonths.forEach(function(m){
       const val=rfSum(rfGetCellBids(rowVal,m,null,false));
       colTotals[m]+=val; rowTotal+=val;
       html+= val ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown('+JSON.stringify(rowVal)+','+m+',null)">'+rfFmtVal(val)+'</td>' : '<td class="rf-cell-empty">—</td>';
-    }
+    });
     grandTotal+=rowTotal;
     html+= rowTotal ? '<td class="rf-total-col rf-cell-btn" onclick="rfOpenDrilldown('+JSON.stringify(rowVal)+',null,null)">'+rfFmtVal(rowTotal)+'</td></tr>' : '<td class="rf-total-col">—</td></tr>';
   });
-  html+='<tr class="rf-total-row"><td>Grand Total</td>';
-  for(let m=0;m<12;m++){
+  html+='<tr class="rf-total-row"><td>'+totalLabel+'</td>';
+  visibleMonths.forEach(function(m){
     html+= colTotals[m] ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+m+',null)">'+rfFmtVal(colTotals[m])+'</td>' : '<td class="rf-cell-empty">—</td>';
-  }
+  });
   html+= grandTotal ? '<td class="rf-total-col rf-cell-btn" onclick="rfOpenDrilldown(null,null,null)">'+rfFmtVal(grandTotal)+'</td></tr>' : '<td class="rf-total-col">—</td></tr>';
   html+='</tbody></table>';
   container.innerHTML=html;
@@ -3164,39 +3308,46 @@ function rfRenderCascade(){
   const container=el('rfCascadeTables'); if(!container) return;
   const bids=rfActiveBids();
   if(!bids.length){ container.innerHTML='<div style="padding:1rem;color:var(--t3);">No data matches the current filters.</div>'; return; }
-  const years=[...new Set(bids.map(rfGetYear).filter(Boolean))].sort();
+  const years=[...new Set(bids.map(rfGetYear).filter(Boolean))].sort().filter(rfCascadeYearVisible);
+  if(!years.length){ container.innerHTML='<div style="padding:1rem;color:var(--t3);">No upcoming years to show — try turning off "Hide past months".</div>'; return; }
+  const totalLabel = rfHidePast ? 'Remaining Total' : 'Grand Total';
   let html='';
   years.forEach(function(year){
-    const yearBids=bids.filter(b=>rfGetYear(b)===year);
-    const base=new Array(12).fill(0);
-    for(let m=0;m<12;m++) base[m]=rfSum(yearBids.filter(b=>rfGetMonthIdx(b)===m));
+    const base=rfYearBase(bids,year);
     if(!base.some(v=>v)) return;
-    html+='<div class="rf-cascade-block"><div class="rf-cascade-block-title">'+year+'</div>';
-    html+='<div style="overflow-x:auto;"><table class="rf-table"><thead><tr><th>Cohort</th>';
-    MONTH_NAMES.forEach(m=>html+='<th>'+m+'</th>');
-    html+='<th class="rf-total-col">Total</th></tr></thead><tbody>';
-    html+='<tr><td>New This Month</td>';
-    base.forEach(function(v,m){ html+= v ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+m+',\''+year+'\')">'+rfFmtVal(v)+'</td>' : '<td class="rf-cell-empty">—</td>'; });
-    html+='<td class="rf-total-col">'+rfFmtVal(base.reduce((a,b)=>a+b,0))+'</td></tr>';
+    const visibleMonths=[]; for(let m=0;m<12;m++) if(rfCascadeMonthVisible(year,m)) visibleMonths.push(m);
+    if(!visibleMonths.length) return;
 
-    const colTotals=new Array(12).fill(0);
+    html+='<div class="rf-cascade-block"><div class="rf-cascade-block-title">'+year+'</div>';
+    html+='<div class="rf-panel"><div class="rf-table-scroll"><table class="rf-table"><thead><tr><th>Cohort</th>';
+    visibleMonths.forEach(m=>html+='<th>'+MONTH_NAMES[m]+'</th>');
+    html+='<th class="rf-total-col">Total</th></tr></thead><tbody>';
+
+    html+='<tr><td>New This Month</td>';
+    let baseVisTotal=0;
+    visibleMonths.forEach(function(m){ baseVisTotal+=base[m]; html+= base[m] ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+m+',\''+year+'\')">'+rfFmtVal(base[m])+'</td>' : '<td class="rf-cell-empty">—</td>'; });
+    html+='<td class="rf-total-col">'+rfFmtVal(baseVisTotal)+'</td></tr>';
+
+    const colTotals={}; visibleMonths.forEach(m=>colTotals[m]=0);
     let grand=0;
     for(let origin=0; origin<11; origin++){
       if(!base[origin]) continue;
-      const cells=new Array(12).fill(null);
-      let rowTotal=0;
-      for(let target=origin+1; target<12; target++){ cells[target]=base[origin]; colTotals[target]+=base[origin]; rowTotal+=base[origin]; }
+      const rowCells={};
+      for(let target=origin+1; target<12; target++) rowCells[target]=base[origin];
+      let rowTotal=0, hasVisibleCell=false;
+      visibleMonths.forEach(function(m){ if(rowCells[m]!=null){ hasVisibleCell=true; colTotals[m]+=rowCells[m]; rowTotal+=rowCells[m]; } });
+      if(!hasVisibleCell) continue;
       grand+=rowTotal;
       html+='<tr><td>'+MONTH_NAMES[origin]+' cohort</td>';
-      for(let m=0;m<12;m++){
-        html+= cells[m]!=null ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+origin+',\''+year+'\')">'+rfFmtVal(cells[m])+'</td>' : '<td class="rf-cell-empty">—</td>';
-      }
+      visibleMonths.forEach(function(m){
+        html+= rowCells[m]!=null ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+origin+',\''+year+'\')">'+rfFmtVal(rowCells[m])+'</td>' : '<td class="rf-cell-empty">—</td>';
+      });
       html+='<td class="rf-total-col rf-cell-btn" onclick="rfOpenDrilldown(null,'+origin+',\''+year+'\')">'+rfFmtVal(rowTotal)+'</td></tr>';
     }
-    html+='<tr class="rf-total-row"><td>Grand Total</td>';
-    for(let m=0;m<12;m++) html+='<td>'+(colTotals[m]?rfFmtVal(colTotals[m]):'—')+'</td>';
+    html+='<tr class="rf-total-row"><td>'+totalLabel+'</td>';
+    visibleMonths.forEach(function(m){ html+='<td>'+(colTotals[m]?rfFmtVal(colTotals[m]):'—')+'</td>'; });
     html+='<td class="rf-total-col">'+rfFmtVal(grand)+'</td></tr>';
-    html+='</tbody></table></div></div>';
+    html+='</tbody></table></div></div></div>';
   });
   container.innerHTML=html || '<div style="padding:1rem;color:var(--t3);">No recurring revenue to roll forward.</div>';
 }
@@ -3206,9 +3357,10 @@ function rfRenderExcludedBanner(){
   const box=el('rfExcludedBanner'); if(!box) return;
   const excludedBids=rfVisibleBids().filter(b=>RF_EXCLUDED.has(b.id));
   if(!excludedBids.length){ box.innerHTML=''; return; }
-  const totalMrc=excludedBids.reduce((s,b)=>s+num(b.mrc),0);
+  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+  const totalVal=rfSum(excludedBids);
   box.innerHTML='<div class="rf-excluded-banner" onclick="rfOpenExcludedList()">'+
-    '<span>🚫 <strong>'+excludedBids.length+'</strong> item'+(excludedBids.length!==1?'s':'')+' excluded from this report (MRC '+fmt(totalMrc)+') — click to review / restore</span>'+
+    '<span>🚫 <strong>'+excludedBids.length+'</strong> item'+(excludedBids.length!==1?'s':'')+' excluded from this report ('+metricLabel+' '+rfFmtVal(totalVal)+') — click to review / restore</span>'+
     '<span style="font-size:.7rem;color:var(--t3);">Saved in this browser only</span></div>';
 }
 function rfOpenExcludedList(){
@@ -3221,8 +3373,8 @@ function rfOpenExcludedList(){
 function rfCellTitle(rowVal,monthIdx,year){
   const parts=[];
   if(rowVal!=null) parts.push(rowVal);
-  if(monthIdx!=null) parts.push(MONTH_NAMES[monthIdx]);
-  if(year!=null) parts.push(year);
+  if(monthIdx!=null) parts.push(MONTH_NAMES[monthIdx]+(year!=null?(' '+year):''));
+  else if(year!=null) parts.push(year);
   return parts.length?parts.join(' — '):'All Opportunities';
 }
 function rfOpenDrilldown(rowVal,monthIdx,year){
@@ -3252,15 +3404,15 @@ function rfToggleExclude(id){
 function rfSortBids(list){
   const key=rfModalSortKey, dir=rfModalSortDir;
   return list.slice().sort(function(a,b){
-    let av=a[key], bv=b[key];
-    if(key==='expectedActivation'){ av=new Date(av||0).getTime(); bv=new Date(bv||0).getTime(); }
-    else if(['mrc','otc','tcv','gaPoints'].includes(key)){ av=num(av); bv=num(bv); }
-    else { av=(av||'').toString().toLowerCase(); bv=(bv||'').toString().toLowerCase(); }
+    let av,bv;
+    if(key==='expectedActivation'){ av=new Date(a[key]||0).getTime(); bv=new Date(b[key]||0).getTime(); }
+    else if(['mrc','otc','tcv','pcv','gaPoints'].includes(key)){ av=num(a[key]); bv=num(b[key]); }
+    else { av=(a[key]||'').toString().toLowerCase(); bv=(b[key]||'').toString().toLowerCase(); }
     if(av<bv) return -1*dir; if(av>bv) return 1*dir; return 0;
   });
 }
 function rfModalRowHtml(b,isRemoved){
-  const tds=RF_MODAL_COLS.map(function(c){ const raw=b[c.key]; const v=c.fmt?c.fmt(raw):(raw||'—'); return '<td>'+v+'</td>'; }).join('');
+  const tds=RF_MODAL_COLS.map(function(c){ const raw=b[c.key]; const v=c.fmt?c.fmt(raw,b):(raw||'—'); return '<td>'+v+'</td>'; }).join('');
   const btn= isRemoved
     ? '<td><button type="button" class="rf-action-btn restore" onclick="rfToggleExclude('+b.id+')">Restore</button></td>'
     : '<td><button type="button" class="rf-action-btn remove" onclick="rfToggleExclude('+b.id+')">Remove</button></td>';
@@ -3284,10 +3436,11 @@ function rfRenderModal(){
   const active = excludedOnly ? [] : rfSortBids(all.filter(b=>!RF_EXCLUDED.has(b.id)));
   const removed = rfSortBids(all.filter(b=>RF_EXCLUDED.has(b.id)));
   const title = excludedOnly ? 'All Excluded Items' : rfCellTitle(rowVal,monthIdx,year);
-  const totalMrc = active.reduce((s,b)=>s+num(b.mrc),0);
+  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+  const totalVal = rfSum(active);
   const sub = excludedOnly
     ? removed.length+' item'+(removed.length!==1?'s':'')+' currently excluded across the whole report'
-    : active.length+' active bid'+(active.length!==1?'s':'')+' · Total MRC '+fmt(totalMrc)+(removed.length?(' · '+removed.length+' removed'):'');
+    : active.length+' active bid'+(active.length!==1?'s':'')+' · Total '+metricLabel+' '+rfFmtVal(totalVal)+(removed.length?(' · '+removed.length+' removed'):'');
   const colspan=RF_MODAL_COLS.length+1;
 
   let body='';
@@ -3325,6 +3478,184 @@ function rfRenderModal(){
   if(existing) existing.replaceWith(newOverlay); else document.body.appendChild(newOverlay);
 }
 document.addEventListener('keydown',function(e){ if(e.key==='Escape' && rfModalCtx) rfCloseDrilldown(); });
+
+// ── FORECAST CHARTS (BA / CEO / budget-level view) ────────────────
+function rfToggleCharts(){
+  rfChartsVisible=!rfChartsVisible;
+  el('rfChartsSection').style.display=rfChartsVisible?'block':'none';
+  el('rfChartsToggleText').textContent=rfChartsVisible?'Hide Forecast Charts':'Show Forecast Charts';
+  if(rfChartsVisible) setTimeout(()=>rfRenderCharts(),80);
+}
+function rfConfidenceFor(bids){
+  const notLost=bids.filter(b=>!STATUS_LOST.includes(b.status));
+  const committed=bids.filter(b=>STATUS_WON.includes(b.status));
+  const bestCaseVal=notLost.reduce((s,b)=>s+rfMetricVal(b),0);
+  const committedVal=committed.reduce((s,b)=>s+rfMetricVal(b),0);
+  const weightedVal=notLost.reduce(function(s,b){ const frac=STATUS_WON.includes(b.status)?1:probToFraction(b.closureProb); return s+rfMetricVal(b)*frac; },0);
+  return {bestCaseVal,committedVal,weightedVal};
+}
+function rfBuildRunRateData(){
+  const bids=rfActiveBids();
+  const years=[...new Set(bids.map(rfGetYear).filter(Boolean))].sort();
+  if(!years.length) return null;
+  const year = years.find(y=>Number(y)>=rfCurrentYear) || years[0];
+  const base=rfYearBase(bids,year);
+  const cumulative=[]; let run=0;
+  for(let m=0;m<12;m++){ run+=base[m]; cumulative.push(run); }
+  const visibleMonths=[]; for(let m=0;m<12;m++) if(rfCascadeMonthVisible(year,m)) visibleMonths.push(m);
+  return {year,base,cumulative,visibleMonths};
+}
+function rfRenderKpis(){
+  const grid=el('rfKpiGrid'); if(!grid) return;
+  const bids=rfActiveBids();
+  const notLost=bids.filter(b=>!STATUS_LOST.includes(b.status));
+  const committed=bids.filter(b=>STATUS_WON.includes(b.status));
+  const conf=rfConfidenceFor(bids);
+  const runData=rfBuildRunRateData();
+  const excludedBids=rfVisibleBids().filter(b=>RF_EXCLUDED.has(b.id));
+  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+  const cards=[
+    {label:'Total Active Pipeline', value:rfFmtVal(conf.bestCaseVal), sub:notLost.length+' opportunities (excl. dead)', color:'var(--grad)'},
+    {label:'Committed (Won / Billed)', value:rfFmtVal(conf.committedVal), sub:committed.length+' opportunities locked in', color:'#16a34a'},
+    {label:'Weighted Forecast', value:rfFmtVal(conf.weightedVal), sub:'Probability-adjusted '+metricLabel, color:'#f59e0b'},
+    {label:'Run-Rate by Year End', value: runData?rfFmtVal(runData.cumulative[11]):'—', sub: runData?('Cumulative '+metricLabel+' live by Dec '+runData.year):'No data', color:'#4c6fff'},
+    {label:'Excluded From Report', value:String(excludedBids.length), sub:excludedBids.length?(rfFmtVal(rfSum(excludedBids))+' '+metricLabel+' set aside'):'Nothing excluded', color:'#6b7280'},
+  ];
+  grid.innerHTML=cards.map(function(k){ return '<div class="rf-kpi-card" style="--kpi-color:'+k.color+';"><div class="rf-kpi-label">'+k.label+'</div><div class="rf-kpi-value">'+k.value+'</div><div class="rf-kpi-sub">'+k.sub+'</div></div>'; }).join('');
+}
+function rfCenterTextPlugin(id,c,bigText,smallText){
+  return {id,beforeDraw(chart){
+    const{ctx,chartArea:{width,height,left,top}}=chart;
+    ctx.save();
+    ctx.font='bold 21px Inter';
+    ctx.fillStyle=c.text==='rgba(255,255,255,0.6)'?'rgba(255,255,255,0.92)':'rgba(20,10,35,0.88)';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(bigText,left+width/2,top+height/2-10);
+    ctx.font='600 10.5px Inter';ctx.fillStyle=c.text;
+    ctx.fillText(smallText,left+width/2,top+height/2+13);
+    ctx.restore();
+  }};
+}
+function rfRenderChartRunRate(){
+  destroyChart('rfRunRate');
+  const canvas=el('rfChartRunRate'); if(!canvas) return;
+  const data=rfBuildRunRateData();
+  if(!data || !data.visibleMonths.length) return;
+  const c=getChartColors();
+  const ctx=canvas.getContext('2d');
+  const lineGrad=ctx.createLinearGradient(0,0,0,320);
+  lineGrad.addColorStop(0,c.p2a+'0.38)'); lineGrad.addColorStop(1,c.p2a+'0.02)');
+  const barGrad=ctx.createLinearGradient(0,0,0,320);
+  barGrad.addColorStop(0,c.p1a+'0.95)'); barGrad.addColorStop(1,c.p1a+'0.45)');
+  const labels=data.visibleMonths.map(m=>MONTH_NAMES[m]+" '"+String(data.year).slice(2));
+  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+  CHARTS.rfRunRate=new Chart(canvas,{
+    data:{labels,datasets:[
+      {type:'bar',label:'New This Month',data:data.visibleMonths.map(m=>data.base[m]),backgroundColor:barGrad,borderRadius:8,borderSkipped:false,order:2,barPercentage:.6,categoryPercentage:.7},
+      {type:'line',label:'Cumulative Run-Rate',data:data.visibleMonths.map(m=>data.cumulative[m]),borderColor:c.p2,backgroundColor:lineGrad,fill:true,tension:.4,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:c.p2,pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:3,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',align:'end',labels:{color:c.text,font:{size:12,weight:'600'},usePointStyle:true,pointStyleWidth:10,padding:16,boxHeight:8}},
+        tooltip:{backgroundColor:'rgba(0,0,0,.85)',padding:13,cornerRadius:10,titleFont:{size:12,weight:'700'},bodyFont:{size:12},callbacks:{label:ctx=>' '+ctx.dataset.label+': '+rfFmtVal(ctx.parsed.y)+' '+metricLabel}}
+      },
+      scales:{
+        x:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}},
+        y:{ticks:{color:c.text,font:{size:11},callback:v=>rfFmtVal(v)},grid:{color:c.grid},border:{dash:[4,4]},beginAtZero:true}
+      }}});
+}
+function rfRenderChartConfidence(){
+  destroyChart('rfConfidence');
+  const canvas=el('rfChartConfidence'); if(!canvas) return;
+  const d=rfConfidenceFor(rfVisibleBidsForCharts());
+  const c=getChartColors();
+  const rows=[
+    {label:'Committed (Won / Billed)',val:d.committedVal,color:'#16a34a'},
+    {label:'Weighted Forecast',val:d.weightedVal,color:c.p1},
+    {label:'Best Case (All Active)',val:d.bestCaseVal,color:c.p2},
+  ];
+  CHARTS.rfConfidence=new Chart(canvas,{type:'bar',plugins:[dataLabelPlugin],
+    data:{labels:rows.map(r=>r.label),
+      datasets:[{data:rows.map(r=>r.val),backgroundColor:rows.map(r=>r.color),borderRadius:8,borderSkipped:false,barPercentage:.55,categoryPercentage:.7}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(0,0,0,.85)',padding:13,cornerRadius:10,callbacks:{label:ctx=>' '+rfFmtVal(ctx.parsed.x)}}},
+      scales:{
+        x:{ticks:{color:c.text,font:{size:11},callback:v=>rfFmtVal(v)},grid:{color:c.grid},border:{dash:[4,4]},beginAtZero:true},
+        y:{ticks:{color:c.text,font:{size:12,weight:'600'}},grid:{display:false}}
+      }}});
+}
+function rfRenderChartGroup(){
+  destroyChart('rfGroup');
+  const canvas=el('rfChartGroup'); if(!canvas) return;
+  const bids=rfVisibleBidsForCharts();
+  const rowLabel=RF_ROW_DIMS.find(r=>r.key===rfRowDim).label;
+  set('rfGroupChartTitle','Pipeline by '+rowLabel);
+  const groups={};
+  bids.forEach(function(b){ const k=b[rfRowDim]||'—'; groups[k]=(groups[k]||0)+rfMetricVal(b); });
+  let entries=Object.entries(groups).filter(function(e){return e[1]>0;}).sort((a,b)=>b[1]-a[1]);
+  if(entries.length>7){ const rest=entries.slice(7).reduce((s,e)=>s+e[1],0); entries=entries.slice(0,7); if(rest>0) entries.push(['Other',rest]); }
+  const c=getChartColors();
+  const palette=['#a855f7','#c724b1','#4c6fff','#06b6d4','#16a34a','#f59e0b','#ef4444','#6b7280'];
+  const total=entries.reduce((s,e)=>s+e[1],0);
+  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+  CHARTS.rfGroup=new Chart(canvas,{type:'doughnut',plugins:[rfCenterTextPlugin('rfGroupCenter',c,rfFmtVal(total),'Total '+metricLabel)],
+    data:{labels:entries.map(e=>e[0]),datasets:[{data:entries.map(e=>e[1]),backgroundColor:palette,borderWidth:4,borderColor:'var(--bg-card)',hoverOffset:12}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{
+        legend:{position:'right',labels:{color:c.text,font:{size:11,weight:'600'},padding:10,usePointStyle:true,pointStyleWidth:10}},
+        tooltip:{backgroundColor:'rgba(0,0,0,.85)',padding:13,cornerRadius:10,callbacks:{label:ctx=>{const pct=total?(ctx.parsed/total*100).toFixed(1):'0';return ' '+ctx.label+': '+rfFmtVal(ctx.parsed)+' ('+pct+'%)';}}}
+      }}});
+}
+function rfRenderChartStatusMix(){
+  destroyChart('rfStatusMix');
+  const canvas=el('rfChartStatusMix'); if(!canvas) return;
+  const bids=rfVisibleBidsForCharts();
+  const realized=rfSum(bids.filter(b=>STATUS_WON.includes(b.status)));
+  const pipeline=rfSum(bids.filter(b=>STATUS_IP.includes(b.status)));
+  const dead=rfSum(bids.filter(b=>STATUS_LOST.includes(b.status)));
+  const vals=[realized,pipeline,dead];
+  const c=getChartColors();
+  const total=vals.reduce((a,b)=>a+b,0);
+  const pctRealized=total?((realized/total)*100).toFixed(0):'0';
+  CHARTS.rfStatusMix=new Chart(canvas,{type:'doughnut',plugins:[rfCenterTextPlugin('rfStatusCenter',c,pctRealized+'%','Realized')],
+    data:{labels:['Realized (Won/Billed)','Active Pipeline','Dead (Lost/Cancelled/No Bid)'],
+      datasets:[{data:vals,backgroundColor:['#16a34a','#a855f7','#6b7280'],borderWidth:4,borderColor:'var(--bg-card)',hoverOffset:12}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{
+        legend:{position:'right',labels:{color:c.text,font:{size:11,weight:'600'},padding:10,usePointStyle:true,pointStyleWidth:10}},
+        tooltip:{backgroundColor:'rgba(0,0,0,.85)',padding:13,cornerRadius:10,callbacks:{label:ctx=>{const pct=total?(ctx.parsed/total*100).toFixed(1):'0';return ' '+ctx.label+': '+rfFmtVal(ctx.parsed)+' ('+pct+'%)';}}}
+      }}});
+}
+function rfRenderChartProb(){
+  destroyChart('rfProb');
+  const canvas=el('rfChartProb'); if(!canvas) return;
+  const bids=rfVisibleBidsForCharts().filter(b=>!STATUS_LOST.includes(b.status));
+  const vals=PROB_ORDER.map(p=>rfSum(bids.filter(b=>b.closureProb===p)));
+  const counts=PROB_ORDER.map(p=>bids.filter(b=>b.closureProb===p).length);
+  const c=getChartColors();
+  const palette=['#ef4444','#f97316','#eab308','#10b981','#6366f1'];
+  const total=vals.reduce((a,b)=>a+b,0);
+  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+  CHARTS.rfProb=new Chart(canvas,{type:'doughnut',plugins:[rfCenterTextPlugin('rfProbCenter',c,rfFmtVal(total),'Total '+metricLabel)],
+    data:{labels:PROB_ORDER.map((p,i)=>p+' — '+counts[i]+' bid'+(counts[i]!==1?'s':'')+' — '+rfFmtVal(vals[i])),
+      datasets:[{data:vals,backgroundColor:palette,borderWidth:4,borderColor:'var(--bg-card)',hoverOffset:14}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{
+        legend:{position:'right',labels:{color:c.text,font:{size:10.5,weight:'600'},padding:10,usePointStyle:true,pointStyleWidth:10,
+          generateLabels:chart=>chart.data.labels.map((lbl,i)=>({text:lbl,fillStyle:palette[i],strokeStyle:palette[i],fontColor:c.text,hidden:false,index:i}))
+        }},
+        tooltip:{backgroundColor:'rgba(0,0,0,.85)',padding:13,cornerRadius:10,callbacks:{label:ctx=>{const pct=total?(ctx.parsed/total*100).toFixed(1):'0';return [' '+rfFmtVal(ctx.parsed)+' ('+pct+'%)',' '+counts[ctx.dataIndex]+' bid(s)'];}}}
+      }}});
+}
+function rfRenderCharts(){
+  if(!rfChartsVisible) return;
+  rfRenderKpis();
+  rfRenderChartRunRate();
+  rfRenderChartConfidence();
+  rfRenderChartGroup();
+  rfRenderChartStatusMix();
+  rfRenderChartProb();
+}
 
 // ══════════════════════════════════════════════════════════════════
 //  INIT
