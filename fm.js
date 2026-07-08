@@ -47,7 +47,7 @@ let FM = {
   leadCounter:   1,
 
   filters: {
-    period:   'thisquarter',
+    period:   'all',
     status:   ['all'],
     imp:      ['all'],
     director: ['all'],
@@ -184,6 +184,31 @@ function parseDateOnlyToIso(dateOnly) {
   var d = new Date(s + 'T00:00:00');
   if (isNaN(d.getTime())) return null;
   return d.toISOString();
+}
+
+/** Parse SharePoint / ISO lead dates for filters and charts. */
+function parseSpDate(val) {
+  if (val == null || val === '') return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  var s = String(val).trim();
+  var sp = s.match(/\/Date\((-?\d+)\)\//);
+  if (sp) {
+    var ms = parseInt(sp[1], 10);
+    if (!isNaN(ms)) {
+      var dSp = new Date(ms);
+      return isNaN(dSp.getTime()) ? null : dSp;
+    }
+  }
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function fmPeriodLabel(val) {
+  return ({ all: 'All Time', thismonth: 'This Month', thisquarter: 'This Quarter', thisyear: 'This Year' })[val] || 'All Time';
+}
+
+function fmSyncPeriodFilterUI() {
+  resetMSUI('ms-period', FM.filters.period || 'all', fmPeriodLabel(FM.filters.period));
 }
 
 /* ── EMAIL / NAME UTILS ───────────────────────────── */
@@ -662,7 +687,12 @@ function loadAllData() {
   ])
   .then(function(results) {
     FM.allLeads = (results[0] || []).map(function (l) {
-      return Object.assign({}, l, { SubmittedBy: spFieldPerson(l.SubmittedBy) });
+      var lead = Object.assign({}, l, { SubmittedBy: spFieldPerson(l.SubmittedBy) });
+      if (lead.LeadLoggedDate) {
+        var d = parseSpDate(lead.LeadLoggedDate);
+        if (d) lead.LeadLoggedDate = d.toISOString();
+      }
+      return lead;
     });
     FM.allActivities = (results[1] || []).map(mapActivityFromSharePoint);
     applyDataScope();
@@ -708,6 +738,7 @@ function updateUI() {
   populateActivityUserFilter();
   populateActivityDirFilter();
   renderLaunchPage();
+  fmSyncPeriodFilterUI();
   applyFilters();
   renderMyLeads();
   renderActivityLog();
@@ -1005,10 +1036,13 @@ function applyFilters() {
   var f = FM.filters;
   var now = new Date();
   FM.filteredLeads = FM.scopedLeads.filter(function(l) {
-    var dt = new Date(l.LeadLoggedDate);
-    if (f.period === 'thismonth')   { if (dt.getMonth() !== now.getMonth() || dt.getFullYear() !== now.getFullYear()) return false; }
-    if (f.period === 'thisquarter') { var q = Math.floor(now.getMonth()/3); if (Math.floor(dt.getMonth()/3) !== q || dt.getFullYear() !== now.getFullYear()) return false; }
-    if (f.period === 'thisyear')    { if (dt.getFullYear() !== now.getFullYear()) return false; }
+    if (f.period && f.period !== 'all') {
+      var dt = parseSpDate(l.LeadLoggedDate);
+      if (!dt) return false;
+      if (f.period === 'thismonth')   { if (dt.getMonth() !== now.getMonth() || dt.getFullYear() !== now.getFullYear()) return false; }
+      if (f.period === 'thisquarter') { var q = Math.floor(now.getMonth()/3); if (Math.floor(dt.getMonth()/3) !== q || dt.getFullYear() !== now.getFullYear()) return false; }
+      if (f.period === 'thisyear')    { if (dt.getFullYear() !== now.getFullYear()) return false; }
+    }
     if (!activeMulti(f.status)   && f.status.indexOf(l.Status)         === -1) return false;
     if (!activeMulti(f.imp)      && f.imp.indexOf(l.Importance)        === -1) return false;
     if (!activeMulti(f.director) && f.director.indexOf(l.DirectorName) === -1) return false;
@@ -1027,13 +1061,13 @@ function applyFilters() {
 }
 
 function clearDashFilters() {
-  FM.filters.period   = 'thisquarter';
+  FM.filters.period   = 'all';
   FM.filters.status   = ['all'];
   FM.filters.imp      = ['all'];
   FM.filters.director = ['all'];
   FM.filters.am       = ['all'];
   FM.filters.account  = ['all'];
-  resetMSUI('ms-period', 'thisquarter', 'This Quarter');
+  resetMSUI('ms-period', 'all', 'All Time');
   resetMSAll('ms-dash-status', 'All Statuses');
   resetMSAll('ms-dash-imp',    'All');
   resetMSAll('ms-dash-dir',    'All Directors');
@@ -1382,26 +1416,34 @@ function fmChartColors() {
   };
 }
 
-// Chart.js global polish
-Chart.defaults.plugins.datalabels = { display: false };
-Chart.defaults.font.family   = "'Inter', system-ui, -apple-system, sans-serif";
-Chart.defaults.font.size     = 11;
-Chart.defaults.color         = '#3d4f8a';
-/* Chart.js v4: use built-in easing names only — invalid easing throws in animation tick (_fn is not a function). */
-Chart.defaults.animation     = { duration: 600, easing: 'easeOutQuart' };
-Chart.defaults.plugins.tooltip = Object.assign({}, Chart.defaults.plugins.tooltip, {
-  backgroundColor:  'rgba(15, 10, 30, 0.92)',
-  titleColor:       '#fff',
-  bodyColor:        '#e2e8f0',
-  borderColor:      'rgba(37,99,235,0.35)',
-  borderWidth:      1,
-  cornerRadius:     8,
-  padding:          10,
-  titleFont:        { size: 12, weight: 'bold' },
-  bodyFont:         { size: 11 },
-  displayColors:    true,
-  boxPadding:       4,
-});
+function fmChartCardBorderColor() {
+  var t = document.documentElement.getAttribute('data-theme') || '';
+  return (t === 'dark' || t === 'teal-dark') ? '#141b33' : '#ffffff';
+}
+
+function fmInitChartDefaults() {
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.plugins.datalabels = { display: false };
+  Chart.defaults.font.family   = "'Inter', system-ui, -apple-system, sans-serif";
+  Chart.defaults.font.size     = 11;
+  Chart.defaults.color         = '#3d4f8a';
+  /* Chart.js v4: use built-in easing names only — invalid easing throws in animation tick (_fn is not a function). */
+  Chart.defaults.animation     = { duration: 600, easing: 'easeOutQuart' };
+  Chart.defaults.plugins.tooltip = Object.assign({}, Chart.defaults.plugins.tooltip || {}, {
+    backgroundColor:  'rgba(15, 10, 30, 0.92)',
+    titleColor:       '#fff',
+    bodyColor:        '#e2e8f0',
+    borderColor:      'rgba(37,99,235,0.35)',
+    borderWidth:      1,
+    cornerRadius:     8,
+    padding:          10,
+    titleFont:        { size: 12, weight: 'bold' },
+    bodyFont:         { size: 11 },
+    displayColors:    true,
+    boxPadding:       4,
+  });
+}
+fmInitChartDefaults();
 
 var CLR = {
   magenta: '#C0006A', magentaL: '#E8A0C4',
@@ -1409,6 +1451,13 @@ var CLR = {
   blue: '#3B82F6', red: '#EF4444',
   purple: '#8B5CF6', gray: '#9CA3AF', teal: '#14B8A6',
 };
+
+function fmLeadInBucket(lead, bucketKey, period) {
+  var rd = lead && lead.LeadLoggedDate;
+  if (!rd) return false;
+  var d = parseSpDate(rd);
+  return d ? getFmBucketKey(d, period) === bucketKey : false;
+}
 
 function destroyAllCharts() {
   Object.keys(FM.charts).forEach(function (k) {
@@ -1533,6 +1582,7 @@ window.fmSetAvcPeriod = fmSetAvcPeriod;
 /** DIP-style overview row — lead trend, bars, doughnuts, new vs closed, relationship */
 function renderFmOverviewCharts() {
   if (!fmChartsMasterOpen()) return;
+  if (typeof Chart === 'undefined') return;
   var leads = FM.filteredLeads || [];
   destroyFmCharts();
 
@@ -1541,11 +1591,7 @@ function renderFmOverviewCharts() {
   var count = p === 'D' ? 14 : p === 'W' ? 12 : p === 'M' ? 12 : p === 'Q' ? 8 : 5;
   var buckets = getFmBuckets(p, count);
   var logged = buckets.map(function (b) {
-    return leads.filter(function (l) {
-      var rd = l.LeadLoggedDate;
-      if (!rd) return false;
-      return getFmBucketKey(new Date(rd), p) === b.key;
-    }).length;
+    return leads.filter(function (l) { return fmLeadInBucket(l, b.key, p); }).length;
   });
 
   var trendEl = document.getElementById('fm-ch-trend');
@@ -1671,7 +1717,7 @@ function renderFmOverviewCharts() {
           data: impCounts,
           backgroundColor: impColors,
           borderWidth: 3,
-          borderColor: 'var(--bg-card)',
+          borderColor: fmChartCardBorderColor(),
           hoverOffset: 10,
         },
       ],
@@ -1764,18 +1810,12 @@ function renderFmOverviewCharts() {
   var count2 = p2 === 'D' ? 14 : p2 === 'W' ? 10 : p2 === 'M' ? 12 : p2 === 'Q' ? 8 : 5;
   var buckets2 = getFmBuckets(p2, count2);
   var opened = buckets2.map(function (b) {
-    return leads.filter(function (l) {
-      var rd = l.LeadLoggedDate;
-      if (!rd) return false;
-      return getFmBucketKey(new Date(rd), p2) === b.key;
-    }).length;
+    return leads.filter(function (l) { return fmLeadInBucket(l, b.key, p2); }).length;
   });
   var closedB = buckets2.map(function (b) {
     return leads.filter(function (l) {
       if (l.Status !== 'Closed Won' && l.Status !== 'Closed Lost') return false;
-      var rd = l.LeadLoggedDate;
-      if (!rd) return false;
-      return getFmBucketKey(new Date(rd), p2) === b.key;
+      return fmLeadInBucket(l, b.key, p2);
     }).length;
   });
   makeChart('fm-ch-avc', {
@@ -1841,7 +1881,7 @@ function renderFmOverviewCharts() {
           data: relCounts,
           backgroundColor: relColors,
           borderWidth: 3,
-          borderColor: 'var(--bg-card)',
+          borderColor: fmChartCardBorderColor(),
           hoverOffset: 10,
         },
       ],
@@ -1874,10 +1914,7 @@ function renderFmTrendChart() {
   var count = p === 'D' ? 14 : p === 'W' ? 12 : p === 'M' ? 12 : p === 'Q' ? 8 : 5;
   var buckets = getFmBuckets(p, count);
   var logged = buckets.map(function(b){
-    return leads.filter(function(l){
-      var rd = l.LeadLoggedDate; if (!rd) return false;
-      return getFmBucketKey(new Date(rd), p) === b.key;
-    }).length;
+    return leads.filter(function(l){ return fmLeadInBucket(l, b.key, p); }).length;
   });
   var trendEl = document.getElementById('fm-ch-trend');
   if (!trendEl) return;
@@ -1921,16 +1958,12 @@ function renderFmAvcChart() {
   var count = p === 'D' ? 14 : p === 'W' ? 10 : p === 'M' ? 12 : p === 'Q' ? 8 : 5;
   var buckets = getFmBuckets(p, count);
   var opened = buckets.map(function(b){
-    return leads.filter(function(l){
-      var rd = l.LeadLoggedDate; if (!rd) return false;
-      return getFmBucketKey(new Date(rd), p) === b.key;
-    }).length;
+    return leads.filter(function(l){ return fmLeadInBucket(l, b.key, p); }).length;
   });
   var closedB = buckets.map(function(b){
     return leads.filter(function(l){
       if (l.Status !== 'Closed Won' && l.Status !== 'Closed Lost') return false;
-      var rd = l.LeadLoggedDate; if (!rd) return false;
-      return getFmBucketKey(new Date(rd), p) === b.key;
+      return fmLeadInBucket(l, b.key, p);
     }).length;
   });
   var avcEl = document.getElementById('fm-ch-avc');
@@ -2131,6 +2164,7 @@ function fmInitHeaderDate() {
 }
 
 function makeChart(id, config) {
+  if (typeof Chart === 'undefined') return null;
   var canvas = document.getElementById(id);
   if (!canvas) return null;
   if (typeof Chart !== 'undefined' && Chart.getChart) {
@@ -2150,30 +2184,29 @@ function makeChart(id, config) {
 
 function renderDashboardCharts() {
   if (!fmChartsMasterOpen()) return;
+  if (typeof Chart === 'undefined') return;
   var sec = document.getElementById('analytics-section');
   if (!sec) return;
   destroyAnalyticsCharts();
   var leads = FM.filteredLeads;
-  renderStatusChart(leads);
-  renderImpChart(leads);
-  renderWLChart(leads);
-  renderTrendChart(leads);
-  renderMRCChart(leads);
-  renderFunnel(leads);
-  renderRadar(leads);
-  renderReasonsChart(leads);
-  renderRelChart(leads);
-  renderDuChart(leads);
-  if (USER_CONTEXT.isAdmin) {
-    renderLeaderboard(leads);
-    renderTCVByDir(leads);
-  }
-  if (!USER_CONTEXT.isAM) {
-    renderAMLeaderboard(leads);
-    renderAMTCVChart(leads);
-    renderAMMixChart(leads);
-  }
-  renderAging(leads);
+  var steps = [
+    function () { renderStatusChart(leads); },
+    function () { renderImpChart(leads); },
+    function () { renderWLChart(leads); },
+    function () { renderTrendChart(leads); },
+    function () { renderMRCChart(leads); },
+    function () { renderFunnel(leads); },
+    function () { renderRadar(leads); },
+    function () { renderReasonsChart(leads); },
+    function () { renderRelChart(leads); },
+    function () { renderDuChart(leads); },
+    function () { if (USER_CONTEXT.isAdmin) { renderLeaderboard(leads); renderTCVByDir(leads); } },
+    function () { if (!USER_CONTEXT.isAM) { renderAMLeaderboard(leads); renderAMTCVChart(leads); renderAMMixChart(leads); } },
+    function () { renderAging(leads); },
+  ];
+  steps.forEach(function (fn) {
+    try { fn(); } catch (e) { console.error('FM chart render failed:', e); }
+  });
   fmResizeAnalyticsChartsDeferred();
 }
 
@@ -2213,7 +2246,10 @@ function renderWLChart(leads) {
 function renderTrendChart(leads) {
   var months = getLast6Months();
   var data   = months.map(function(m){
-    return leads.filter(function(l){ var d=new Date(l.LeadLoggedDate); return d.getMonth()===m.month && d.getFullYear()===m.year; }).length;
+    return leads.filter(function(l){
+      var d = parseSpDate(l.LeadLoggedDate);
+      return d && d.getMonth() === m.month && d.getFullYear() === m.year;
+    }).length;
   });
   makeChart('ch-trend', {
     type: 'line',
@@ -2235,7 +2271,10 @@ function renderMRCChart(leads) {
     return {
       label: st,
       data: months.map(function(m){
-        var ml = leads.filter(function(l){ var d=new Date(l.LeadLoggedDate); return d.getMonth()===m.month && d.getFullYear()===m.year && l.Status===st; });
+        var ml = leads.filter(function(l){
+          var d = parseSpDate(l.LeadLoggedDate);
+          return d && d.getMonth() === m.month && d.getFullYear() === m.year && l.Status === st;
+        });
         return Math.round(ml.reduce(function(s,l){ return s+(l.OppMRC||0); },0)/1000);
       }),
       backgroundColor: stColors[i], borderRadius: i===2?5:0, borderSkipped:false,
@@ -2253,6 +2292,7 @@ function renderMRCChart(leads) {
 
 function renderFunnel(leads) {
   var wrap = document.getElementById('funnel-wrap');
+  if (!wrap) return;
   var stages = [
     { label:'Total Leads',  fn: function(l){ return true; },                              color: CLR.magenta },
     { label:'Interested',   fn: function(l){ return l.InterestedInOpp; },                color: CLR.purple },
@@ -2334,6 +2374,7 @@ function renderDuChart(leads) {
 
 function renderLeaderboard(leads) {
   var wrap = document.getElementById('leaderboard');
+  if (!wrap) return;
   var dirs = [];
   leads.forEach(function(l){ if (dirs.indexOf(l.DirectorName)===-1) dirs.push(l.DirectorName); });
   var stats = dirs.map(function(d){
@@ -2366,6 +2407,7 @@ function renderLeaderboard(leads) {
 
 function renderAging(leads) {
   var tbody = document.getElementById('aging-tbody');
+  if (!tbody) return;
   var today = new Date();
   var open  = leads
     .filter(function(l){ return l.Status!=='Closed Won' && l.Status!=='Closed Lost'; })
