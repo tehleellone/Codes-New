@@ -1,0 +1,2480 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FreeMove Leads Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-grid.css"/>
+<link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-theme-alpine.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/32.0.2/ag-grid-community.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+/* ── RESET & BASE ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+/* ── THEME: DIP BLUE/PURPLE (default) ───────────────── */
+:root {
+  /* DIP tokens */
+  --bg-body: linear-gradient(145deg,#f0f6ff,#e8f4ff,#f0f0ff);
+  --bg-card: #ffffff;
+  --bg-header: rgba(255,255,255,0.97);
+  --bg-sidebar: linear-gradient(180deg,#f0f6ff,#e8f0ff);
+  --bg-content: #f0f4ff;
+  --bg-input: rgba(37,99,235,0.06);
+  --bg-secondary: rgba(37,99,235,0.05);
+  --bg-hover: rgba(37,99,235,0.07);
+  --border: rgba(37,99,235,0.18);
+  --border-s: rgba(37,99,235,0.42);
+  --t1: #0f1a3e;
+  --t2: #3d4f8a;
+  --t3: #7a8fc4;
+  --acc: #2563eb;
+  --acc2: #7c3aed;
+  --glow: rgba(37,99,235,0.25);
+  --grad: linear-gradient(135deg,#2563eb,#7c3aed);
+  --nab: rgba(37,99,235,0.09);
+  --nab2: rgba(37,99,235,0.32);
+  --sc: #2563eb;
+  --cs: 0 1px 8px rgba(37,99,235,0.10);
+  --ch: 0 6px 20px rgba(37,99,235,0.18);
+  --chip: rgba(37,99,235,0.08);
+
+  /* FM aliases (keep existing CSS working, but DIP colors) */
+  --magenta:       var(--acc);
+  --magenta-dark:  #1d4ed8;
+  --magenta-deep:  #0f1a3e;
+  --magenta-light: rgba(37,99,235,0.22);
+  --magenta-soft:  rgba(37,99,235,0.08);
+  --magenta-mid:   rgba(124,58,237,0.22);
+
+  --sidebar-w:     220px;
+  --sidebar-w-col: 56px;
+  --header-h:      56px;
+  --bg:            var(--bg-body);
+  --bg-card2:      #ffffff;
+  --text-primary:  var(--t1);
+  --text-secondary:var(--t2);
+  --text-muted:    var(--t3);
+  --border-mid:    var(--border-s);
+  --radius:        10px;
+  --radius-lg:     14px;
+  --shadow-sm:     var(--cs);
+  --shadow-md:     var(--ch);
+  --shadow-lg:     var(--ch);
+  --transition:    all 0.18s ease;
+}
+
+/* ── THEME: TEAL (DIP) ─────────────────────────────── */
+[data-theme="teal"] {
+  --bg-body: linear-gradient(145deg,#f0fffe,#e6fffd,#f0f9ff);
+  --bg-card: #ffffff;
+  --bg-header: rgba(255,255,255,0.97);
+  --bg-sidebar: linear-gradient(180deg,#f0fffe,#e6fffd);
+  --bg-content: #f0fffe;
+  --bg-input: rgba(13,148,136,0.06);
+  --bg-secondary: rgba(13,148,136,0.05);
+  --bg-hover: rgba(13,148,136,0.07);
+  --border: rgba(13,148,136,0.18);
+  --border-s: rgba(13,148,136,0.42);
+  --t1: #0f2a2a;
+  --t2: #1d6a6a;
+  --t3: #5aafaf;
+  --acc: #0d9488;
+  --acc2: #0891b2;
+  --glow: rgba(13,148,136,0.25);
+  --grad: linear-gradient(135deg,#0d9488,#0891b2);
+  --nab: rgba(13,148,136,0.09);
+  --nab2: rgba(13,148,136,0.32);
+  --sc: #0d9488;
+  --cs: 0 1px 8px rgba(13,148,136,0.10);
+  --ch: 0 6px 20px rgba(13,148,136,0.18);
+  --chip: rgba(13,148,136,0.08);
+  --magenta: var(--acc);
+  --magenta-dark: #0f766e;
+  --magenta-deep: #0f2a2a;
+  --magenta-soft: rgba(13,148,136,0.10);
+  --magenta-light: rgba(8,145,178,0.22);
+  --bg: var(--bg-body);
+  --bg-card2: #ffffff;
+  --text-primary: var(--t1);
+  --text-secondary: var(--t2);
+  --text-muted: var(--t3);
+  --border-mid: var(--border-s);
+}
+[data-theme="teal-dark"] {
+  --bg-body: linear-gradient(145deg,#061515,#0a2020,#061818);
+  --bg-card: #0a1e1e;
+  --bg-header: rgba(6,15,15,0.98);
+  --bg-sidebar: linear-gradient(180deg,#0c2222,#081a1a);
+  --bg-content: #071616;
+  --bg-input: rgba(13,148,136,0.14);
+  --bg-secondary: rgba(13,148,136,0.09);
+  --bg-hover: rgba(13,148,136,0.13);
+  --border: rgba(13,148,136,0.22);
+  --border-s: rgba(13,148,136,0.5);
+  --t1: #ccfbf1;
+  --t2: #5eead4;
+  --t3: #2dd4bf;
+  --acc: #2dd4bf;
+  --acc2: #22d3ee;
+  --glow: rgba(45,212,191,0.32);
+  --grad: linear-gradient(135deg,#14b8a6,#06b6d4);
+  --nab: rgba(13,148,136,0.15);
+  --nab2: rgba(13,148,136,0.45);
+  --sc: #2dd4bf;
+  --cs: 0 2px 16px rgba(0,0,0,0.55);
+  --ch: 0 6px 24px rgba(13,148,136,0.22);
+  --chip: rgba(13,148,136,0.16);
+  --magenta: var(--acc);
+  --magenta-dark: var(--acc);
+  --magenta-deep: #042020;
+  --magenta-soft: rgba(13,148,136,0.14);
+  --magenta-light: rgba(45,212,191,0.22);
+  --bg: var(--bg-body);
+  --bg-card2: #0a1e1e;
+  --text-primary: var(--t1);
+  --text-secondary: var(--t2);
+  --text-muted: var(--t3);
+  --border-mid: var(--border-s);
+}
+
+/* ── THEME: DARK ──────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-body: linear-gradient(145deg,#060c1f,#0c1535,#080e25);
+  --bg-card: #0e1630;
+  --bg-header: rgba(6,12,31,0.98);
+  --bg-sidebar: linear-gradient(180deg,#101a38,#0c1430);
+  --bg-content: #090f28;
+  --bg-input: rgba(37,99,235,0.14);
+  --bg-secondary: rgba(37,99,235,0.09);
+  --bg-hover: rgba(37,99,235,0.13);
+  --border: rgba(37,99,235,0.22);
+  --border-s: rgba(37,99,235,0.5);
+  --t1: #e2e8f0;
+  --t2: #a5b4c8;
+  --t3: #637899;
+  --acc: #60a5fa;
+  --acc2: #a78bfa;
+  --glow: rgba(96,165,250,0.32);
+  --grad: linear-gradient(135deg,#3b82f6,#8b5cf6);
+  --nab: rgba(37,99,235,0.15);
+  --nab2: rgba(37,99,235,0.45);
+  --sc: #60a5fa;
+  --cs: 0 2px 16px rgba(0,0,0,0.55);
+  --ch: 0 6px 24px rgba(37,99,235,0.22);
+  --chip: rgba(37,99,235,0.16);
+
+  --magenta:       var(--acc);
+  --magenta-dark:  var(--acc);
+  --magenta-deep:  #0b1028;
+  --magenta-soft:  rgba(37,99,235,0.14);
+  --magenta-light: rgba(37,99,235,0.26);
+
+  --bg:            var(--bg-body);
+  --bg-card2:      #0e1630;
+  --text-primary:  var(--t1);
+  --text-secondary:var(--t2);
+  --text-muted:    var(--t3);
+  --border-mid:    var(--border-s);
+}
+:is([data-theme="dark"],[data-theme="teal-dark"]) body,
+:is([data-theme="dark"],[data-theme="teal-dark"]) #content { background: var(--bg-body); color: var(--text-primary); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) #topbar { background: var(--bg-header); border-color: var(--border); }
+/* Surfaces — same tokens as DIP dark */
+:is([data-theme="dark"],[data-theme="teal-dark"]) .chart-card,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .kpi-card,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .filter-bar,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .launch-card,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .launch-recents,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .modal-box,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .form-card,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .tl-content,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .leads-table-wrap { background: var(--bg-card); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .form-card-hdr { background: var(--nab); border-bottom-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .form-card-ttl { color: var(--t2); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .form-actions { background: var(--bg-content); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .tcv-box { background: var(--bg-secondary); border-color: var(--border-s); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .tcv-val { color: var(--acc); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .dup-warn { background: #2A1A00; border-color: #5A3A00; color: #F0A050; }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .finput,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .fselect,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ftextarea { background: var(--bg-input); color: var(--text-primary); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .finput:focus, :is([data-theme="dark"],[data-theme="teal-dark"]) .fselect:focus { background: var(--bg-input); border-color: var(--border-s); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .finput.ro { background: var(--bg-secondary); color: var(--text-muted); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ms-trigger { background: var(--bg-input); color: var(--text-primary); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ms-dropdown { background: var(--bg-card); border-color: var(--border-s); box-shadow: 0 8px 32px rgba(0,0,0,.28); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ms-search input { background: var(--bg-input); color: var(--text-primary); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ms-option { color: var(--text-primary); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ms-option:hover { background: var(--bg-hover); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ms-option.checked { color: var(--acc); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .btn-sec,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .topbar-btn,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .theme-dd-btn,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ag-grid-export,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .analytics-toggle-btn,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .act-btn { background: var(--bg-card); border-color: var(--border); color: var(--text-secondary); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .theme-dd-menu { background: var(--bg-card); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .theme-dd-item { color: var(--text-secondary); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .owner-toggle { background: var(--bg-input); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .owner-btn { color: var(--text-muted); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .lb-row { background: var(--bg-secondary); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .lb-row:hover { background: var(--bg-hover); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .aging-tbl tr:hover td,
+:is([data-theme="dark"],[data-theme="teal-dark"]) .leads-tbl tbody tr:hover td { background: var(--bg-hover); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .age-g { background: rgba(34,197,94,0.15); color: #4ADE80; }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .age-a { background: rgba(245,158,11,0.15); color: #FCD34D; }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .age-r { background: rgba(239,68,68,0.15); color: #FCA5A5; }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .overdue-banner { background: #1A0808; border-color: #5C1A1A; }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .launch-stat { background: rgba(255,255,255,0.08); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .recent-row { border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ag-search-input { background: var(--bg-input); color: var(--text-primary); border-color: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .filter-bar label { color: var(--text-muted); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .filter-sep { background: var(--border); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .modal-backdrop { background: rgba(0,0,0,0.7); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .ag-theme-alpine {
+  --ag-background-color: var(--bg-card);
+  --ag-header-background-color: var(--bg-secondary);
+  --ag-odd-row-background-color: var(--bg-secondary);
+  --ag-even-row-background-color: var(--bg-card);
+  --ag-row-hover-color: var(--bg-hover);
+  --ag-foreground-color: var(--t1);
+  --ag-border-color: var(--border);
+  --ag-header-foreground-color: var(--t1);
+  --ag-secondary-foreground-color: var(--t2);
+  --ag-input-focus-box-shadow: 0 0 0 3px var(--glow);
+  --ag-input-border-color: var(--border);
+  --ag-chip-background-color: var(--chip);
+}
+
+/* ─────────────────────────────────────────────────────────
+   LANDING PAGE — DIP parity (id kept for JS + Script Editor)
+   ───────────────────────────────────────────────────────── */
+#landing-page.landing-page {
+  position: relative; /* not fixed — Script Editor save bar */
+}
+.landing-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: row;
+  background: var(--bg-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.landing-left,
+.landing-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-width: 0;
+}
+.landing-container { width: 100%; max-width: 420px; }
+.landing-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.4rem;
+  box-shadow: var(--cs);
+  margin-bottom: 1rem;
+}
+.landing-header { text-align: center; margin-bottom: 1.4rem; }
+.logo-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 15px;
+  background: var(--grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px var(--glow);
+  margin: 0 auto;
+}
+.landing-title { font-size: 1.4rem; font-weight: 800; color: var(--t1); margin-bottom: 0.25rem !important; }
+.landing-subtitle { font-size: 0.82rem; color: var(--t3); }
+.welcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 20px;
+  background: var(--nab);
+  border: 1px solid var(--nab2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--acc);
+  margin-bottom: 0.75rem;
+}
+.badge-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  animation: pulseDot 2s infinite;
+  flex-shrink: 0;
+}
+.landing-user-info { display: flex; align-items: center; gap: 0.8rem; }
+.avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.landing-details h3 { font-size: 0.95rem; font-weight: 700; color: var(--t1); }
+.landing-details p { font-size: 0.77rem; color: var(--t3); }
+.landing-role {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.17rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--chip);
+  color: var(--acc);
+  border: 1px solid var(--border);
+}
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; margin: 0.9rem 0; }
+.landing-stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem;
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+.stat-icon-bg {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: var(--nab);
+  border: 1px solid var(--nab2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stat-label {
+  font-size: 0.68rem;
+  color: var(--t3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.stat-value-sm { font-size: 1rem; font-weight: 800; color: var(--sc); }
+.landing-btn {
+  width: 100%;
+  padding: 0.72rem;
+  border-radius: 11px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+}
+.btn-primary {
+  background: var(--grad);
+  color: #fff;
+  box-shadow: 0 3px 14px var(--glow);
+}
+.btn-primary:hover:not(:disabled) { box-shadow: 0 5px 20px var(--glow); transform: translateY(-1px); }
+.landing-btn:disabled {
+  background: linear-gradient(135deg, #c8c5d1, #b5b0c5);
+  color: #fff;
+  cursor: not-allowed;
+  opacity: 0.78;
+  box-shadow: none;
+  transform: none;
+}
+.landing-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  font-size: 0.74rem;
+  color: var(--t3);
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.22);
+}
+.landing-note a { color: inherit; text-decoration: underline; font-weight: 600; }
+.landing-note.deny {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+}
+[data-theme="dark"] .landing-note,
+[data-theme="teal-dark"] .landing-note {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.25);
+  color: #22c55e;
+}
+[data-theme="dark"] .landing-note.deny,
+[data-theme="teal-dark"] .landing-note.deny {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fca5a5;
+}
+.landing-footer { text-align: center; font-size: 0.72rem; color: var(--t3); margin-top: 0.4rem; }
+.landing-branding { max-width: 420px; }
+.landing-brand-title { font-size: 1.9rem; font-weight: 900; color: var(--t1); margin: 0 !important; }
+.landing-brand-title span {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.landing-brand-subtitle { font-size: 0.86rem; color: var(--t3); margin-top: 0.4rem; }
+.landing-features { margin-top: 1.3rem; display: flex; flex-direction: column; gap: 0.7rem; }
+.landing-feature { display: flex; align-items: flex-start; gap: 0.65rem; }
+.landing-feature-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  background: var(--nab);
+  border: 1px solid var(--nab2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.landing-feature-title { font-weight: 700; font-size: 0.86rem; color: var(--t1); }
+.landing-feature-desc { font-size: 0.76rem; color: var(--t3); margin-top: 0.12rem; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulseDot {
+  0%,
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+  50% { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0); }
+}
+.landing-left { animation: fadeIn 0.55s ease forwards; }
+.landing-right { animation: fadeIn 0.55s ease 0.12s backwards; }
+@media (max-width: 768px) {
+  .landing-page { flex-direction: column !important; overflow: auto; }
+  .landing-left,
+  .landing-right { padding: 1.1rem; flex: none; width: 100%; }
+}
+
+/* ─────────────────────────────────────────────────────────
+   ROLE PILL (topbar)
+   ───────────────────────────────────────────────────────── */
+.role-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+  background: rgba(192,0,106,0.10); color: var(--magenta);
+  border: 1px solid rgba(192,0,106,0.22);
+}
+.role-pill svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.2; }
+.role-pill.admin  { background: rgba(234,179,8,0.10);  color: #B45309; border-color: rgba(234,179,8,0.30); }
+.role-pill.dir    { background: rgba(139,92,246,0.10); color: #6D28D9; border-color: rgba(139,92,246,0.30); }
+.role-pill.am     { background: rgba(59,130,246,0.10); color: #1D4ED8; border-color: rgba(59,130,246,0.30); }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .role-pill.admin { color: #FCD34D; }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .role-pill.dir   { color: #C4B5FD; }
+:is([data-theme="dark"],[data-theme="teal-dark"]) .role-pill.am    { color: #93C5FD; }
+
+html, body { height: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-body); color: var(--t1); font-size: 14px; line-height: 1.5; transition: background 0.3s, color 0.3s; }
+
+/* ── DIP PORTAL SHELL (header + sidebar + main) ───── */
+.portal-shell {
+  max-width: 1800px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-body);
+  flex: 1;
+  overflow: hidden;
+}
+.header {
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  padding: 0 1.25rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  flex-shrink: 0;
+}
+.logo-section { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+.logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 14px var(--glow);
+  flex-shrink: 0;
+}
+.logo svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; }
+.header-title { font-size: 1.05rem; font-weight: 800; white-space: nowrap; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.header-center { display: flex; align-items: center; gap: 0.75rem; flex: 1; justify-content: flex-start; padding-left: 0.75rem; flex-wrap: wrap; }
+.header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.live-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 20px;
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.28);
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #16a34a;
+  white-space: nowrap;
+}
+[data-theme="dark"] .live-badge-pill,
+[data-theme="teal-dark"] .live-badge-pill {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.25);
+  color: #22c55e;
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; animation: pulseDot 2s infinite; }
+.date-badge { font-size: 0.75rem; color: var(--t3); display: flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.color-scheme-selector {
+  padding: 0.3rem 0.65rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  color: var(--t1);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--t1);
+  transition: all 0.2s;
+}
+.theme-toggle svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+.header .user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--grad);
+  border: 1px solid var(--nab2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px var(--glow);
+}
+
+.main-container { display: flex; flex: 1; min-height: 0; position: relative; overflow: hidden; }
+#sidebar.sidebar {
+  width: 210px;
+  min-width: 210px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 1rem 0;
+  overflow: visible;
+  flex-shrink: 0;
+  transition: width 0.26s ease, min-width 0.26s ease, opacity 0.22s, padding 0.25s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+#sidebar.sidebar.collapsed { width: 0; min-width: 0; padding: 0; border: none; overflow: visible !important; }
+#sidebar.sidebar.collapsed .nav-items { opacity: 0; pointer-events: none; }
+#sidebar.sidebar.collapsed .sidebar-toggle-btn {
+  right: -28px;
+  background: var(--bg-card);
+  box-shadow: var(--cs);
+}
+.sidebar-toggle-btn {
+  position: absolute;
+  right: -14px;
+  top: 20px;
+  z-index: 300;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--cs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--t1);
+  transition: all 0.2s;
+}
+.sidebar-toggle-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+.nav-items { display: flex; flex-direction: column; gap: 2px; padding: 0 0.65rem; flex: 1; overflow-y: auto; min-height: 0; }
+.nav-section-label { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--t3); padding: 0.75rem 0.6rem 0.3rem; white-space: nowrap; overflow: hidden; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 9px;
+  cursor: pointer;
+  color: var(--t2);
+  border: 1px solid transparent;
+  transition: all 0.17s;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 0.84rem;
+  font-weight: 500;
+  user-select: none;
+}
+.nav-item .nav-icon { display: flex; align-items: center; flex-shrink: 0; width: 17px; height: 17px; }
+.nav-item .nav-icon svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; }
+.nav-item:hover { background: var(--bg-hover); color: var(--t1); }
+.nav-item.active { background: var(--nab); border-color: var(--nab2); color: var(--t1); font-weight: 600; }
+.nav-badge {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: var(--chip);
+  color: var(--t1);
+  border-radius: 10px;
+  padding: 0.1rem 0.45rem;
+  min-width: 1.1rem;
+  text-align: center;
+}
+.nav-badge.alert { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+
+#content.content {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+  background: var(--bg-content);
+  padding: 1.1rem 1.25rem;
+}
+
+.page-header-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 0.85rem 0 0.65rem; }
+.section-title { font-size: 1rem; font-weight: 800; margin: 0.85rem 0 0.65rem !important; display: flex; align-items: center; gap: 0.45rem; color: var(--acc); }
+.section-title svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.filters-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 1rem; margin-bottom: 1rem; box-shadow: var(--cs); }
+.filters-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; }
+.filter-group { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.filter-label { font-size: 0.63rem; font-weight: 700; color: var(--t2); text-transform: uppercase; letter-spacing: 0.05em; }
+.filter-actions-row { display: flex; gap: 0.5rem; align-items: center; margin-left: auto; flex-shrink: 0; }
+.reset-btn {
+  padding: 0.34rem 0.8rem;
+  border-radius: 7px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg-input);
+  color: var(--t1);
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.reset-btn:hover { border-color: var(--border-s); }
+.reset-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+
+.top-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  box-shadow: var(--cs);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s, box-shadow 0.18s;
+  cursor: default;
+}
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--grad); }
+.stat-card.st-total::before { background: linear-gradient(135deg, #2563eb, #7c3aed); }
+.stat-card.st-win::before { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.stat-card.st-tcv::before { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-card.st-days::before { background: linear-gradient(135deg, #06b6d4, #2563eb); }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--ch); }
+.s-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--t3); font-weight: 700; margin-bottom: 0.25rem; }
+.s-value { font-size: 1.75rem; font-weight: 900; line-height: 1; margin-bottom: 0.15rem; }
+.s-sub { font-size: 0.72rem; font-weight: 600; color: var(--t2); }
+
+.insight-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+.insight-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  box-shadow: var(--cs);
+  position: relative;
+  overflow: hidden;
+}
+.insight-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--grad); }
+.insight-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--nab);
+  border: 1px solid var(--nab2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.55rem;
+}
+.insight-icon svg { width: 18px; height: 18px; stroke: var(--acc); fill: none; stroke-width: 2; }
+.insight-label { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--t3); font-weight: 700; margin-bottom: 0.15rem; }
+.insight-value { font-size: 1.5rem; font-weight: 900; color: var(--sc); line-height: 1; margin-bottom: 0.15rem; }
+.insight-sub { font-size: 0.72rem; color: var(--t2); font-weight: 600; }
+
+.agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+.agent-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  box-shadow: var(--cs);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s;
+  cursor: default;
+}
+.agent-tile::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--grad); }
+.agent-tile:hover { transform: translateY(-2px); box-shadow: var(--ch); border-color: var(--border-s); }
+.agent-name { font-size: 0.86rem; font-weight: 700; color: var(--t1); margin-bottom: 0.08rem; }
+.agent-meta { font-size: 0.67rem; color: var(--t3); margin-bottom: 0.5rem; }
+.agent-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+.agent-stat-box { background: var(--bg-secondary); border-radius: 7px; padding: 0.4rem 0.5rem; border: 1px solid var(--border); }
+.agent-stat-label { font-size: 0.6rem; text-transform: uppercase; color: var(--t3); font-weight: 600; margin-bottom: 0.08rem; }
+.agent-stat-value { font-size: 0.95rem; font-weight: 800; }
+
+.chart-title { font-size: 0.8rem; font-weight: 700; color: var(--t2); margin-bottom: 0.65rem; display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; }
+.chart-title-left { display: flex; align-items: center; gap: 0.35rem; }
+.chart-title svg { width: 16px; height: 16px; stroke: var(--acc); fill: none; stroke-width: 2; }
+.chart-container { position: relative; }
+.charts-row { display: grid; gap: 0.85rem; margin-bottom: 1rem; }
+.charts-2 { grid-template-columns: 1fr 1fr; }
+.charts-1 { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+  .charts-2 { grid-template-columns: 1fr; }
+}
+
+.toggle-mini { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.toggle-mini button {
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--bg-secondary);
+  color: var(--t3);
+  transition: all 0.15s;
+}
+.toggle-mini button.active { background: var(--grad); border-color: transparent; color: #fff; }
+
+/* legacy topbar (hidden when using .header) */
+#topbar { display: none !important; }
+.dummy-toggle {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--magenta-soft); border: 1px solid var(--magenta-light);
+  border-radius: 20px; padding: 5px 12px; cursor: pointer;
+  font-size: 11px; font-weight: 600; color: var(--magenta); transition: var(--transition);
+}
+.dummy-toggle .dtdot { width: 7px; height: 7px; border-radius: 50%; background: var(--magenta); flex-shrink: 0; }
+.dummy-toggle.live { background: #EDF9F0; border-color: #B7E4C7; color: #1B7A3E; }
+.dummy-toggle.live .dtdot { background: #1B7A3E; }
+.topbar-btn {
+  height: 32px; padding: 0 13px; border-radius: 7px;
+  border: 1px solid var(--border-mid); background: var(--bg-card);
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+  transition: var(--transition);
+}
+.topbar-btn:hover { border-color: var(--magenta); color: var(--magenta); }
+.topbar-btn.primary { background: var(--magenta); border-color: var(--magenta); color: #fff; }
+.topbar-btn.primary:hover { background: var(--magenta-dark); }
+
+/* ── THEME SWITCHER ───────────────────────────────── */
+.theme-switcher { display: flex; align-items: center; gap: 4px; }
+.theme-btn {
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border-mid);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  font-size: 13px; transition: var(--transition); background: var(--bg-card);
+  position: relative;
+}
+.theme-btn:hover { border-color: var(--magenta); }
+.theme-btn.active { background: var(--magenta-soft); border-color: var(--magenta); }
+.theme-btn[title]:hover::after {
+  content: attr(title); position: absolute; bottom: -26px; left: 50%; transform: translateX(-50%);
+  background: var(--text-primary); color: #fff; font-size: 10px; padding: 2px 6px;
+  border-radius: 4px; white-space: nowrap; pointer-events: none; z-index: 100;
+}
+
+#content::-webkit-scrollbar { width: 4px; }
+#content::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── KPI TILES ────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.kpi-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 0.9rem 1rem;
+  box-shadow: var(--cs); position: relative; overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  cursor: default;
+}
+.kpi-card:hover { box-shadow: var(--ch); transform: translateY(-2px); }
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--grad); }
+.kpi-card.kg::before { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.kpi-card.ka::before { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.kpi-card.kb::before { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.kpi-label { font-size: 0.7rem; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; }
+.kpi-value { font-size: 1.75rem; font-weight: 900; color: var(--t1); line-height: 1; }
+.kpi-delta { font-size: 11px; margin-top: 4px; color: var(--text-muted); }
+.kpi-delta.up { color: #16A34A; }
+.kpi-delta.dn { color: #DC2626; }
+.kpi-ico {
+  position: absolute; right: 13px; top: 50%; transform: translateY(-30%);
+  width: 34px; height: 34px; border-radius: 8px; background: var(--magenta-soft);
+  display: flex; align-items: center; justify-content: center;
+}
+.kpi-ico svg { width: 16px; height: 16px; stroke: var(--magenta); fill: none; }
+.kpi-card.kg .kpi-ico { background: rgba(34,197,94,0.12); }
+.kpi-card.kg .kpi-ico svg { stroke: #22c55e; }
+.kpi-card.ka .kpi-ico { background: rgba(245,158,11,0.12); }
+.kpi-card.ka .kpi-ico svg { stroke: #f59e0b; }
+.kpi-card.kb .kpi-ico { background: rgba(37,99,235,0.1); }
+.kpi-card.kb .kpi-ico svg { stroke: #2563eb; }
+
+/* ── FILTER BAR ───────────────────────────────────── */
+.filter-bar {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 0.75rem 1rem;
+  display: flex; align-items: flex-end; gap: 0.5rem;
+  margin-bottom: 1rem; flex-wrap: wrap; box-shadow: var(--cs);
+}
+.filter-bar label { font-size: 0.63rem; font-weight: 700; color: var(--t2); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.filter-select {
+  min-height: 29px; padding: 0.34rem 0.55rem; border: 1px solid var(--border);
+  border-radius: 7px; background: var(--bg-input); font-size: 0.78rem;
+  color: var(--t1); cursor: pointer; outline: none; transition: border-color 0.18s ease;
+}
+.filter-select:focus { border-color: var(--border-s); }
+.filter-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+.filter-clear { font-size: 11px; color: var(--magenta); cursor: pointer; font-weight: 600; margin-left: auto; padding: 3px 7px; border-radius: 5px; transition: var(--transition); }
+.filter-clear:hover { background: var(--magenta-soft); }
+
+/* ── MULTI-SELECT DROPDOWN ────────────────────────── */
+.ms-wrap { position: relative; min-width: 110px; }
+.ms-trigger {
+  min-height: 29px; padding: 0.34rem 26px 0.34rem 0.55rem;
+  border: 1px solid var(--border); border-radius: 7px;
+  background: var(--bg-input); font-size: 0.78rem; color: var(--t1);
+  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; transition: border-color 0.18s ease; user-select: none;
+}
+.ms-trigger:hover, .ms-wrap.open .ms-trigger { border-color: var(--border-s); }
+.ms-arrow {
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; width: 10px; height: 10px;
+  stroke: var(--text-muted); fill: none; stroke-width: 2.5;
+  transition: transform 0.15s;
+}
+.ms-wrap.open .ms-arrow { transform: translateY(-50%) rotate(180deg); }
+.ms-dropdown {
+  position: fixed;
+  z-index: 99999;
+  min-width: 180px;
+  max-width: 280px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-s);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
+  display: none;
+}
+.ms-wrap.open .ms-dropdown { display: block; }
+.ms-search { padding: 6px 7px; border-bottom: 1px solid var(--border); }
+.ms-search input {
+  width: 100%; border: 1px solid var(--border-mid); border-radius: 5px;
+  padding: 4px 8px; font-size: 11px; outline: none;
+  background: var(--bg); color: var(--text-primary); font-family: inherit;
+}
+.ms-search input:focus { border-color: var(--magenta); }
+.ms-list { max-height: 180px; overflow-y: auto; }
+.ms-list::-webkit-scrollbar { width: 3px; }
+.ms-list::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+.ms-option {
+  padding: 7px 10px; font-size: 12px; color: var(--text-primary);
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  transition: var(--transition); user-select: none;
+}
+.ms-option:hover { background: var(--magenta-soft); color: var(--magenta); }
+.ms-option.checked { color: var(--magenta); }
+.ms-option.ms-radio { padding-left: 12px; }
+.ms-option.ms-radio.checked { font-weight: 700; background: var(--magenta-soft); }
+.ms-all-item { border-bottom: 1px solid var(--border); }
+.ms-chk {
+  width: 14px; height: 14px; border: 1.5px solid var(--border-mid);
+  border-radius: 3px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+}
+.ms-option.checked .ms-chk {
+  background: var(--magenta); border-color: var(--magenta);
+}
+.ms-option.checked .ms-chk::after {
+  content: ''; width: 5px; height: 3px;
+  border-left: 1.5px solid #fff; border-bottom: 1.5px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+  display: block;
+}
+
+.charts-row { display: grid; gap: 11px; margin-bottom: 11px; }
+.cr3 { grid-template-columns: repeat(3,1fr); }
+.cr2 { grid-template-columns: 1fr 1fr; }
+.cr1 { grid-template-columns: 1fr; }
+.chart-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1rem;
+  box-shadow: var(--cs);
+}
+.cch { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.65rem; }
+.cct { font-size: 0.8rem; font-weight: 700; color: var(--t2); }
+.ccs { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.chart-wrap { position: relative; }
+.h160 { height: 160px; } .h180 { height: 180px; }
+.h200 { height: 240px; } .h220 { height: 240px; }
+.aging-scroll { max-height: 220px; overflow: auto; }
+.h260 { height: 260px; }
+
+/* ── FUNNEL ───────────────────────────────────────── */
+.funnel-row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+.funnel-lbl { font-size: 11px; color: var(--text-secondary); width: 85px; text-align: right; flex-shrink: 0; }
+.funnel-bw { flex: 1; height: 26px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.funnel-bar { height: 100%; border-radius: 5px; display: flex; align-items: center; padding-left: 9px; }
+.funnel-bar span { font-size: 10px; font-weight: 700; color: #fff; }
+.funnel-cnt { font-size: 12px; font-weight: 700; color: var(--text-primary); width: 28px; flex-shrink: 0; }
+.funnel-pct { font-size: 10px; color: var(--text-muted); width: 34px; flex-shrink: 0; }
+
+/* ── LEADERBOARD ──────────────────────────────────── */
+.lb-row {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--bg); border-radius: 7px; padding: 8px 10px;
+  margin-bottom: 5px; transition: var(--transition);
+}
+.lb-row:hover { background: var(--magenta-soft); }
+.lb-rank { font-size: 13px; font-weight: 800; color: var(--text-muted); width: 18px; text-align: center; flex-shrink: 0; }
+.lb-rank.gold { color: #F59E0B; } .lb-rank.silver { color: #9CA3AF; } .lb-rank.bronze { color: #CD7C4A; }
+.lb-av {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--magenta-light);
+  color: var(--magenta); display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; flex-shrink: 0;
+}
+.lb-name { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.lb-meta { display: flex; gap: 14px; }
+.lb-m { text-align: center; }
+.lb-mv { font-size: 11px; font-weight: 700; color: var(--text-primary); display: block; }
+.lb-ml { font-size: 9px; color: var(--text-muted); display: block; }
+.lb-bw { width: 50px; height: 3px; background: var(--border); border-radius: 2px; }
+.lb-bf { height: 100%; background: var(--magenta); border-radius: 2px; }
+
+/* ── AGING TABLE ──────────────────────────────────── */
+.aging-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.aging-tbl th { text-align: left; font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.aging-tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.aging-tbl tr:last-child td { border-bottom: none; }
+.aging-tbl tr:hover td { background: var(--magenta-soft); }
+.age-g { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #F0FDF4; color: #15803D; }
+.age-a { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #FFFBEB; color: #B45309; }
+.age-r { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #FEF2F2; color: #B91C1C; }
+
+/* ── STATUS / IMPORTANCE PILLS ────────────────────── */
+.sp { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.sp-new  { background: #EFF6FF; color: #1D4ED8; }
+.sp-open { background: #F0FDF4; color: #15803D; }
+.sp-prog { background: #FFFBEB; color: #B45309; }
+.sp-hold { background: #F5F3FF; color: #6D28D9; }
+.sp-won  { background: #F0FDF4; color: #15803D; }
+.sp-lost { background: #FEF2F2; color: #B91C1C; }
+.imp-h { color: #DC2626; font-weight: 700; font-size: 11px; }
+.imp-m { color: #D97706; font-weight: 700; font-size: 11px; }
+.imp-l { color: #16A34A; font-weight: 700; font-size: 11px; }
+
+/* ── LEADS TABLE ──────────────────────────────────── */
+.leads-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.leads-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.leads-tbl thead tr { background: var(--magenta-soft); }
+.leads-tbl th { text-align: left; font-size: 10px; font-weight: 700; color: var(--magenta); text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 11px; border-bottom: 1px solid var(--magenta-light); white-space: nowrap; }
+.leads-tbl td { padding: 9px 11px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.leads-tbl tr:last-child td { border-bottom: none; }
+.leads-tbl tbody tr { transition: var(--transition); cursor: pointer; }
+.leads-tbl tbody tr:hover td { background: var(--magenta-soft); }
+.act-btn { background: none; border: 1px solid var(--border-mid); border-radius: 5px; padding: 3px 8px; font-size: 10px; cursor: pointer; color: var(--text-secondary); transition: var(--transition); }
+.act-btn:hover { border-color: var(--magenta); color: var(--magenta); background: var(--magenta-soft); }
+
+/* ── OVERDUE BANNER ───────────────────────────────── */
+.overdue-banner {
+  background: #FEF2F2; border: 1px solid #FECACA; border-radius: var(--radius);
+  padding: 9px 13px; margin-bottom: 14px;
+  display: none; align-items: center; gap: 9px;
+}
+.overdue-banner.show { display: flex; }
+.overdue-banner svg { width: 15px; height: 15px; stroke: #EF4444; flex-shrink: 0; fill: none; }
+.overdue-banner span { font-size: 12px; color: #991B1B; font-weight: 600; flex: 1; }
+.ob-btn { font-size: 11px; font-weight: 700; color: #EF4444; background: none; border: 1px solid #FECACA; border-radius: 5px; padding: 3px 9px; cursor: pointer; }
+.ob-btn:hover { background: #FEE2E2; }
+
+/* ── FORM ─────────────────────────────────────────── */
+.form-shell { max-width: 860px; margin: 0 auto; }
+.form-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 11px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.form-card-hdr { padding: 11px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 9px; background: var(--magenta-soft); }
+.form-card-num { width: 21px; height: 21px; border-radius: 50%; background: var(--magenta); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.form-card-ttl { font-size: 12px; font-weight: 700; color: var(--magenta-dark); }
+.form-body { padding: 14px 16px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.form-grid.g3 { grid-template-columns: 1fr 1fr 1fr; }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg.full { grid-column: 1 / -1; }
+.flbl { font-size: 11px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
+.req { color: var(--magenta); }
+.atag { font-size: 9px; font-weight: 700; background: var(--magenta-soft); color: var(--magenta); border-radius: 3px; padding: 1px 5px; }
+.ctag { font-size: 9px; font-weight: 700; background: #FFFBEB; color: #B45309; border-radius: 3px; padding: 1px 5px; }
+.finput, .fselect, .ftextarea {
+  height: 33px; padding: 0 9px; border: 1px solid var(--border-mid);
+  border-radius: 6px; background: var(--bg); font-size: 12px;
+  color: var(--text-primary); outline: none; transition: var(--transition); width: 100%; font-family: inherit;
+}
+.finput:focus, .fselect:focus, .ftextarea:focus { border-color: var(--magenta); box-shadow: 0 0 0 3px rgba(192,0,106,0.07); background: #fff; }
+.finput.ro { background: var(--bg-card2); color: var(--text-muted); cursor: default; }
+.ftextarea { height: 66px; padding: 7px 9px; resize: vertical; }
+.fhint { font-size: 10px; color: var(--text-muted); }
+.ferr { font-size: 10px; color: #EF4444; display: none; }
+.ferr.show { display: block; }
+
+/* Toggle */
+.tog-row { display: flex; align-items: center; justify-content: space-between; }
+.tog-wrap { display: flex; align-items: center; gap: 7px; }
+.tog-sw { position: relative; width: 34px; height: 19px; flex-shrink: 0; }
+.tog-sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+.tog-sl { position: absolute; inset: 0; background: var(--border-mid); border-radius: 20px; cursor: pointer; transition: var(--transition); }
+.tog-sl::before { content: ''; position: absolute; width: 13px; height: 13px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: var(--transition); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.tog-sw input:checked + .tog-sl { background: var(--magenta); }
+.tog-sw input:checked + .tog-sl::before { transform: translateX(15px); }
+.tog-lbl { font-size: 11px; color: var(--text-secondary); }
+
+/* TCV display */
+.tcv-box {
+  background: linear-gradient(135deg, var(--magenta-soft) 0%, #fff 100%);
+  border: 1px solid var(--magenta-light); border-radius: 7px;
+  padding: 10px 13px; display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px;
+}
+.tcv-lbl { font-size: 11px; color: var(--magenta); font-weight: 600; }
+.tcv-sub { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+.tcv-val { font-size: 20px; font-weight: 800; color: var(--magenta-dark); }
+
+/* Dup warning */
+.dup-warn { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; padding: 7px 11px; font-size: 11px; color: #92400E; display: none; align-items: center; gap: 7px; margin-top: 5px; }
+.dup-warn.show { display: flex; }
+
+/* Form actions */
+.form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding: 12px 16px; background: var(--bg-card2); border-top: 1px solid var(--border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+.btn-sec { height: 34px; padding: 0 16px; border-radius: 7px; border: 1px solid var(--border-mid); background: var(--bg-card); font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: var(--transition); }
+.btn-sec:hover { border-color: var(--magenta); color: var(--magenta); }
+.btn-pri { height: 34px; padding: 0 20px; border-radius: 7px; border: none; background: var(--magenta); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 6px; }
+.btn-pri:hover { background: var(--magenta-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(192,0,106,0.28); }
+
+/* ── SECTION HEADER ───────────────────────────────── */
+.section-hdr { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.section-hdr h2 { font-size: 15px; font-weight: 700; }
+.section-hdr .sh-sub { font-size: 11px; color: var(--text-muted); }
+.sec-divider { width: 3px; height: 17px; background: var(--magenta); border-radius: 2px; flex-shrink: 0; }
+
+/* ── ACTIVITY LOG ─────────────────────────────────── */
+.al-filters { display: flex; gap: 8px; margin-bottom: 13px; flex-wrap: wrap; }
+.al-filters .filter-select { flex: 1; min-width: 130px; }
+.timeline { display: flex; flex-direction: column; }
+.tl-item { display: flex; gap: 11px; position: relative; }
+.tl-item:not(:last-child)::after { content: ''; position: absolute; left: 12px; top: 25px; bottom: -12px; width: 1px; background: var(--border); }
+.tl-dot { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 5px; z-index: 1; }
+.tl-dot svg { width: 11px; height: 11px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tld-create   { background: #F0FDF4; } .tld-create   svg { stroke: #22C55E; }
+.tld-status   { background: #EFF6FF; } .tld-status   svg { stroke: #3B82F6; }
+.tld-followup { background: #FFFBEB; } .tld-followup svg { stroke: #F59E0B; }
+.tld-close    { background: #FEF2F2; } .tld-close    svg { stroke: #EF4444; }
+.tld-edit     { background: var(--magenta-soft); } .tld-edit svg { stroke: var(--magenta); }
+.tl-content { flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 13px; margin-bottom: 12px; box-shadow: var(--shadow-sm); transition: var(--transition); }
+.tl-content:hover { border-color: var(--magenta-light); }
+.tl-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+.tl-ttl { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.tl-time { font-size: 10px; color: var(--text-muted); }
+.tl-body { font-size: 11px; color: var(--text-secondary); }
+.tl-ref { display: inline-block; font-size: 10px; font-weight: 700; background: var(--magenta-soft); color: var(--magenta); border-radius: 3px; padding: 1px 6px; margin-top: 4px; }
+.tl-change { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 11px; }
+.tl-old { color: var(--text-muted); text-decoration: line-through; }
+.tl-arr { color: var(--text-muted); }
+.tl-new { color: var(--magenta); font-weight: 700; }
+
+/* ── TOAST ────────────────────────────────────────── */
+#toast { position: fixed; bottom: 22px; right: 22px; background: var(--text-primary); color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow-lg); z-index: 9999; transform: translateY(50px); opacity: 0; transition: all 0.28s ease; pointer-events: none; }
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.success { background: #15803D; }
+#toast.error   { background: #B91C1C; }
+#toast.info    { background: var(--magenta); }
+
+/* ── LAUNCH PAGE (home) — DIP content style, no crooked hero band ── */
+#panel-launch { padding-bottom: 20px; }
+.launch-hero {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.35rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--cs);
+  position: relative;
+  overflow: hidden;
+}
+.launch-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--grad);
+}
+.launch-hero-inner { position: relative; z-index: 1; }
+.launch-greeting { font-size: 1.15rem; font-weight: 800; color: var(--t1); margin-bottom: 4px; }
+.launch-date { font-size: 0.78rem; color: var(--t3); margin-bottom: 16px; }
+.launch-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+.launch-stat {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  padding: 10px 16px;
+  min-width: 92px;
+  border: 1px solid var(--border);
+}
+.launch-stat .lsv { font-size: 1.35rem; font-weight: 900; color: var(--sc); line-height: 1; }
+.launch-stat .lsl { font-size: 0.62rem; color: var(--t3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.launch-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 11px; margin-bottom: 18px; }
+.launch-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 18px 16px;
+  cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.launch-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--magenta); }
+.lc-icon {
+  width: 40px; height: 40px; border-radius: 10px; background: var(--magenta-soft);
+  display: flex; align-items: center; justify-content: center;
+}
+.lc-icon svg { width: 20px; height: 20px; stroke: var(--magenta); fill: none; }
+.lc-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.lc-sub   { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.launch-recents { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm); }
+.launch-recents h3 { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary); }
+.recent-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.recent-row:last-child { border-bottom: none; }
+.recent-id { font-size: 11px; font-weight: 700; color: var(--magenta); width: 100px; flex-shrink: 0; }
+.recent-acct { font-size: 12px; color: var(--text-primary); flex: 1; }
+.recent-time { font-size: 10px; color: var(--text-muted); }
+
+/* ── MODAL (Quick Update) ─────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 1000; display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-backdrop.show { display: flex; }
+.modal-box {
+  background: var(--bg-card); border-radius: var(--radius-lg);
+  padding: 24px; width: 520px; max-width: 95vw;
+  box-shadow: var(--shadow-lg); position: relative;
+  border: 1px solid var(--border-mid);
+  animation: modal-in 0.18s ease;
+}
+@keyframes modal-in { from { transform: scale(0.96) translateY(10px); opacity:0; } to { transform: none; opacity:1; } }
+.modal-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+.modal-ttl { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.modal-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.modal-close { background: none; border: none; cursor: pointer; padding: 4px; color: var(--text-muted); font-size: 18px; line-height: 1; }
+.modal-close:hover { color: var(--text-primary); }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 9px; padding-top: 14px; border-top: 1px solid var(--border); }
+.modal-note { background: var(--bg-card2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; color: var(--text-secondary); font-style: italic; margin-top: 10px; }
+
+/* ── AG GRID WRAPPER ──────────────────────────────── */
+.ag-wrap { height: 420px; width: 100%; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.ag-leads-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+.ag-search-input {
+  height: 30px; padding: 0 10px 0 32px; border: 1px solid var(--border-mid);
+  border-radius: 7px; background: var(--bg-card); font-size: 12px;
+  color: var(--text-primary); outline: none; transition: var(--transition); width: 220px;
+  position: relative;
+}
+.ag-search-wrap { position: relative; }
+.ag-search-wrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; stroke: var(--text-muted); pointer-events: none; fill: none; }
+.ag-search-input:focus { border-color: var(--magenta); }
+.ag-page-info { font-size: 11px; color: var(--text-muted); }
+
+/* ── SEARCHABLE SELECT ────────────────────────────── */
+.ss-wrap { position: relative; }
+.ss-input {
+  height: 29px; padding: 0 28px 0 9px; border: 1px solid var(--border-mid);
+  border-radius: 6px; background: var(--bg); font-size: 12px;
+  color: var(--text-primary); width: 100%; cursor: pointer; outline: none;
+  transition: var(--transition); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ss-input:focus { border-color: var(--magenta); }
+.ss-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; width: 10px; height: 10px; stroke: var(--text-muted); fill: none; }
+.ss-dropdown {
+  position: absolute; top: calc(100% + 3px); left: 0; right: 0; z-index: 500;
+  background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: 8px;
+  box-shadow: var(--shadow-lg); display: none; max-height: 200px; overflow: hidden;
+}
+.ss-wrap.open .ss-dropdown { display: flex; flex-direction: column; }
+.ss-search { padding: 7px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.ss-search input { width: 100%; border: 1px solid var(--border-mid); border-radius: 5px; padding: 4px 8px; font-size: 12px; outline: none; background: var(--bg); color: var(--text-primary); }
+.ss-list { overflow-y: auto; max-height: 150px; }
+.ss-option { padding: 7px 10px; font-size: 12px; color: var(--text-primary); cursor: pointer; transition: var(--transition); }
+.ss-option:hover { background: var(--magenta-soft); color: var(--magenta); }
+.ss-option.selected { color: var(--magenta); font-weight: 600; background: var(--magenta-soft); }
+.ss-option.no-results { color: var(--text-muted); font-style: italic; cursor: default; }
+
+/* ── MY LEADS OWNER TOGGLE ────────────────────────── */
+.owner-toggle { display: flex; background: var(--bg); border: 1px solid var(--border-mid); border-radius: 7px; overflow: hidden; }
+.owner-btn { padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: var(--transition); border: none; background: none; }
+.owner-btn.active { background: var(--magenta); color: #fff; }
+
+/* ── ACTIVITY HISTORY DETAIL ──────────────────────── */
+.hist-field-changes { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.hist-change-row { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.hist-field-name { font-weight: 700; color: var(--text-secondary); min-width: 110px; flex-shrink: 0; }
+.hist-old { color: var(--text-muted); text-decoration: line-through; }
+.hist-arr { color: var(--text-muted); }
+.hist-new { color: var(--magenta); font-weight: 700; }
+.hist-by  { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+.hist-avatar { width: 18px; height: 18px; border-radius: 50%; background: var(--magenta-soft); color: var(--magenta); display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; flex-shrink: 0; }
+
+/* ── THEME DROPDOWN ───────────────────────────────── */
+.theme-dd-wrap { position: relative; }
+.theme-dd-btn {
+  height: 30px; padding: 0 10px; border-radius: 7px;
+  border: 1px solid var(--border-mid); background: var(--bg-card);
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; display: flex; align-items: center; gap: 6px; transition: var(--transition);
+}
+.theme-dd-btn:hover { border-color: var(--magenta); color: var(--magenta); }
+.theme-dd-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.theme-dd-menu {
+  position: absolute; top: calc(100% + 4px); right: 0;
+  background: var(--bg-card); border: 1px solid var(--border-mid);
+  border-radius: 9px; box-shadow: var(--shadow-lg);
+  z-index: 600; min-width: 148px; padding: 4px; display: none;
+}
+.theme-dd-wrap.open .theme-dd-menu { display: block; }
+.theme-dd-item {
+  padding: 7px 11px; font-size: 12px; font-weight: 500;
+  color: var(--text-secondary); cursor: pointer; border-radius: 6px;
+  display: flex; align-items: center; gap: 8px; transition: var(--transition);
+}
+.theme-dd-item:hover { background: var(--magenta-soft); color: var(--magenta); }
+.theme-dd-item.active { background: var(--magenta-soft); color: var(--magenta); font-weight: 700; }
+.theme-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.1); }
+
+/* ── ANALYTICS TOGGLE + CHART TABS ───────────────── */
+.analytics-toggle-btn {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--bg-card); border: 1px solid var(--border-mid);
+  border-radius: 8px; padding: 7px 14px; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  margin-bottom: 14px; box-shadow: var(--shadow-sm); transition: var(--transition); width: fit-content;
+}
+.analytics-toggle-btn:hover { border-color: var(--magenta); color: var(--magenta); }
+.analytics-toggle-btn svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; width: 14px; height: 14px; }
+.analytics-section { display: none; }
+.analytics-section.open { display: block; }
+.fm-charts-master { display: none; margin-top: 2px; }
+.fm-charts-master.open { display: block; }
+.fm-extended-analytics { display: block; }
+.chart-tab-group { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.chart-tab {
+  padding: 0.2rem 0.55rem; font-size: 0.68rem; font-weight: 700; border-radius: 6px;
+  cursor: pointer; color: var(--t3); background: var(--bg-secondary);
+  border: 1px solid var(--border); transition: all 0.15s ease;
+  font-family: inherit; line-height: inherit; margin: 0;
+}
+button.chart-tab { -webkit-appearance: none; appearance: none; }
+.chart-tab:hover { border-color: var(--border-s); color: var(--t1); }
+.chart-tab.active {
+  background: var(--grad);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* ── AG GRID ──────────────────────────────────────── */
+.ag-grid-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 9px; gap: 10px; flex-wrap: wrap;
+}
+.ag-grid-export {
+  display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border-radius: 7px; border: 1px solid var(--border-mid); background: var(--bg-card);
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; transition: var(--transition);
+}
+.ag-grid-export:hover { border-color: var(--magenta); color: var(--magenta); }
+.ag-grid-export svg { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; width: 12px; height: 12px; }
+.ag-theme-alpine {
+  --ag-font-size: 12px;
+  --ag-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ag-border-color: var(--border);
+  --ag-header-background-color: var(--bg-secondary);
+  --ag-header-foreground-color: var(--t1);
+  --ag-row-hover-color: var(--bg-hover);
+  --ag-selected-row-background-color: var(--nab);
+  --ag-background-color: var(--bg-card);
+  --ag-foreground-color: var(--t1);
+  --ag-secondary-foreground-color: var(--t2);
+  --ag-header-column-separator-color: var(--border);
+}
+/* AG Grid — DIP alpine overrides */
+.ag-theme-alpine .ag-root-wrapper { background: var(--bg-card) !important; border-color: var(--border) !important; border-radius: 10px !important; overflow: hidden !important; }
+.ag-theme-alpine .ag-header,
+.ag-theme-alpine .ag-header-row,
+.ag-theme-alpine .ag-header-viewport { background: var(--bg-secondary) !important; border-bottom: 2px solid var(--border-s) !important; }
+.ag-theme-alpine .ag-header-cell {
+  background: var(--bg-secondary) !important;
+  color: var(--t1) !important;
+  font-weight: 700 !important;
+  font-size: 0.7rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+.ag-theme-alpine .ag-header-cell-text { color: var(--t1) !important; font-weight: 700 !important; }
+.ag-theme-alpine .ag-icon { color: var(--t3) !important; }
+.ag-theme-alpine .ag-body-viewport,
+.ag-theme-alpine .ag-center-cols-viewport { background: var(--bg-card) !important; }
+.ag-theme-alpine .ag-row {
+  background: var(--bg-card) !important;
+  color: var(--t1) !important;
+  border-bottom-color: var(--border) !important;
+}
+.ag-theme-alpine .ag-row-odd { background: var(--bg-secondary) !important; }
+.ag-theme-alpine .ag-row-hover { background: var(--bg-hover) !important; }
+.ag-theme-alpine .ag-cell { color: var(--t1) !important; }
+.ag-theme-alpine .ag-paging-panel {
+  background: var(--bg-card) !important;
+  color: var(--t1) !important;
+  border-top-color: var(--border) !important;
+}
+
+/* ── ACT BTN ──────────────────────────────────────── */
+.act-btn {
+  background: none; border: 1px solid var(--border-mid); border-radius: 5px;
+  padding: 2px 8px; font-size: 11px; cursor: pointer;
+  color: var(--text-secondary); transition: var(--transition);
+}
+.act-btn:hover { border-color: var(--magenta); color: var(--magenta); background: var(--magenta-soft); }
+
+/* ── MODAL ────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 1000; display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-backdrop.show { display: flex; }
+.modal-box {
+  background: var(--bg-card); border-radius: var(--radius-lg); padding: 22px;
+  width: 520px; max-width: 95vw; box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-mid); animation: mIn .17s ease;
+}
+@keyframes mIn { from { transform: scale(.96) translateY(8px); opacity:0; } to { transform: none; opacity:1; } }
+.modal-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.modal-ttl { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.modal-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.modal-close { background: none; border: none; cursor: pointer; padding: 3px; color: var(--text-muted); font-size: 17px; line-height: 1; }
+.modal-close:hover { color: var(--text-primary); }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.modal-footer { margin-top: 18px; display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* ── SECTION HEADER ───────────────────────────────── */
+.section-hdr { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.section-hdr h2 { font-size: 15px; font-weight: 700; }
+.section-hdr .sh-sub { font-size: 11px; color: var(--text-muted); }
+.sec-divider { width: 3px; height: 17px; background: var(--magenta); border-radius: 2px; flex-shrink: 0; }
+
+/* ── OVERDUE BANNER ───────────────────────────────── */
+.overdue-banner {
+  background: #FEF2F2; border: 1px solid #FECACA; border-radius: var(--radius);
+  padding: 8px 12px; margin-bottom: 13px; display: none; align-items: center; gap: 8px;
+}
+.overdue-banner.show { display: flex; }
+.overdue-banner svg { width: 14px; height: 14px; stroke: #EF4444; flex-shrink: 0; fill: none; }
+.overdue-banner span { font-size: 12px; color: #991B1B; font-weight: 600; flex: 1; }
+.ob-btn { font-size: 11px; font-weight: 700; color: #EF4444; background: none; border: 1px solid #FECACA; border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+.ob-btn:hover { background: #FEE2E2; }
+
+/* ── TOAST ────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--text-primary); color: #fff;
+  padding: 9px 15px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  box-shadow: var(--shadow-lg); z-index: 9999;
+  transform: translateY(50px); opacity: 0; transition: all .28s ease; pointer-events: none;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.success { background: #166534; }
+#toast.error   { background: #B91C1C; }
+#toast.info    { background: var(--magenta); }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+  /* ── LEAD TIMELINE ────────────────────────────────── */
+.lead-timeline { padding: 4px 0; }
+.lt-row { display: flex; gap: 10px; position: relative; padding-bottom: 16px; }
+.lt-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; z-index: 1; }
+.lt-line { position: absolute; left: 5px; top: 15px; bottom: 0; width: 2px; background: var(--border); }
+.lt-body { flex: 1; }
+.lt-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.lt-status { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.lt-days { font-size: 11px; font-weight: 700; color: var(--text-primary); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 7px; }
+.lt-meta { font-size: 10px; color: var(--text-muted); }
+.lt-note { font-size: 11px; color: var(--text-secondary); font-style: italic; margin-top: 4px; padding: 5px 8px; background: var(--magenta-soft); border-radius: 5px; border-left: 3px solid var(--magenta); }
+</style>
+</head>
+<body>
+
+<!-- ═════════ LANDING PAGE / ACCESS GATE (DIP layout) ═════════ -->
+<div id="landing-page" class="landing-page">
+  <div class="landing-left">
+    <div class="landing-branding">
+      <div style="margin-bottom:0.85rem">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 8l3 3 4-4 3 3"/></svg>
+        </div>
+      </div>
+      <h1 class="landing-brand-title">FreeMove<br><span>Leads Portal</span></h1>
+      <p class="landing-brand-subtitle">Track FreeMove partner leads, opportunities and director-level pipeline across du in real time.</p>
+      <div class="landing-features">
+        <div class="landing-feature">
+          <div class="landing-feature-icon"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--acc);fill:none;stroke-width:2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div>
+          <div><div class="landing-feature-title">Pipeline Analytics</div><div class="landing-feature-desc">Live KPIs, trend, win/loss, conversion funnel</div></div>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-icon"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--acc);fill:none;stroke-width:2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></div>
+          <div><div class="landing-feature-title">Director &amp; AM Performance</div><div class="landing-feature-desc">Leaderboards, TCV by director, AM productivity</div></div>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-icon"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--acc);fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
+          <div><div class="landing-feature-title">Win / loss &amp; velocity</div><div class="landing-feature-desc">Closed vs open mix, trend toggles, and AM delivery-style charts</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="landing-right">
+    <div class="landing-container">
+      <div class="landing-header" style="animation:slideUp .7s ease forwards">
+        <div style="display:flex;justify-content:center;margin-bottom:.85rem">
+          <div class="logo-icon"><svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 8l3 3 4-4 3 3"/></svg></div>
+        </div>
+        <h1 class="landing-title">FreeMove Leads Portal</h1>
+        <p class="landing-subtitle">Sign in with your du account · access from <b>FM_Access_Marix</b></p>
+      </div>
+      <div class="landing-card" style="animation:slideUp .7s ease .2s forwards;opacity:0">
+        <div class="welcome-badge"><span class="badge-pulse"></span><span>Partner pipeline</span></div>
+        <div class="landing-user-info">
+          <div class="avatar-placeholder" id="lp-avatar">?</div>
+          <div class="landing-details">
+            <h3 id="lp-uname">Loading…</h3>
+            <p id="lp-uemail">Verifying access…</p>
+            <span class="landing-role" id="lp-role-txt">Checking…</span>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="landing-stat-card">
+            <div class="stat-icon-bg"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg></div>
+            <div><div class="stat-label">My Leads</div><div class="stat-value-sm" id="lp-my-leads">—</div></div>
+          </div>
+          <div class="landing-stat-card">
+            <div class="stat-icon-bg"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--acc);fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div><div class="stat-label">Last Visit</div><div class="stat-value-sm" id="lp-last-visit" style="font-size:.82rem">—</div></div>
+          </div>
+        </div>
+        <button type="button" id="lp-go" class="landing-btn btn-primary" disabled onclick="enterPortal()">
+          <svg style="width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2" viewBox="0 0 24 24"><polyline points="5 12 19 12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <span id="lp-go-txt">Verifying access…</span>
+        </button>
+        <div class="landing-note" id="lp-note">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="lp-note-txt">Checking your access in <b>FM_Access_Marix</b>…</span>
+        </div>
+      </div>
+      <div class="landing-footer">FreeMove Leads Portal · du Telecom</div>
+    </div>
+  </div>
+</div>
+
+<div class="portal-shell" id="app" style="display:none">
+
+  <div class="header">
+    <div class="logo-section">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 8l3 3 4-4 3 3"/></svg>
+      </div>
+      <span class="header-title">FreeMove Leads Portal</span>
+    </div>
+    <div class="header-center">
+      <div class="live-badge-pill"><span class="status-dot"></span><span id="fm-env-label">Live</span></div>
+      <div class="date-badge">
+        <svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="fm-current-date"></span>
+      </div>
+      <div class="date-badge" id="fm-section-chip" style="color:var(--acc2);font-weight:700;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Home</div>
+      <div class="date-badge" id="fm-user-badge" style="color:var(--acc);font-weight:600;"></div>
+      <div class="date-badge" id="header-sub-dynamic" style="color:var(--t3);font-weight:500;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      <span id="user-name" style="display:none"></span>
+      <span class="role-pill" id="role-pill" style="display:none">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+        <span id="role-pill-txt">User</span>
+      </span>
+    </div>
+    <div class="header-actions">
+      <select class="color-scheme-selector" id="fm-scheme-select" onchange="fmChangeScheme(this.value)">
+        <option value="blue">&#9670; Blue</option>
+        <option value="teal">&#9670; Teal</option>
+      </select>
+      <div class="theme-toggle" onclick="fmToggleLightDark()" title="Light/Dark">
+        <svg id="fm-theme-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </div>
+      <div class="user-avatar" id="user-avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0">FM</div>
+      <div class="dummy-toggle" id="dummy-toggle-btn" style="display:none" onclick="toggleDummyMode()">
+        <div class="dtdot"></div>
+        <span id="dummy-label">Dummy Data</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar">
+        <svg id="sidebarIcon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/><polyline points="9 18 3 12 9 6"/></svg>
+      </div>
+      <div class="nav-items">
+        <div class="nav-section-label">Overview</div>
+        <div class="nav-item active" data-panel="launch" onclick="switchPanel('launch',this)">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+          <div>Home</div>
+        </div>
+        <div class="nav-item" data-panel="dashboard" onclick="switchPanel('dashboard',this)">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+          <div>Overview</div>
+        </div>
+        <div class="nav-section-label">Pipeline</div>
+        <div class="nav-item" data-panel="input-form" onclick="switchPanel('input-form',this)">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+          <div>Log New Lead</div>
+        </div>
+        <div class="nav-section-label">Data</div>
+        <div class="nav-item" data-panel="my-leads" onclick="switchPanel('my-leads',this)">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div>Leads</div>
+          <span class="nav-badge" id="badge-my">0</span>
+        </div>
+        <div class="nav-item" data-panel="activity-log" onclick="switchPanel('activity-log',this)">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <div>Activity Log</div>
+          <span class="nav-badge alert" id="badge-overdue">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- ════════ LAUNCH / HOME ════════ -->
+      <div class="panel active" id="panel-launch">
+        <div class="launch-hero">
+          <div class="launch-hero-inner">
+            <div class="launch-greeting" id="launch-greeting">Good morning 👋</div>
+            <div class="launch-date" id="launch-date"></div>
+            <div class="launch-stats" id="launch-stats"></div>
+          </div>
+        </div>
+        <div class="launch-cards">
+          <div class="launch-card" onclick="switchPanel('dashboard', document.querySelector('[data-panel=dashboard]'))">
+            <div class="lc-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+            <div><div class="lc-title">Dashboard</div><div class="lc-sub">Charts, KPIs, pipeline analytics</div></div>
+          </div>
+          <div class="launch-card" onclick="switchPanel('input-form', document.querySelector('[data-panel=input-form]'))">
+            <div class="lc-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+            <div><div class="lc-title">Log New Lead</div><div class="lc-sub">Submit a FreeMove partner lead</div></div>
+          </div>
+          <div class="launch-card" onclick="switchPanel('my-leads', document.querySelector('[data-panel=my-leads]'))">
+            <div class="lc-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <div><div class="lc-title">Leads</div><div class="lc-sub">Browse, filter, update leads</div></div>
+          </div>
+          <div class="launch-card" onclick="switchPanel('activity-log', document.querySelector('[data-panel=activity-log]'))">
+            <div class="lc-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div><div class="lc-title">Activity Log</div><div class="lc-sub">Full change history audit trail</div></div>
+          </div>
+        </div>
+        <div class="launch-recents">
+          <h3>Recent Activity</h3>
+          <div id="launch-recents-list"></div>
+        </div>
+      </div>
+
+      <!-- ════════ DASHBOARD ════════ -->
+      <div class="panel" id="panel-dashboard">
+
+        <div class="page-header-row">
+          <h2 class="section-title" style="margin:0!important">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Overview
+          </h2>
+        </div>
+
+        <div class="overdue-banner" id="overdue-banner">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span id="overdue-text">You have overdue follow-ups</span>
+          <button type="button" class="ob-btn" onclick="switchPanel('my-leads', document.querySelector('[data-panel=my-leads]'))">View Now</button>
+        </div>
+
+        <!-- Filters — DIP compact bar (filter-group + filter-label) -->
+        <div class="filters-section">
+        <div class="filters-row">
+          <div class="filter-group">
+            <div class="filter-label">Period</div>
+            <div class="ms-wrap" id="ms-period">
+              <div class="ms-trigger" onclick="toggleMS('ms-period')">This Quarter</div>
+              <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="ms-dropdown">
+                <div class="ms-list" id="ms-period-list">
+                  <div class="ms-option ms-radio" data-val="all" onclick="selectPeriod(this,'All Time')">All Time</div>
+                  <div class="ms-option ms-radio" data-val="thismonth" onclick="selectPeriod(this,'This Month')">This Month</div>
+                  <div class="ms-option ms-radio checked" data-val="thisquarter" onclick="selectPeriod(this,'This Quarter')">This Quarter</div>
+                  <div class="ms-option ms-radio" data-val="thisyear" onclick="selectPeriod(this,'This Year')">This Year</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <div class="filter-group">
+            <div class="filter-label">Status</div>
+            <div class="ms-wrap" id="ms-dash-status">
+              <div class="ms-trigger" onclick="toggleMS('ms-dash-status')">All</div>
+              <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="ms-dropdown">
+                <div class="ms-search"><input type="text" placeholder="Search..." oninput="filterMSSearch(this,'ms-dash-status-list')"/></div>
+                <div class="ms-list" id="ms-dash-status-list">
+                  <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-dash-status','Status')"><div class="ms-chk"></div>All Statuses</div>
+                  <div class="ms-option" data-val="New Lead" onclick="toggleMSOpt(this,'ms-dash-status','Status')"><div class="ms-chk"></div>New Lead</div>
+                  <div class="ms-option" data-val="Open" onclick="toggleMSOpt(this,'ms-dash-status','Status')"><div class="ms-chk"></div>Open</div>
+                  <div class="ms-option" data-val="In Progress" onclick="toggleMSOpt(this,'ms-dash-status','Status')"><div class="ms-chk"></div>In Progress</div>
+                  <div class="ms-option" data-val="On Hold" onclick="toggleMSOpt(this,'ms-dash-status','Status')"><div class="ms-chk"></div>On Hold</div>
+                  <div class="ms-option" data-val="Closed Won" onclick="toggleMSOpt(this,'ms-dash-status','Status')"><div class="ms-chk"></div>Closed Won</div>
+                  <div class="ms-option" data-val="Closed Lost" onclick="toggleMSOpt(this,'ms-dash-status','Status')"><div class="ms-chk"></div>Closed Lost</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <div class="filter-group">
+            <div class="filter-label">Importance</div>
+            <div class="ms-wrap" id="ms-dash-imp">
+              <div class="ms-trigger" onclick="toggleMS('ms-dash-imp')">All</div>
+              <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="ms-dropdown">
+                <div class="ms-list" id="ms-dash-imp-list">
+                  <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-dash-imp','Importance')"><div class="ms-chk"></div>All</div>
+                  <div class="ms-option" data-val="High" onclick="toggleMSOpt(this,'ms-dash-imp','Importance')"><div class="ms-chk"></div>High</div>
+                  <div class="ms-option" data-val="Medium" onclick="toggleMSOpt(this,'ms-dash-imp','Importance')"><div class="ms-chk"></div>Medium</div>
+                  <div class="ms-option" data-val="Low" onclick="toggleMSOpt(this,'ms-dash-imp','Importance')"><div class="ms-chk"></div>Low</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <div class="filter-group">
+            <div class="filter-label">Director</div>
+            <div class="ms-wrap" id="ms-dash-dir">
+              <div class="ms-trigger" onclick="toggleMS('ms-dash-dir')">All</div>
+              <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="ms-dropdown">
+                <div class="ms-search"><input type="text" placeholder="Search director..." oninput="filterMSSearch(this,'ms-dash-dir-list')"/></div>
+                <div class="ms-list" id="ms-dash-dir-list">
+                  <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-dash-dir','Director')"><div class="ms-chk"></div>All Directors</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <div class="filter-group">
+            <div class="filter-label">Account Manager</div>
+            <div class="ms-wrap" id="ms-dash-am">
+              <div class="ms-trigger" onclick="toggleMS('ms-dash-am')">All</div>
+              <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="ms-dropdown">
+                <div class="ms-search"><input type="text" placeholder="Search account manager..." oninput="filterMSSearch(this,'ms-dash-am-list')"/></div>
+                <div class="ms-list" id="ms-dash-am-list">
+                  <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-dash-am','AM')"><div class="ms-chk"></div>All Account Managers</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <div class="filter-group">
+            <div class="filter-label">Account</div>
+            <div class="ms-wrap" id="ms-dash-acct">
+              <div class="ms-trigger" onclick="toggleMS('ms-dash-acct')">All</div>
+              <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="ms-dropdown">
+                <div class="ms-search"><input type="text" placeholder="Search account..." oninput="filterMSSearch(this,'ms-dash-acct-list')"/></div>
+                <div class="ms-list" id="ms-dash-acct-list">
+                  <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-dash-acct','Account')"><div class="ms-chk"></div>All Accounts</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-actions-row">
+            <button type="button" class="reset-btn" onclick="clearDashFilters()"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Reset</button>
+          </div>
+        </div>
+        </div>
+
+        <!-- KPI tiles — DIP stat cards -->
+        <div class="top-stats">
+          <div class="stat-card st-total">
+            <div class="s-label">Total Leads</div>
+            <div class="s-value" id="kpi-total" style="color:var(--sc)">—</div>
+            <div class="s-sub" id="kpi-total-d">—</div>
+          </div>
+          <div class="stat-card st-win">
+            <div class="s-label">Win Rate</div>
+            <div class="s-value" id="kpi-win" style="color:#16a34a">—</div>
+            <div class="s-sub" id="kpi-win-d">of closed leads</div>
+          </div>
+          <div class="stat-card st-tcv">
+            <div class="s-label">Pipeline TCV</div>
+            <div class="s-value" id="kpi-tcv" style="color:#f59e0b">—</div>
+            <div class="s-sub" id="kpi-tcv-d">Active pipeline</div>
+          </div>
+          <div class="stat-card st-days">
+            <div class="s-label">Avg. Close Days</div>
+            <div class="s-value" id="kpi-days" style="color:#2563eb">—</div>
+            <div class="s-sub" id="kpi-days-d">Logged → Closed</div>
+          </div>
+        </div>
+
+        <button type="button" class="analytics-toggle-btn" id="analytics-toggle-btn" onclick="toggleFmChartsMaster()">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <span id="analytics-btn-label">Show analytics charts</span>
+        </button>
+
+        <div id="fm-charts-master" class="fm-charts-master">
+        <div class="insight-grid" id="fm-insight-grid"></div>
+
+        <div class="charts-row charts-2">
+          <div class="chart-card">
+            <div class="chart-title">
+              <div class="chart-title-left"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>Lead Logged Trend</div>
+              <div class="toggle-mini" id="fm-trend-period-toggle"></div>
+            </div>
+            <div class="chart-container" style="height:270px"><canvas id="fm-ch-trend"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">
+              <div class="chart-title-left"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Leads by top accounts</div>
+            </div>
+            <div class="chart-container" style="height:270px"><canvas id="fm-ch-accounts"></canvas></div>
+          </div>
+        </div>
+        <div class="charts-row charts-2">
+          <div class="chart-card">
+            <div class="chart-title">
+              <div class="chart-title-left"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Pipeline by Importance</div>
+            </div>
+            <div class="chart-container" style="height:270px"><canvas id="fm-ch-importance"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">
+              <div class="chart-title-left"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Lead Status Mix</div>
+            </div>
+            <div class="chart-container" style="height:270px"><canvas id="fm-ch-status-mix"></canvas></div>
+          </div>
+        </div>
+        <div class="charts-row charts-2">
+          <div class="chart-card">
+            <div class="chart-title">
+              <div class="chart-title-left"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/></svg>New Leads vs Closed</div>
+              <div class="toggle-mini" id="fm-avc-period-toggle"></div>
+            </div>
+            <div class="chart-container" style="height:270px"><canvas id="fm-ch-avc"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">
+              <div class="chart-title-left"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Relationship Strength</div>
+            </div>
+            <div class="chart-container" style="height:270px"><canvas id="fm-ch-rel-overview"></canvas></div>
+          </div>
+        </div>
+
+        <div id="analytics-section" class="fm-extended-analytics">
+
+          <!-- Group A: Overview — Status + Importance toggled -->
+          <div class="charts-row cr2" style="margin-bottom:11px">
+            <div class="chart-card">
+              <div class="cch">
+                <div><div class="cct">Pipeline Overview</div><div class="ccs">Switch between views</div></div>
+                <div class="chart-tab-group">
+                  <button type="button" class="chart-tab active" onclick="switchChartTab('overview','status',this)">Status</button>
+                  <button type="button" class="chart-tab" onclick="switchChartTab('overview','imp',this)">Importance</button>
+                  <button type="button" class="chart-tab" onclick="switchChartTab('overview','du',this)">du vs New</button>
+                </div>
+              </div>
+              <div class="chart-wrap h200">
+                <canvas id="ch-status" style="display:block"></canvas>
+                <canvas id="ch-imp"    style="display:none"></canvas>
+                <canvas id="ch-du"     style="display:none"></canvas>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="cch">
+                <div><div class="cct">Win / Loss Analysis</div><div class="ccs">Closed leads breakdown</div></div>
+                <div class="chart-tab-group">
+                  <button type="button" class="chart-tab active" onclick="switchChartTab('winloss','wl',this)">Won vs Lost</button>
+                  <button type="button" class="chart-tab" onclick="switchChartTab('winloss','reasons',this)">Reasons</button>
+                </div>
+              </div>
+              <div class="chart-wrap h200">
+                <canvas id="ch-wl"      style="display:block"></canvas>
+                <canvas id="ch-reasons" style="display:none"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Group B: Trend + Funnel -->
+          <div class="charts-row cr2" style="margin-bottom:11px">
+            <div class="chart-card">
+              <div class="cch">
+                <div><div class="cct">Lead Trend</div><div class="ccs">Monthly volume</div></div>
+              </div>
+              <div class="chart-wrap h200"><canvas id="ch-trend"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <div class="cch"><div><div class="cct">Conversion Funnel</div><div class="ccs">Stage by stage</div></div></div>
+              <div id="funnel-wrap" style="padding:4px 0"></div>
+            </div>
+          </div>
+
+          <!-- Group C: Performance (Director/AM toggle) + Aging -->
+          <div class="charts-row cr2" id="row-perf-aging" style="margin-bottom:11px">
+            <div class="chart-card">
+              <div class="cch">
+                <div><div class="cct">Performance</div><div class="ccs">Director vs Account Manager</div></div>
+                <div class="chart-tab-group">
+                  <button type="button" class="chart-tab active" onclick="switchChartTab('perf','director',this)">Director</button>
+                  <button type="button" class="chart-tab" onclick="switchChartTab('perf','am',this)">Account Manager</button>
+                </div>
+              </div>
+
+              <!-- Director view -->
+              <div id="perf-director" style="display:block">
+                <div class="cch" style="padding:0 0 10px;border:0">
+                  <div class="chart-tab-group">
+                    <button type="button" class="chart-tab active" onclick="switchChartTab('director','lb',this)">Leaderboard</button>
+                    <button type="button" class="chart-tab" onclick="switchChartTab('director','tcvdir',this)">TCV Chart</button>
+                  </div>
+                </div>
+                <div id="leaderboard" style="display:block"></div>
+                <div class="chart-wrap h200" style="display:none"><canvas id="ch-tcvdir"></canvas></div>
+              </div>
+
+              <!-- AM view -->
+              <div id="perf-am" style="display:none">
+                <div class="cch" style="padding:0 0 10px;border:0">
+                  <div class="chart-tab-group">
+                    <button type="button" class="chart-tab active" onclick="switchChartTab('am','amlb',this)">Leaderboard</button>
+                    <button type="button" class="chart-tab" onclick="switchChartTab('am','amtcv',this)">TCV Chart</button>
+                    <button type="button" class="chart-tab" onclick="switchChartTab('am','ammix',this)">Mix</button>
+                  </div>
+                </div>
+                <div id="am-leaderboard" style="display:block"></div>
+                <div class="chart-wrap h200" style="display:none"><canvas id="ch-amtcv"></canvas></div>
+                <div class="chart-wrap h200" style="display:none"><canvas id="ch-ammix"></canvas></div>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="cch"><div><div class="cct">Lead Aging</div><div class="ccs">Open leads by age</div></div></div>
+              <div class="aging-scroll">
+                <table class="aging-tbl">
+                  <thead><tr><th>Lead ID</th><th>Account</th><th>Status</th><th>Age</th></tr></thead>
+                  <tbody id="aging-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /analytics-section -->
+
+        </div><!-- /fm-charts-master -->
+
+      </div><!-- /dashboard -->
+
+      <!-- ════════ INPUT FORM ════════ -->
+      <div class="panel" id="panel-input-form">
+        <div class="form-shell">
+
+          <!-- Section 1 -->
+          <div class="form-card">
+            <div class="form-card-hdr"><div class="form-card-num">1</div><div class="form-card-ttl">Lead Identification</div></div>
+            <div class="form-body">
+              <div class="form-grid g3">
+                <div class="fg">
+                  <label class="flbl">Lead ID <span class="atag">AUTO</span></label>
+                  <input class="finput ro" id="f-lead-id" readonly value="FM-2026-0001"/>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Lead Date <span class="req">*</span></label>
+                  <input class="finput" type="date" id="f-lead-date"/>
+                  <span class="ferr" id="err-lead-date">Required</span>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Status <span class="req">*</span></label>
+                  <select class="fselect" id="f-status" onchange="onStatusChange()">
+                    <option value="New Lead" selected>New Lead</option>
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Closed Won">Closed Won</option>
+                    <option value="Closed Lost">Closed Lost</option>
+                  </select>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Importance <span class="req">*</span></label>
+                  <select class="fselect" id="f-imp">
+                    <option value="">— Select —</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                  <span class="ferr" id="err-imp">Required</span>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Submitted By <span class="atag">AUTO</span></label>
+                  <input class="finput ro" id="f-submitted-by" readonly/>
+                </div>
+                <div class="fg full">
+                  <label class="flbl">Request / Opportunity Details <span class="req">*</span></label>
+                  <textarea class="ftextarea" id="f-request-details" placeholder="Describe the opportunity..."></textarea>
+                  <span class="ferr" id="err-details">Required</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2 -->
+          <div class="form-card">
+            <div class="form-card-hdr"><div class="form-card-num">2</div><div class="form-card-ttl">Account Information</div></div>
+            <div class="form-body">
+              <div class="form-grid">
+                <div class="fg">
+                  <label class="flbl">Account Name <span class="req">*</span></label>
+                  <input class="finput" id="f-account-name" placeholder="Company name..." oninput="checkDuplicate(this.value)"/>
+                  <div class="dup-warn" id="dup-warn">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    <span id="dup-warn-txt">Possible duplicate — open lead exists for this account</span>
+                  </div>
+                  <span class="ferr" id="err-account">Required</span>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Account Code</label>
+                  <input class="finput" id="f-account-code" placeholder="e.g. ACC-0042"/>
+                  <span class="fhint" id="acct-code-hint">Leave blank if new account</span>
+                </div>
+                <div class="fg">
+                  <div class="tog-row">
+                    <label class="flbl">New Account?</label>
+                    <div class="tog-wrap">
+                      <label class="tog-sw"><input type="checkbox" id="f-new-account" onchange="onNewAccountToggle()"/><span class="tog-sl"></span></label>
+                      <span class="tog-lbl">Yes</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="fg">
+                  <div class="tog-row">
+                    <label class="flbl">Existing du Customer?</label>
+                    <div class="tog-wrap">
+                      <label class="tog-sw"><input type="checkbox" id="f-existing-customer"/><span class="tog-sl"></span></label>
+                      <span class="tog-lbl">Yes</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="fg">
+                  <div class="tog-row">
+                    <label class="flbl">Interested in Opp?</label>
+                    <div class="tog-wrap">
+                      <label class="tog-sw"><input type="checkbox" id="f-interested" checked onchange="onInterestedToggle()"/><span class="tog-sl"></span></label>
+                      <span class="tog-lbl">Yes</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Relationship Strength <span class="req">*</span></label>
+                  <select class="fselect" id="f-rel">
+                    <option value="">— Select —</option>
+                    <option value="Strong">Strong</option>
+                    <option value="Limited">Limited</option>
+                    <option value="No Relation">No Relation</option>
+                  </select>
+                  <span class="ferr" id="err-rel">Required</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3 -->
+          <div class="form-card">
+            <div class="form-card-hdr"><div class="form-card-num">3</div><div class="form-card-ttl">Director &amp; Account Manager</div></div>
+            <div class="form-body">
+              <div class="form-grid">
+                <div class="fg">
+                  <label class="flbl">Director Name <span class="req">*</span></label>
+                  <input class="finput" id="f-dir-name" placeholder="Full name..." oninput="lookupDirectorEmail()"/>
+                  <span class="ferr" id="err-director">Required</span>
+                </div>
+                <div class="fg">
+        <label class="flbl">Director Email</label>
+<input class="finput" id="f-dir-email" placeholder="e.g. a.a@du.ae"/>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Local AM Name</label>
+                  <input class="finput" id="f-am-name" placeholder="Full name..." oninput="lookupAMEmail()"/>
+                </div>
+                <div class="fg">
+                <label class="flbl">AM Email</label>
+<input class="finput" id="f-am-email" placeholder="e.g. a.a@du.ae"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Revenue -->
+          <div class="form-card" id="section-revenue">
+            <div class="form-card-hdr"><div class="form-card-num">4</div><div class="form-card-ttl">Revenue &amp; Opportunity Sizing</div></div>
+            <div class="form-body" id="revenue-body">
+              <div class="form-grid g3">
+                <div class="fg">
+                  <label class="flbl">Current Lines / Services</label>
+                  <input class="finput" type="number" id="f-cur-lines" min="0" placeholder="0"/>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Current Revenue MRC (AED)</label>
+                  <input class="finput" type="number" id="f-cur-mrc" min="0" placeholder="0"/>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Opportunity Lines</label>
+                  <input class="finput" type="number" id="f-opp-lines" min="0" placeholder="0"/>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Opportunity MRC (AED)</label>
+                  <input class="finput" type="number" id="f-opp-mrc" min="0" placeholder="0" oninput="calcTCV()"/>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Contract Duration</label>
+                  <select class="fselect" id="f-duration" onchange="calcTCV()">
+                    <option value="12">12 months</option>
+                    <option value="24">24 months</option>
+                    <option value="36">36 months</option>
+                  </select>
+                </div>
+              </div>
+              <div class="tcv-box">
+                <div>
+                  <div class="tcv-lbl">Calculated TCV</div>
+                  <div class="tcv-sub">Opp MRC × Contract Duration</div>
+                </div>
+                <div class="tcv-val" id="tcv-display">AED 0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: Outcome -->
+          <div class="form-card">
+            <div class="form-card-hdr"><div class="form-card-num">5</div><div class="form-card-ttl">Outcome &amp; Follow-up</div></div>
+            <div class="form-body">
+              <div class="form-grid">
+                <div class="fg">
+                  <label class="flbl">Final Status</label>
+                  <select class="fselect" id="f-final-status" disabled>
+                    <option value="">— Locked until Closed —</option>
+                    <option value="Won">Won</option>
+                    <option value="Lost">Lost</option>
+                    <option value="In Pipeline">In Pipeline</option>
+                  </select>
+                  <span class="fhint">Unlocks when Status = Closed Won / Closed Lost</span>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Win/Loss Reason</label>
+                  <select class="fselect" id="f-wl-reason" disabled>
+                    <option value="">— Select —</option>
+                    <option value="Price">Price</option>
+                    <option value="Competition">Competition</option>
+                    <option value="Timing">Timing</option>
+                    <option value="Technical">Technical</option>
+                    <option value="Relationship">Relationship</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="fg">
+                  <label class="flbl">Follow-up Date</label>
+                  <input class="finput" type="date" id="f-followup-date"/>
+                  <span class="ferr" id="err-followup">Must be today or future</span>
+                </div>
+                <div class="fg full">
+                  <label class="flbl">Conclusion / Notes</label>
+                  <textarea class="ftextarea" id="f-conclusion" placeholder="Outcome summary, next steps..."></textarea>
+                </div>
+                <div class="fg full">
+                  <label class="flbl">Follow-up Notes</label>
+                  <textarea class="ftextarea" id="f-followup-notes" placeholder="What needs to happen next..."></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-sec" onclick="resetForm()">Clear Form</button>
+            <button type="button" class="btn-pri" onclick="submitLead()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Submit Lead
+            </button>
+          </div>
+        </div>
+      </div><!-- /input-form -->
+
+      <!-- ════════ MY LEADS ════════ -->
+      <div class="panel" id="panel-my-leads">
+        <div class="section-hdr">
+          <div class="sec-divider"></div>
+          <h2>Leads</h2>
+          <span class="sh-sub" id="my-leads-count">Loading...</span>
+        </div>
+
+        <!-- Filter bar — multi-select -->
+        <div class="filter-bar" style="margin-bottom:10px">
+          <div class="owner-toggle">
+            <button type="button" class="owner-btn" id="btn-mine" onclick="setOwnerFilter('mine')">My Leads</button>
+            <button type="button" class="owner-btn active" id="btn-all" onclick="setOwnerFilter('all')">All Leads</button>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Status</label>
+          <div class="ms-wrap" id="ms-ml-status">
+            <div class="ms-trigger" onclick="toggleMS('ms-ml-status')">All</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-search"><input type="text" placeholder="Search..." oninput="filterMSSearch(this,'ms-ml-status-list')"/></div>
+              <div class="ms-list" id="ms-ml-status-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-ml-status','MLStatus')"><div class="ms-chk"></div>All Statuses</div>
+                <div class="ms-option" data-val="New Lead" onclick="toggleMSOpt(this,'ms-ml-status','MLStatus')"><div class="ms-chk"></div>New Lead</div>
+                <div class="ms-option" data-val="Open" onclick="toggleMSOpt(this,'ms-ml-status','MLStatus')"><div class="ms-chk"></div>Open</div>
+                <div class="ms-option" data-val="In Progress" onclick="toggleMSOpt(this,'ms-ml-status','MLStatus')"><div class="ms-chk"></div>In Progress</div>
+                <div class="ms-option" data-val="On Hold" onclick="toggleMSOpt(this,'ms-ml-status','MLStatus')"><div class="ms-chk"></div>On Hold</div>
+                <div class="ms-option" data-val="Closed Won" onclick="toggleMSOpt(this,'ms-ml-status','MLStatus')"><div class="ms-chk"></div>Closed Won</div>
+                <div class="ms-option" data-val="Closed Lost" onclick="toggleMSOpt(this,'ms-ml-status','MLStatus')"><div class="ms-chk"></div>Closed Lost</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Importance</label>
+          <div class="ms-wrap" id="ms-ml-imp">
+            <div class="ms-trigger" onclick="toggleMS('ms-ml-imp')">All</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-list" id="ms-ml-imp-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-ml-imp','MLImp')"><div class="ms-chk"></div>All</div>
+                <div class="ms-option" data-val="High" onclick="toggleMSOpt(this,'ms-ml-imp','MLImp')"><div class="ms-chk"></div>High</div>
+                <div class="ms-option" data-val="Medium" onclick="toggleMSOpt(this,'ms-ml-imp','MLImp')"><div class="ms-chk"></div>Medium</div>
+                <div class="ms-option" data-val="Low" onclick="toggleMSOpt(this,'ms-ml-imp','MLImp')"><div class="ms-chk"></div>Low</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Director</label>
+          <div class="ms-wrap" id="ms-ml-dir">
+            <div class="ms-trigger" onclick="toggleMS('ms-ml-dir')">All</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-search"><input type="text" placeholder="Search director..." oninput="filterMSSearch(this,'ms-ml-dir-list')"/></div>
+              <div class="ms-list" id="ms-ml-dir-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-ml-dir','MLDir')"><div class="ms-chk"></div>All Directors</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Account Manager</label>
+          <div class="ms-wrap" id="ms-ml-am">
+            <div class="ms-trigger" onclick="toggleMS('ms-ml-am')">All</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-search"><input type="text" placeholder="Search account manager..." oninput="filterMSSearch(this,'ms-ml-am-list')"/></div>
+              <div class="ms-list" id="ms-ml-am-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-ml-am','MLAM')"><div class="ms-chk"></div>All Account Managers</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Account</label>
+          <div class="ms-wrap" id="ms-ml-acct">
+            <div class="ms-trigger" onclick="toggleMS('ms-ml-acct')">All</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-search"><input type="text" placeholder="Search account..." oninput="filterMSSearch(this,'ms-ml-acct-list')"/></div>
+              <div class="ms-list" id="ms-ml-acct-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="toggleMSAll('ms-ml-acct','MLAcct')"><div class="ms-chk"></div>All Accounts</div>
+              </div>
+            </div>
+          </div>
+          <span class="filter-clear" onclick="clearLeadsFilters()">Clear</span>
+        </div>
+
+        <!-- AG Grid header -->
+        <div class="ag-grid-header">
+          <div class="ag-search-wrap">
+            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="ag-search-input" id="ag-search" placeholder="Search leads..." oninput="agQuickFilter(this.value)"/>
+          </div>
+          <span class="ag-page-info" id="ag-page-info"></span>
+          <button type="button" class="ag-grid-export" onclick="exportLeads()">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+        </div>
+        <div class="ag-wrap ag-theme-alpine" id="leads-grid"></div>
+
+        <!-- NOTE: AG Grid is the only supported leads view.
+             (Fallback table removed from UI to avoid confusion.) -->
+        <div id="my-leads-fallback" style="display:none;margin-top:14px;overflow-x:auto">
+          <table class="aging-tbl">
+            <thead>
+              <tr>
+                <th>Lead ID</th>
+                <th>Account</th>
+                <th>Status</th>
+                <th>Importance</th>
+                <th>Director</th>
+                <th>Opp MRC</th>
+                <th>TCV</th>
+                <th>Follow-up</th>
+                <th>Age</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="my-leads-tbody"></tbody>
+          </table>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <div class="sh-sub" id="my-leads-count"></div>
+          </div>
+        </div>
+      </div><!-- /my-leads -->
+
+      <!-- ════════ ACTIVITY LOG ════════ -->
+      <div class="panel" id="panel-activity-log">
+        <div class="section-hdr">
+          <div class="sec-divider"></div>
+          <h2>Activity Log</h2>
+          <span class="sh-sub">Full field-level change history</span>
+        </div>
+        <div class="filter-bar" style="margin-bottom:12px">
+          <label>Lead</label>
+          <div class="ms-wrap" id="ms-al-lead" style="min-width:180px">
+            <div class="ms-trigger" onclick="toggleMS('ms-al-lead')">All Leads</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-search"><input type="text" placeholder="Search lead / account..." oninput="filterMSSearch(this,'ms-al-lead-list')"/></div>
+              <div class="ms-list" id="ms-al-lead-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="selectALFilter('ms-al-lead','alLead','all','All Leads')"><div class="ms-chk"></div>All Leads</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Type</label>
+          <div class="ms-wrap" id="ms-al-type">
+            <div class="ms-trigger" onclick="toggleMS('ms-al-type')">All Changes</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-list" id="ms-al-type-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="selectALFilter('ms-al-type','alType','all','All Changes')"><div class="ms-chk"></div>All Changes</div>
+                <div class="ms-option" data-val="Created" onclick="selectALFilter('ms-al-type','alType','Created','Created')"><div class="ms-chk"></div>Created</div>
+                <div class="ms-option" data-val="Status" onclick="selectALFilter('ms-al-type','alType','Status','Status Changes')"><div class="ms-chk"></div>Status Changes</div>
+                <div class="ms-option" data-val="FollowUpDate" onclick="selectALFilter('ms-al-type','alType','FollowUpDate','Follow-up Updates')"><div class="ms-chk"></div>Follow-up Updates</div>
+                <div class="ms-option" data-val="FinalStatus" onclick="selectALFilter('ms-al-type','alType','FinalStatus','Closed')"><div class="ms-chk"></div>Closed</div>
+                <div class="ms-option" data-val="Edit" onclick="selectALFilter('ms-al-type','alType','Edit','Field Edits')"><div class="ms-chk"></div>Field Edits</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Changed By</label>
+          <div class="ms-wrap" id="ms-al-user">
+            <div class="ms-trigger" onclick="toggleMS('ms-al-user')">All Users</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-search"><input type="text" placeholder="Search user..." oninput="filterMSSearch(this,'ms-al-user-list')"/></div>
+              <div class="ms-list" id="ms-al-user-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="selectALFilter('ms-al-user','alUser','all','All Users')"><div class="ms-chk"></div>All Users</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Director</label>
+          <div class="ms-wrap" id="ms-al-dir">
+            <div class="ms-trigger" onclick="toggleMS('ms-al-dir')">All</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-search"><input type="text" placeholder="Search director..." oninput="filterMSSearch(this,'ms-al-dir-list')"/></div>
+              <div class="ms-list" id="ms-al-dir-list">
+                <div class="ms-option ms-all-item checked" data-val="all" onclick="selectALFilter('ms-al-dir','alDir','all','All')"><div class="ms-chk"></div>All Directors</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-sep"></div>
+          <label>Period</label>
+          <div class="ms-wrap" id="ms-al-period">
+            <div class="ms-trigger" onclick="toggleMS('ms-al-period')">All Time</div>
+            <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="ms-dropdown">
+              <div class="ms-list" id="ms-al-period-list">
+                <div class="ms-option ms-radio checked" data-val="all" onclick="selectALFilter('ms-al-period','alPeriod','all','All Time')">All Time</div>
+                <div class="ms-option ms-radio" data-val="today" onclick="selectALFilter('ms-al-period','alPeriod','today','Today')">Today</div>
+                <div class="ms-option ms-radio" data-val="week" onclick="selectALFilter('ms-al-period','alPeriod','week','This Week')">This Week</div>
+                <div class="ms-option ms-radio" data-val="month" onclick="selectALFilter('ms-al-period','alPeriod','month','This Month')">This Month</div>
+              </div>
+            </div>
+          </div>
+          <div class="ag-search-wrap" style="margin-left:auto">
+            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="ag-search-input" id="al-text-search" placeholder="Search notes, fields..." oninput="renderActivityLog()"/>
+          </div>
+          <span class="filter-clear" onclick="clearActivityFilters()">Clear</span>
+        </div>
+        <div class="timeline" id="activity-timeline"></div>
+      </div><!-- /activity-log -->
+
+    </div><!-- /content -->
+  </div><!-- /main-container -->
+</div><!-- /app portal-shell -->
+
+<!-- QUICK UPDATE MODAL -->
+<div class="modal-backdrop" id="modal-update">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-ttl" id="modal-lead-title">Update Lead</div>
+        <div class="modal-sub" id="modal-lead-sub">Quick status &amp; progress update</div>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-grid">
+      <div class="fg">
+        <label class="flbl">Status</label>
+        <select class="fselect" id="modal-status" onchange="modalStatusChange()">
+          <option value="New Lead">New Lead</option>
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="On Hold">On Hold</option>
+          <option value="Closed Won">Closed Won</option>
+          <option value="Closed Lost">Closed Lost</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="flbl">Importance</label>
+        <select class="fselect" id="modal-imp">
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="flbl">Final Status</label>
+        <select class="fselect" id="modal-final-status" disabled>
+          <option value="">— Locked —</option>
+          <option value="Won">Won</option>
+          <option value="Lost">Lost</option>
+          <option value="In Pipeline">In Pipeline</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="flbl">Win/Loss Reason</label>
+        <select class="fselect" id="modal-wl-reason" disabled>
+          <option value="">— Select —</option>
+          <option value="Price">Price</option>
+          <option value="Competition">Competition</option>
+          <option value="Timing">Timing</option>
+          <option value="Technical">Technical</option>
+          <option value="Relationship">Relationship</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="flbl">Follow-up Date</label>
+        <input class="finput" type="date" id="modal-followup-date"/>
+      </div>
+      <div class="fg full">
+        <label class="flbl">Progress Note <span style="font-weight:400;color:var(--text-muted)">(logged to history)</span></label>
+        <textarea class="ftextarea" id="modal-note" placeholder="What happened? Next steps..." style="height:60px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-sec" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-pri" onclick="saveModalUpdate()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Save Update
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="/sites/FM/SiteAssets/fm.js"></script>
+</body>
+</html>
