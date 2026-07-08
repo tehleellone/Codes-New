@@ -1685,13 +1685,13 @@ button.chart-tab { -webkit-appearance: none; appearance: none; }
           <div class="filter-group">
             <div class="filter-label">Period</div>
             <div class="ms-wrap" id="ms-period">
-              <div class="ms-trigger" onclick="toggleMS('ms-period')">This Quarter</div>
+              <div class="ms-trigger" onclick="toggleMS('ms-period')">All Time</div>
               <svg class="ms-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
               <div class="ms-dropdown">
                 <div class="ms-list" id="ms-period-list">
-                  <div class="ms-option ms-radio" data-val="all" onclick="selectPeriod(this,'All Time')">All Time</div>
+                  <div class="ms-option ms-radio checked" data-val="all" onclick="selectPeriod(this,'All Time')">All Time</div>
                   <div class="ms-option ms-radio" data-val="thismonth" onclick="selectPeriod(this,'This Month')">This Month</div>
-                  <div class="ms-option ms-radio checked" data-val="thisquarter" onclick="selectPeriod(this,'This Quarter')">This Quarter</div>
+                  <div class="ms-option ms-radio" data-val="thisquarter" onclick="selectPeriod(this,'This Quarter')">This Quarter</div>
                   <div class="ms-option ms-radio" data-val="thisyear" onclick="selectPeriod(this,'This Year')">This Year</div>
                 </div>
               </div>
