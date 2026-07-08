@@ -3035,6 +3035,7 @@ const rfCurrentYear=RF_TODAY.getFullYear();
 let rfFiltersBuilt=false;
 let rfViewInitialized=false;
 let rfRenderQueued=false;
+let rfRenderPending=false;
 
 function rfEnsureDefaultYear(){
   const yearKey='rf_year';
@@ -3237,7 +3238,7 @@ function rfLoadScenario(name, skipRender){
   rfActiveScenarioName=name;
   if(sc&&sc.blocks){
     RF_EXTRA_BLOCKS=sc.blocks.map(function(b){
-      return {id:b.id||('b'+Date.now()+Math.random().toString(36).slice(2,5)),name:b.name||'Block',color:b.color||RF_BLOCK_COLORS[0],op:b.op||'none',filters:b.filters||{}};
+      return {id:b.id||('b'+Date.now()+Math.random().toString(36).slice(2,5)),name:b.name||'Block',color:b.color||RF_BLOCK_COLORS[0],op:rfBlockOp(b.op),filters:b.filters||{}};
     });
   } else { RF_EXTRA_BLOCKS=[]; }
   if(!skipRender) rfRenderAll();
@@ -3251,11 +3252,8 @@ function rfSyncBlockFiltersFromDom(block){
 }
 function rfSyncAllBlockFiltersFromDom(){ RF_EXTRA_BLOCKS.forEach(rfSyncBlockFiltersFromDom); }
 
-function rfGetBlockBids(block, baseBids){
-  let bids=baseBids;
-  if(!bids){
-    bids=rfGetBaseBids().filter(function(b){ return !RF_EXCLUDED.has(b.id); });
-  }
+function rfGetBlockBids(block){
+  let bids=rfGetBaseBids().filter(function(b){ return !RF_EXCLUDED.has(b.id); });
   const filters=block.filters||{};
   return bids.filter(function(b){
     for(const fd of RF_FILTER_DEFS){
@@ -3266,6 +3264,10 @@ function rfGetBlockBids(block, baseBids){
     }
     return true;
   });
+}
+function rfBlockOp(v){
+  const s=String(v||'none').trim().toLowerCase();
+  return s==='add'||s==='subtract'?s:'none';
 }
 function rfBuildMatrix(bids){
   const visibleMonths=[]; for(let m=0;m<12;m++) if(rfPivotMonthVisible(m)) visibleMonths.push(m);
@@ -3294,9 +3296,9 @@ function rfBuildMatrix(bids){
   const rows=[...rowSet].sort();
   return {visibleMonths,rows,cells,colTotals,rowTotals,grandTotal,rowLabel,metricLabel,totalLabel};
 }
-function rfGetBlockEntries(bids){
+function rfGetBlockEntries(){
   return RF_EXTRA_BLOCKS.map(function(block){
-    return {block:block, matrix:rfBuildMatrix(rfGetBlockBids(block, bids)), op:block.op};
+    return {block:block, matrix:rfBuildMatrix(rfGetBlockBids(block)), op:rfBlockOp(block.op)};
   });
 }
 function rfPaintMatrixHtml(matrix, drillOpts){
@@ -3344,9 +3346,10 @@ function rfComputeNetMatrix(pipelineMat, blockEntries){
     visibleMonths.forEach(function(m){
       let val=pipelineMat.cells[rowVal+'|'+m]||0;
       blockEntries.forEach(function(e){
-        if(e.op==='none'||!e.matrix) return;
+        const op=rfBlockOp(e.op||e.block.op);
+        if(op==='none'||!e.matrix) return;
         const v=e.matrix.cells[rowVal+'|'+m]||0;
-        val+=e.op==='add'?v:-v;
+        val+=op==='add'?v:-v;
       });
       cells[rowVal+'|'+m]=val;
       colTotals[m]+=val; rowTotal+=val;
@@ -3355,14 +3358,15 @@ function rfComputeNetMatrix(pipelineMat, blockEntries){
   });
   return Object.assign({},pipelineMat,{rows,cells,colTotals,rowTotals,grandTotal,isNet:true,totalLabel:'Net Total'});
 }
-function rfGetBlockMatrices(bids){
-  return rfGetBlockEntries(bids||rfActiveBids());
+function rfGetBlockMatrices(){
+  return rfGetBlockEntries();
 }
 function rfNetFormulaText(blockEntries){
   let t='Pipeline';
   blockEntries.forEach(function(e){
-    if(e.op==='add') t+=' + '+e.block.name;
-    else if(e.op==='subtract') t+=' − '+e.block.name;
+    const op=rfBlockOp(e.op||e.block.op);
+    if(op==='add') t+=' + '+e.block.name;
+    else if(op==='subtract') t+=' − '+e.block.name;
   });
   return t;
 }
@@ -3376,19 +3380,15 @@ function rfAddBlock(){
     op:idx===0?'subtract':'none',
     filters:{ rf_year:[String(rfCurrentYear)] }
   });
-  rfRenderBlocks();
-  rfRenderNetTable();
-  rfScheduleChartRender();
+  rfRenderAll();
 }
 function rfRemoveBlock(id){
   RF_EXTRA_BLOCKS=RF_EXTRA_BLOCKS.filter(function(b){ return b.id!==id; });
-  rfRenderBlocks();
-  rfRenderNetTable();
-  rfScheduleChartRender();
+  rfRenderAll();
 }
 function rfBlockOpChange(id, op){
   const b=RF_EXTRA_BLOCKS.find(function(x){ return x.id===id; });
-  if(b){ b.op=op; rfRenderNetTable(); rfScheduleChartRender(); }
+  if(b){ b.op=rfBlockOp(op); rfRenderAll(); }
 }
 function rfBlockNameChange(id, name){
   const b=RF_EXTRA_BLOCKS.find(function(x){ return x.id===id; });
@@ -3401,10 +3401,7 @@ function rfBlockFilterChange(blockId, msKey){
   if(!block.filters) block.filters={};
   const fdKey=msKey.replace('rfb_'+blockId+'_','');
   block.filters[fdKey]=getChecked(msKey);
-  const tbl=el('rfBlockTable_'+blockId);
-  if(tbl) tbl.innerHTML=rfPaintMatrixHtml(rfBuildMatrix(rfGetBlockBids(block)),{blockId:blockId});
-  rfRenderNetTable();
-  rfScheduleChartRender();
+  rfRenderAll();
 }
 function rfBuildBlockFilters(block){
   let html='<div class="filters-grid">';
@@ -3426,24 +3423,24 @@ function rfBuildBlockFilters(block){
   html+='</div>';
   return html;
 }
-function rfRenderBlocks(blockEntries, bids){
+function rfRenderBlocks(blockEntries){
   const container=el('rfExtraBlocksContainer'); if(!container) return;
   if(!RF_EXTRA_BLOCKS.length){ container.innerHTML=''; return; }
-  const activeBids=bids||rfActiveBids();
-  const entries=blockEntries||rfGetBlockEntries(activeBids);
+  const entries=blockEntries||rfGetBlockEntries();
   const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
   container.innerHTML=entries.map(function(entry){
     const block=entry.block;
     const matrix=entry.matrix;
-    const opLabel=block.op==='add'?'+ Add to Pipeline':(block.op==='subtract'?'− Subtract from Pipeline':'No calculation');
+    const op=rfBlockOp(block.op);
+    const opLabel=op==='add'?'+ Add to Pipeline':(op==='subtract'?'− Subtract from Pipeline':'No calculation');
     return '<div class="rf-block-card" style="--blk-color:'+block.color+'" id="rfBlock_'+block.id+'">'+
       '<div class="rf-block-head">'+
         '<input class="rf-block-name" value="'+block.name.replace(/"/g,'&quot;')+'" onchange="rfBlockNameChange(\''+block.id+'\',this.value)" title="Rename table">'+
         '<div class="rf-block-op-wrap"><span>Calculation vs Pipeline:</span>'+
           '<select onchange="rfBlockOpChange(\''+block.id+'\',this.value)">'+
-            '<option value="none"'+(block.op==='none'?' selected':'')+'>Do nothing</option>'+
-            '<option value="add"'+(block.op==='add'?' selected':'')+'>+ Add</option>'+
-            '<option value="subtract"'+(block.op==='subtract'?' selected':'')+'>− Subtract</option>'+
+            '<option value="none"'+(op==='none'?' selected':'')+'>Do nothing</option>'+
+            '<option value="add"'+(op==='add'?' selected':'')+'>+ Add</option>'+
+            '<option value="subtract"'+(op==='subtract'?' selected':'')+'>− Subtract</option>'+
           '</select></div>'+
         '<span style="font-size:.68rem;color:var(--t3);">'+opLabel+'</span>'+
         '<button type="button" class="rf-block-remove" onclick="rfRemoveBlock(\''+block.id+'\')" title="Remove table"><svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>'+
@@ -3464,7 +3461,7 @@ function rfRenderNetTable(pipelineMat, blockEntries){
   const panel=el('rfNetPanel'); const container=el('rfNetTable'); if(!panel||!container) return;
   const bids=rfActiveBids();
   if(!pipelineMat) pipelineMat=rfBuildMatrix(bids);
-  if(!blockEntries) blockEntries=rfGetBlockEntries(bids);
+  if(!blockEntries) blockEntries=rfGetBlockEntries();
   const netMat=rfComputeNetMatrix(pipelineMat, blockEntries);
   if(!netMat){
     panel.style.display='none';
@@ -3681,20 +3678,21 @@ async function rfExportPDF(){
 
 // ── render: everything ───────────────────────────────────────────
 function rfRenderAll(){
-  if(rfRenderQueued) return;
+  if(rfRenderQueued){ rfRenderPending=true; return; }
   rfRenderQueued=true;
   requestAnimationFrame(function(){
     rfRenderQueued=false;
     rfRenderAllNow();
+    if(rfRenderPending){ rfRenderPending=false; rfRenderAll(); }
   });
 }
 function rfRenderAllNow(){
   const bids=rfActiveBids();
   const pipelineMat=rfBuildMatrix(bids);
-  const blockEntries=rfGetBlockEntries(bids);
+  const blockEntries=rfGetBlockEntries();
   rfRenderExcludedBanner();
   rfRenderPivot(pipelineMat);
-  rfRenderBlocks(blockEntries, bids);
+  rfRenderBlocks(blockEntries);
   rfRenderNetTable(pipelineMat, blockEntries);
   rfRenderCascade(bids);
   if(rfModalCtx) rfRenderModal();
