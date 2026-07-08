@@ -700,6 +700,26 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 .rf-export-mini:hover{border-color:var(--acc);color:var(--acc);}
 .rf-export-mini.primary{background:var(--grad);color:#fff;border-color:transparent;}
 .rf-export-mini svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;}
+.rf-pdf-modal .rf-modal{width:min(580px,100%);height:auto;max-height:min(90vh,820px);}
+.rf-pdf-modal .rf-modal-body{overflow:auto;padding:0;}
+.rf-pdf-templates{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;padding:1rem 1.25rem .25rem;}
+.rf-pdf-tpl-btn{
+  text-align:left;padding:.65rem .75rem;border-radius:10px;border:1.5px solid var(--border);
+  background:var(--bg-secondary);cursor:pointer;transition:all .15s;
+}
+.rf-pdf-tpl-btn:hover{border-color:var(--acc);background:var(--bg-hover);}
+.rf-pdf-tpl-btn.active{border-color:var(--acc);background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(76,111,255,.08));box-shadow:0 0 0 1px rgba(124,58,237,.15);}
+.rf-pdf-tpl-btn .tpl-name{font-size:.82rem;font-weight:800;color:var(--t1);display:block;}
+.rf-pdf-tpl-btn .tpl-desc{font-size:.68rem;color:var(--t3);margin-top:.2rem;line-height:1.35;}
+.rf-pdf-checks{padding:.75rem 1.25rem 1rem;}
+.rf-pdf-section-label{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--t3);margin:.85rem 0 .45rem;}
+.rf-pdf-section-label:first-child{margin-top:0;}
+.rf-pdf-check-row{display:flex;align-items:center;gap:.55rem;font-size:.82rem;color:var(--t1);padding:.28rem 0;cursor:pointer;}
+.rf-pdf-check-row input{width:15px;height:15px;accent-color:var(--acc);cursor:pointer;flex-shrink:0;}
+.rf-pdf-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:.2rem .65rem;margin:.35rem 0 0 1.4rem;}
+.rf-pdf-chart-grid .rf-pdf-check-row{font-size:.76rem;padding:.18rem 0;}
+.rf-pdf-modal-footer{display:flex;gap:.55rem;justify-content:flex-end;padding:.85rem 1.25rem;border-top:1px solid var(--border);flex-shrink:0;}
+.rf-pdf-modal-footer .rf-export-mini{padding:.55rem 1rem;font-size:.78rem;}
 .rf-block-card{
   background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
   box-shadow:var(--cs);margin-bottom:1rem;overflow:visible;
@@ -1152,7 +1172,7 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
                 <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 Export Excel
               </button>
-              <button type="button" class="rf-export-mini" onclick="rfExportPDF()">
+              <button type="button" class="rf-export-mini" onclick="rfOpenPdfExportModal()">
                 <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 Export PDF
               </button>
@@ -3515,17 +3535,57 @@ function rfEscHtml(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function rfDownloadFile(content, filename, mime){
-  const blob=new Blob([content],{type:mime||'application/octet-stream'});
-  if(window.navigator&&window.navigator.msSaveOrOpenBlob){
-    window.navigator.msSaveOrOpenBlob(blob,filename);
-    return;
+  try{
+    const payload='\uFEFF'+content;
+    const type=mime||'application/vnd.ms-excel;charset=utf-8';
+    const blob=new Blob([payload],{type:type});
+    if(window.navigator&&typeof window.navigator.msSaveOrOpenBlob==='function'){
+      window.navigator.msSaveOrOpenBlob(blob,filename);
+      return;
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=filename;
+    a.style.display='none';
+    document.body.appendChild(a);
+    if(typeof a.click==='function') a.click();
+    else a.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
+    setTimeout(function(){
+      URL.revokeObjectURL(url);
+      if(a.parentNode) a.parentNode.removeChild(a);
+    },8000);
+  }catch(err){
+    try{ rfDownloadFileWindowFallback(content); }
+    catch(e2){ alert('Download failed: '+(err.message||err)); }
   }
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download=filename; a.style.display='none';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(function(){ URL.revokeObjectURL(url); if(a.parentNode) a.parentNode.removeChild(a); }, 300);
+}
+function rfDownloadFileWindowFallback(content){
+  const w=window.open('','_blank');
+  if(!w) throw new Error('Pop-up blocked — allow pop-ups for SharePoint, then try again.');
+  w.document.open('text/html','replace');
+  w.document.write(content);
+  w.document.close();
+  w.focus();
+}
+function rfExcelDocStart(){
+  return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'+
+    '<head>'+
+    '<meta http-equiv="Content-Type" content="application/vnd.ms-excel; charset=UTF-8">'+
+    '<meta name="ProgId" content="Excel.Sheet">'+
+    '<meta name="Generator" content="Revenue Forecast">'+
+    '<!--[if gte mso 9]><xml><x:ExcelWorkbook xmlns:x="urn:schemas-microsoft-com:office:excel">'+
+    '<x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Forecast</x:Name>'+
+    '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'+
+    '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'+
+    rfExcelStyles()+
+    '</head><body>';
+}
+function rfExcelDocEnd(){
+  return '</body></html>';
+}
+function rfExcelSectionTitle(text,color){
+  return '<table class="xtable" cellspacing="0" cellpadding="0"><tr><td class="section-title" style="background:'+(color||'#7c3aed')+';color:#fff;font-size:14px;font-weight:bold;padding:8px 12px;">'+rfEscHtml(text)+'</td></tr></table><br/>';
 }
 function rfBuildCascadeYears(bids){
   bids=bids||rfActiveBids();
@@ -3579,12 +3639,11 @@ function rfBuildCascadeYears(bids){
 function rfExcelCascadeTables(bids){
   const blocks=rfBuildCascadeYears(bids);
   if(!blocks.length) return '';
-  let h='<h2>Recurring Revenue Roll-Forward</h2>';
+  let h=rfExcelSectionTitle('Recurring Revenue Roll-Forward','#4c6fff');
   blocks.forEach(function(block){
-    h+='<h3 style="color:#4c6fff;">'+rfEscHtml(block.year)+'</h3>';
-    h+='<table class="xtable"><colgroup><col style="width:140px;">';
-    block.visibleMonths.forEach(function(){ h+='<col style="width:92px;">'; });
-    h+='<col style="width:100px;"></colgroup><tr><th style="background:#4c6fff;text-align:left;">Cohort</th>';
+    h+=rfExcelSectionTitle('Year '+block.year,'#2563eb');
+    h+='<table class="xtable" cellspacing="0" cellpadding="0" border="1">';
+    h+='<tr><th style="background:#4c6fff;text-align:left;">Cohort</th>';
     block.visibleMonths.forEach(function(m){ h+='<th style="background:#4c6fff;">'+MONTH_NAMES[m]+'</th>'; });
     h+='<th style="background:#4c6fff;">Total</th></tr>';
     block.rows.forEach(function(row,i){
@@ -3599,7 +3658,7 @@ function rfExcelCascadeTables(bids){
     block.visibleMonths.forEach(function(m){
       h+=rfExcelCell(block.footerColTotals[m]||0,{bg:'#dbeafe'});
     });
-    h+=rfExcelCell(block.footerGrandTotal||0,{bg:'#dbeafe'})+'</tr></table><div class="spacer"></div>';
+    h+=rfExcelCell(block.footerGrandTotal||0,{bg:'#dbeafe'})+'</tr></table><br/>';
   });
   return h;
 }
@@ -3618,23 +3677,185 @@ function rfPdfAddCanvasPages(pdf, canvas, margin){
     yOff+=pageH;
   }
 }
-function rfPdfAddChartImage(pdf, title, imgData, margin){
-  const pw=pdf.internal.pageSize.getWidth();
-  const ph=pdf.internal.pageSize.getHeight();
-  pdf.addPage();
-  let y=margin;
-  pdf.setFontSize(11);
-  pdf.setTextColor(60,60,60);
-  pdf.text(title,margin,y);
-  y+=7;
-  const props=pdf.getImageProperties(imgData);
-  const maxW=pw-margin*2;
-  const maxH=ph-margin*2-y;
-  let w=maxW;
-  let h=(props.height*w)/props.width;
-  if(h>maxH){ h=maxH; w=(props.width*h)/props.height; }
-  const x=margin+(maxW-w)/2;
-  pdf.addImage(imgData,'PNG',x,y,w,h);
+const RF_PDF_CHART_SPECS=[
+  {id:'rfChartForecast',title:'12-Month Revenue Forecast'},
+  {id:'rfChartWaterfall',title:'Budget Bridge'},
+  {id:'rfChartRunRate',title:'Run-Rate Build-Up'},
+  {id:'rfChartScenario',title:'Scenario Comparison'},
+  {id:'rfChartNetForecast',title:'Net Budget Forecast'},
+  {id:'rfChartConfidence',title:'Forecast Confidence'},
+  {id:'rfChartGroup',title:'Pipeline by Group'},
+  {id:'rfChartStatusMix',title:'Status Mix'},
+  {id:'rfChartProb',title:'Closure Probability'}
+];
+const RF_PDF_TEMPLATES={
+  executive:{
+    label:'Executive Brief',
+    desc:'KPIs, net forecast, and 3 key charts',
+    opts:{summary:true,pipeline:false,scenarios:false,netForecast:true,rollForward:false,charts:['rfChartForecast','rfChartWaterfall','rfChartNetForecast']}
+  },
+  full:{
+    label:'Full Report',
+    desc:'All tables, roll-forward, and every chart',
+    opts:{summary:true,pipeline:true,scenarios:true,netForecast:true,rollForward:true,charts:'all'}
+  },
+  tables:{
+    label:'Tables Only',
+    desc:'Pivot, scenarios, net forecast, roll-forward',
+    opts:{summary:true,pipeline:true,scenarios:true,netForecast:true,rollForward:true,charts:[]}
+  },
+  charts:{
+    label:'Charts & KPIs',
+    desc:'Executive summary with forecast visuals only',
+    opts:{summary:true,pipeline:false,scenarios:false,netForecast:false,rollForward:false,charts:'all'}
+  },
+  custom:{
+    label:'Custom',
+    desc:'Choose each section and chart yourself',
+    opts:null
+  }
+};
+function rfPdfStorageKey(){
+  return 'rf_pdf_export_prefs_'+(USER&&USER.email?USER.email.toLowerCase():'default');
+}
+function rfLoadPdfPrefs(){
+  try{ return JSON.parse(localStorage.getItem(rfPdfStorageKey())||'null'); }catch(e){ return null; }
+}
+function rfSavePdfPrefs(prefs){
+  try{ localStorage.setItem(rfPdfStorageKey(),JSON.stringify(prefs)); }catch(e){}
+}
+function rfPdfNormalizeChartIds(charts){
+  if(charts==='all') return RF_PDF_CHART_SPECS.map(function(s){ return s.id; });
+  return Array.isArray(charts)?charts:[];
+}
+function rfPdfOptsFromTemplate(key){
+  const tpl=RF_PDF_TEMPLATES[key];
+  if(!tpl||!tpl.opts) return null;
+  const o=Object.assign({},tpl.opts);
+  o.charts=rfPdfNormalizeChartIds(o.charts);
+  o._template=key;
+  return o;
+}
+function rfPdfMarkCustom(){
+  document.querySelectorAll('.rf-pdf-tpl-btn').forEach(function(btn){
+    btn.classList.toggle('active',btn.getAttribute('data-tpl')==='custom');
+  });
+  const allOn=RF_PDF_CHART_SPECS.every(function(s){
+    const c=document.getElementById('rfPdfChart_'+s.id);
+    return c&&c.checked;
+  });
+  const allEl=document.getElementById('rfPdfOptAllCharts');
+  if(allEl) allEl.checked=allOn;
+}
+function rfOpenPdfExportModal(){
+  const saved=rfLoadPdfPrefs();
+  const tplKey=(saved&&saved._template)||'full';
+  const opts=saved||rfPdfOptsFromTemplate('full');
+  const chartIds=rfPdfNormalizeChartIds(opts.charts);
+  let tplHtml='';
+  Object.keys(RF_PDF_TEMPLATES).forEach(function(k){
+    const t=RF_PDF_TEMPLATES[k];
+    tplHtml+='<button type="button" class="rf-pdf-tpl-btn'+(k===tplKey?' active':'')+'" data-tpl="'+k+'" onclick="rfApplyPdfTemplate(\''+k+'\')">'+
+      '<span class="tpl-name">'+t.label+'</span><span class="tpl-desc">'+t.desc+'</span></button>';
+  });
+  let chartHtml='';
+  RF_PDF_CHART_SPECS.forEach(function(s){
+    const on=chartIds.indexOf(s.id)>=0;
+    chartHtml+='<label class="rf-pdf-check-row"><input type="checkbox" id="rfPdfChart_'+s.id+'" onchange="rfPdfMarkCustom()"'+(on?' checked':'')+'>'+s.title+'</label>';
+  });
+  const html=
+    '<div class="rf-modal-overlay rf-pdf-modal" id="rfPdfExportOverlay" onclick="if(event.target===this) rfClosePdfExportModal();">'+
+      '<div class="rf-modal">'+
+        '<div class="rf-modal-header">'+
+          '<div><div class="rf-modal-title">Export PDF Report</div>'+
+          '<div class="rf-modal-sub">Pick a template or customize what goes in your PDF</div></div>'+
+          '<div class="rf-modal-close" onclick="rfClosePdfExportModal()"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>'+
+        '</div>'+
+        '<div class="rf-modal-body">'+
+          '<div class="rf-pdf-templates" id="rfPdfTemplateGrid">'+tplHtml+'</div>'+
+          '<div class="rf-pdf-checks">'+
+            '<div class="rf-pdf-section-label">Report sections</div>'+
+            '<label class="rf-pdf-check-row"><input type="checkbox" id="rfPdfOptSummary" onchange="rfPdfMarkCustom()"'+(opts.summary?' checked':'')+'>Cover page &amp; KPI summary</label>'+
+            '<label class="rf-pdf-check-row"><input type="checkbox" id="rfPdfOptPipeline" onchange="rfPdfMarkCustom()"'+(opts.pipeline?' checked':'')+'>Pipeline pivot table</label>'+
+            '<label class="rf-pdf-check-row"><input type="checkbox" id="rfPdfOptScenarios" onchange="rfPdfMarkCustom()"'+(opts.scenarios?' checked':'')+'>Scenario block tables</label>'+
+            '<label class="rf-pdf-check-row"><input type="checkbox" id="rfPdfOptNet" onchange="rfPdfMarkCustom()"'+(opts.netForecast?' checked':'')+'>Net forecast table</label>'+
+            '<label class="rf-pdf-check-row"><input type="checkbox" id="rfPdfOptRoll" onchange="rfPdfMarkCustom()"'+(opts.rollForward?' checked':'')+'>Recurring revenue roll-forward</label>'+
+            '<div class="rf-pdf-section-label">Charts <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--t3);">(shown in a compact 2-column grid)</span></div>'+
+            '<label class="rf-pdf-check-row"><input type="checkbox" id="rfPdfOptAllCharts" onchange="rfPdfToggleAllCharts(this.checked)"'+(chartIds.length===RF_PDF_CHART_SPECS.length?' checked':'')+'>Select all charts</label>'+
+            '<div class="rf-pdf-chart-grid" id="rfPdfChartGrid">'+chartHtml+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="rf-pdf-modal-footer">'+
+          '<button type="button" class="rf-export-mini" onclick="rfClosePdfExportModal()">Cancel</button>'+
+          '<button type="button" class="rf-export-mini primary" onclick="rfConfirmPdfExport()">Generate PDF</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  const wrap=document.createElement('div');
+  wrap.innerHTML=html;
+  document.body.appendChild(wrap.firstElementChild);
+}
+function rfClosePdfExportModal(){
+  const ov=document.getElementById('rfPdfExportOverlay');
+  if(ov) ov.remove();
+}
+function rfApplyPdfTemplate(key){
+  document.querySelectorAll('.rf-pdf-tpl-btn').forEach(function(btn){
+    btn.classList.toggle('active',btn.getAttribute('data-tpl')===key);
+  });
+  if(key==='custom') return;
+  const opts=rfPdfOptsFromTemplate(key);
+  if(!opts) return;
+  const set=function(id,v){ const el=document.getElementById(id); if(el) el.checked=!!v; };
+  set('rfPdfOptSummary',opts.summary);
+  set('rfPdfOptPipeline',opts.pipeline);
+  set('rfPdfOptScenarios',opts.scenarios);
+  set('rfPdfOptNet',opts.netForecast);
+  set('rfPdfOptRoll',opts.rollForward);
+  const chartSet=new Set(opts.charts||[]);
+  RF_PDF_CHART_SPECS.forEach(function(s){
+    set('rfPdfChart_'+s.id,chartSet.has(s.id));
+  });
+  set('rfPdfOptAllCharts',chartSet.size===RF_PDF_CHART_SPECS.length);
+}
+function rfPdfToggleAllCharts(on){
+  RF_PDF_CHART_SPECS.forEach(function(s){
+    const c=document.getElementById('rfPdfChart_'+s.id);
+    if(c) c.checked=!!on;
+  });
+  document.querySelectorAll('.rf-pdf-tpl-btn').forEach(function(btn){ btn.classList.remove('active'); });
+  const customBtn=document.querySelector('.rf-pdf-tpl-btn[data-tpl="custom"]');
+  if(customBtn) customBtn.classList.add('active');
+}
+function rfCollectPdfOptsFromModal(){
+  const get=function(id){ const el=document.getElementById(id); return el?el.checked:false; };
+  const charts=[];
+  RF_PDF_CHART_SPECS.forEach(function(s){
+    if(get('rfPdfChart_'+s.id)) charts.push(s.id);
+  });
+  let tpl='custom';
+  document.querySelectorAll('.rf-pdf-tpl-btn.active').forEach(function(btn){
+    tpl=btn.getAttribute('data-tpl')||'custom';
+  });
+  return {
+    _template:tpl,
+    summary:get('rfPdfOptSummary'),
+    pipeline:get('rfPdfOptPipeline'),
+    scenarios:get('rfPdfOptScenarios'),
+    netForecast:get('rfPdfOptNet'),
+    rollForward:get('rfPdfOptRoll'),
+    charts:charts
+  };
+}
+function rfConfirmPdfExport(){
+  const opts=rfCollectPdfOptsFromModal();
+  if(!opts.summary&&!opts.pipeline&&!opts.scenarios&&!opts.netForecast&&!opts.rollForward&&!opts.charts.length){
+    alert('Select at least one section or chart to include in the PDF.');
+    return;
+  }
+  rfSavePdfPrefs(opts);
+  rfClosePdfExportModal();
+  rfExportPDF(opts);
 }
 function rfFmtExport(v){
   if(v===null||v===undefined||v==='—') return '—';
@@ -3648,31 +3869,40 @@ function rfFmtExport(v){
   return sign+Math.round(abs).toLocaleString('en-US');
 }
 function rfExcelStyles(){
-  return '<style>body{font-family:Calibri,Arial,sans-serif;margin:20px;color:#1a1025;}'+
-    'h1{font-size:22px;color:#7c3aed;margin:0 0 6px;}h2{font-size:15px;color:#4c6fff;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid #e9d5ff;}'+
-    'h3{font-size:13px;margin:22px 0 8px;font-weight:700;}.meta{font-size:11px;color:#666;margin-bottom:18px;}'+
-    '.xtable{border-collapse:collapse;width:100%;margin-bottom:8px;}.xtable th,.xtable td{border:1px solid #d1d5db;padding:10px 14px;font-size:11px;}'+
-    '.xtable th{color:#fff;font-weight:700;text-align:center;white-space:nowrap;}.xtable td.num{text-align:right;white-space:nowrap;mso-number-format:"\\@";}'+
-    '.xtable td.label{text-align:left;font-weight:600;background:#fafafa;}.xtable tr.total td{font-weight:800;background:#f3e8ff;}'+
-    '.kpi td:first-child{font-weight:600;background:#faf5ff;width:220px;}.kpi td:last-child{text-align:right;font-weight:700;mso-number-format:"\\@";}'+
-    '.spacer{height:16px;}</style>';
+  return '<style>'+
+    'table{border-collapse:collapse;}'+
+    'td,th{font-family:Calibri,Arial,sans-serif;font-size:11pt;border:1px solid #d1d5db;padding:6px 10px;}'+
+    '.xtable{width:100%;margin-bottom:6px;}'+
+    '.xtable th{background:#7c3aed;color:#fff;font-weight:bold;text-align:center;}'+
+    '.xtable td.num{text-align:right;mso-number-format:"\\@";white-space:nowrap;}'+
+    '.xtable td.label{text-align:left;font-weight:600;background:#fafafa;}'+
+    '.xtable tr.total td{font-weight:bold;background:#f3e8ff;}'+
+    '.kpi td:first-child{font-weight:600;background:#faf5ff;width:240px;}'+
+    '.kpi td:last-child{text-align:right;font-weight:700;mso-number-format:"\\@";}'+
+    '</style>';
 }
 function rfExcelCell(v, opts){
   opts=opts||{};
-  const cls=(opts.label?' label':' num');
+  const cls=opts.label?'label':'num';
   let style='';
-  if(opts.color) style='color:'+opts.color+';';
+  if(opts.color) style+='color:'+opts.color+';';
   if(opts.bg) style+='background:'+opts.bg+';';
-  return '<td class="'+cls.trim()+'" style="'+style+'">'+(opts.label?rfEscHtml(v||''):rfFmtExport(v))+'</td>';
+  if(!opts.label) style+="mso-number-format:'\\@';";
+  const val=opts.label?rfEscHtml(v||''):rfEscHtml(rfFmtExport(v));
+  return '<td class="'+cls+'"'+(style?' style="'+style+'"':'')+'>'+val+'</td>';
 }
 function rfExcelMatrixTable(title, matrix, headerBg, rowTint, showNeg){
-  if(!matrix) return '';
+  if(!matrix) return rfExcelSectionTitle(title+' (no data)','#999');
   const {visibleMonths,rows,cells,colTotals,rowTotals,grandTotal,rowLabel,totalLabel}=matrix;
-  let h='<h3 style="color:'+headerBg+';">'+rfEscHtml(title)+'</h3><table class="xtable"><colgroup><col style="width:180px;">';
-  visibleMonths.forEach(function(){ h+='<col style="width:92px;">'; });
-  h+='<col style="width:110px;"></colgroup><tr><th style="background:'+headerBg+';text-align:left;">'+rfEscHtml(rowLabel)+'</th>';
+  let h=rfExcelSectionTitle(title,headerBg);
+  h+='<table class="xtable" cellspacing="0" cellpadding="0" border="1">';
+  h+='<tr><th style="background:'+headerBg+';text-align:left;">'+rfEscHtml(rowLabel)+'</th>';
   visibleMonths.forEach(function(m){ h+='<th style="background:'+headerBg+';">'+MONTH_NAMES[m]+'</th>'; });
-  h+='<th style="background:'+headerBg+';">'+totalLabel+'</th></tr>';
+  h+='<th style="background:'+headerBg+';">'+rfEscHtml(totalLabel)+'</th></tr>';
+  if(!rows.length){
+    h+='<tr><td colspan="'+(visibleMonths.length+2)+'" class="label">No data matches filters.</td></tr></table><br/>';
+    return h;
+  }
   rows.forEach(function(rowVal, i){
     const bg=i%2===0?rowTint:'#ffffff';
     h+='<tr>'+rfExcelCell(rowVal,{label:true,bg:bg});
@@ -3685,17 +3915,17 @@ function rfExcelMatrixTable(title, matrix, headerBg, rowTint, showNeg){
     const rt=rowTotals[rowVal]||0;
     h+=rfExcelCell(rt,{bg:bg,color:showNeg?rfNetExportColor(matrix,rt,matrix.pipelineRowTotals?matrix.pipelineRowTotals[rowVal]:0):''})+'</tr>';
   });
-  h+='<tr class="total"><td class="label" style="background:'+headerBg+';color:#fff;">'+totalLabel+'</td>';
+  h+='<tr class="total"><td class="label" style="background:'+headerBg+';color:#fff;">'+rfEscHtml(totalLabel)+'</td>';
   visibleMonths.forEach(function(m){
     const v=colTotals[m]||0;
     h+=rfExcelCell(v,{bg:'#f3e8ff',color:showNeg?rfNetExportColor(matrix,v,matrix.pipelineColTotals?matrix.pipelineColTotals[m]:0):''});
   });
-  h+=rfExcelCell(grandTotal,{bg:'#ede9fe',color:showNeg?rfNetExportColor(matrix,grandTotal,matrix.pipelineGrandTotal||0):'#5b21b6'})+'</tr></table><div class="spacer"></div>';
+  h+=rfExcelCell(grandTotal,{bg:'#ede9fe',color:showNeg?rfNetExportColor(matrix,grandTotal,matrix.pipelineGrandTotal||0):'#5b21b6'})+'</tr></table><br/>';
   return h;
 }
 function rfExportExcel(){
   try{
-    rfSyncAllBlockFiltersFromDom();
+    try{ rfSyncAllBlockFiltersFromDom(); }catch(syncErr){ console.warn('Block filter sync skipped:', syncErr); }
     const bids=rfActiveBids();
     const pipelineMat=rfBuildMatrix(bids);
     const blockEntries=rfGetBlockMatrices();
@@ -3704,34 +3934,42 @@ function rfExportExcel(){
     const rowLabel=RF_ROW_DIMS.find(r=>r.key===rfRowDim).label;
     const conf=rfConfidenceFor(bids);
     const dateStr=new Date().toISOString().split('T')[0];
-    let html='\uFEFF<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head>';
-    html+='<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">';
-    html+='<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Forecast</x:Name></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
-    html+=rfExcelStyles()+'</head><body>';
-    html+='<h1>'+rfEscHtml(APP_NAME)+' - Budget Scenario Export</h1>';
-    html+='<div class="meta"><strong>Date:</strong> '+dateStr+' | <strong>Prepared by:</strong> '+rfEscHtml(USER.name||'')+' | <strong>Metric:</strong> '+rfEscHtml(metricLabel)+' | <strong>Group By:</strong> '+rfEscHtml(rowLabel)+'</div>';
-    html+='<h2>Executive Summary</h2><table class="xtable kpi"><tr><th style="background:#7c3aed;text-align:left;">KPI</th><th style="background:#7c3aed;">Value ('+rfEscHtml(metricLabel)+')</th></tr>';
-    html+='<tr><td>Total Active Pipeline</td><td>'+rfFmtExport(conf.bestCaseVal)+'</td></tr>';
-    html+='<tr><td>Committed (Won / Billed)</td><td style="color:#15803d;">'+rfFmtExport(conf.committedVal)+'</td></tr>';
-    html+='<tr><td>Probability-Weighted Forecast</td><td>'+rfFmtExport(conf.weightedVal)+'</td></tr>';
-    if(netMat) html+='<tr><td style="background:#dbeafe;font-weight:800;">Net Budget Forecast</td><td style="color:#1d4ed8;font-weight:800;">'+rfFmtExport(netMat.grandTotal)+'</td></tr>';
-    html+='</table><div class="spacer"></div>';
+    let html=rfExcelDocStart();
+    html+=rfExcelSectionTitle(APP_NAME+' - Budget Scenario Export','#7c3aed');
+    html+='<table class="xtable kpi" cellspacing="0" cellpadding="0" border="1">';
+    html+='<tr><td class="label">Date</td><td class="num">'+dateStr+'</td></tr>';
+    html+='<tr><td class="label">Prepared by</td><td class="num">'+rfEscHtml(USER.name||'')+'</td></tr>';
+    html+='<tr><td class="label">Metric</td><td class="num">'+rfEscHtml(metricLabel)+'</td></tr>';
+    html+='<tr><td class="label">Group By</td><td class="num">'+rfEscHtml(rowLabel)+'</td></tr>';
+    html+='</table><br/>';
+    html+=rfExcelSectionTitle('Executive Summary','#7c3aed');
+    html+='<table class="xtable kpi" cellspacing="0" cellpadding="0" border="1">';
+    html+='<tr><th style="background:#7c3aed;text-align:left;">KPI</th><th style="background:#7c3aed;">Value ('+rfEscHtml(metricLabel)+')</th></tr>';
+    html+='<tr><td class="label">Total Active Pipeline</td>'+rfExcelCell(conf.bestCaseVal,{})+'</tr>';
+    html+='<tr><td class="label">Committed (Won / Billed)</td>'+rfExcelCell(conf.committedVal,{color:'#15803d'})+'</tr>';
+    html+='<tr><td class="label">Probability-Weighted Forecast</td>'+rfExcelCell(conf.weightedVal,{})+'</tr>';
+    if(netMat) html+='<tr><td class="label" style="background:#dbeafe;">Net Budget Forecast</td>'+rfExcelCell(netMat.grandTotal,{color:'#1d4ed8'})+'</tr>';
+    html+='</table><br/>';
     html+=rfExcelMatrixTable('Table 1 - Pipeline Pivot', pipelineMat, '#15803d', '#ecfdf5', false);
     blockEntries.forEach(function(e){
       const op=rfBlockOp(e.op||e.block.op);
       const opTag=op==='add'?'+ ADD':(op==='subtract'?'- SUBTRACT':'VIEW ONLY');
-      html+=rfExcelMatrixTable('Scenario: '+e.block.name+' ('+opTag+')', e.matrix, e.block.color, e.block.color+'14', false);
+      html+=rfExcelMatrixTable('Scenario: '+e.block.name+' ('+opTag+')', e.matrix, e.block.color, '#ffffff', false);
     });
     if(netMat) html+=rfExcelMatrixTable('Net Forecast - '+rfNetFormulaText(blockEntries), netMat, '#1d4ed8', '#eff6ff', true);
     html+=rfExcelCascadeTables(bids);
-    html+='<p style="font-size:10px;color:#888;margin-top:24px;">Generated by '+rfEscHtml(APP_NAME)+'</p></body></html>';
+    html+='<table class="xtable"><tr><td style="font-size:10px;color:#888;">Generated by '+rfEscHtml(APP_NAME)+'</td></tr></table>';
+    html+=rfExcelDocEnd();
+    if(html.length<500) throw new Error('Export content empty - load dashboard data first.');
     rfDownloadFile(html,'Revenue_Forecast_'+dateStr+'.xls','application/vnd.ms-excel;charset=utf-8');
   }catch(err){
     alert('Excel export failed: '+(err.message||err));
   }
 }
-function rfBuildPdfReportHtml(){
-  rfSyncAllBlockFiltersFromDom();
+function rfBuildPdfReportHtml(opts, chartImages){
+  opts=opts||{summary:true,pipeline:true,scenarios:true,netForecast:true,rollForward:true};
+  chartImages=chartImages||[];
+  try{ rfSyncAllBlockFiltersFromDom(); }catch(e){}
   const pipelineMat=rfBuildMatrix(rfActiveBids());
   const blockEntries=rfGetBlockMatrices();
   const netMat=rfComputeNetMatrix(pipelineMat, blockEntries);
@@ -3739,24 +3977,26 @@ function rfBuildPdfReportHtml(){
   const conf=rfConfidenceFor(rfActiveBids());
   const dateStr=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   let h='<div id="rfPdfRoot" style="font-family:Inter,Calibri,Arial,sans-serif;padding:36px 40px;background:#fff;color:#1a1025;box-sizing:border-box;">';
-  h+='<div style="border-bottom:4px solid #7c3aed;padding-bottom:18px;margin-bottom:28px;">';
-  h+='<h1 style="margin:0;color:#7c3aed;font-size:26px;font-weight:900;">'+APP_NAME+'</h1>';
-  h+='<p style="margin:8px 0 0;font-size:13px;color:#555;">Budget Analysis Report · '+dateStr+' · '+metricLabel+' · '+(USER.name||'User')+'</p></div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">';
-  [['Pipeline',conf.bestCaseVal,'#7c3aed'],['Committed',conf.committedVal,'#15803d'],['Weighted',conf.weightedVal,'#d97706'],['Net Forecast',netMat?netMat.grandTotal:conf.bestCaseVal,'#2563eb']].forEach(function(k){
-    h+='<div style="background:linear-gradient(135deg,#faf5ff,#fff);border-radius:12px;padding:16px;border:1px solid #e9d5ff;border-left:5px solid '+k[2]+';"><div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;">'+k[0]+'</div><div style="font-size:20px;font-weight:900;color:'+k[2]+';margin-top:6px;">'+rfFmtExport(k[1])+'</div></div>';
-  });
-  h+='</div>';
-  if(netMat) h+='<div style="font-size:13px;background:#eff6ff;padding:12px 16px;border-radius:10px;border-left:4px solid #2563eb;margin-bottom:24px;"><strong>Budget Formula:</strong> '+rfNetFormulaText(blockEntries)+'</div>';
+  if(opts.summary){
+    h+='<div style="border-bottom:4px solid #7c3aed;padding-bottom:18px;margin-bottom:28px;">';
+    h+='<h1 style="margin:0;color:#7c3aed;font-size:26px;font-weight:900;">'+rfEscHtml(APP_NAME)+'</h1>';
+    h+='<p style="margin:8px 0 0;font-size:13px;color:#555;">Budget Analysis Report · '+dateStr+' · '+rfEscHtml(metricLabel)+' · '+rfEscHtml(USER.name||'User')+'</p></div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">';
+    [['Pipeline',conf.bestCaseVal,'#7c3aed'],['Committed',conf.committedVal,'#15803d'],['Weighted',conf.weightedVal,'#d97706'],['Net Forecast',netMat?netMat.grandTotal:conf.bestCaseVal,'#2563eb']].forEach(function(k){
+      h+='<div style="background:linear-gradient(135deg,#faf5ff,#fff);border-radius:12px;padding:16px;border:1px solid #e9d5ff;border-left:5px solid '+k[2]+';"><div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;">'+k[0]+'</div><div style="font-size:20px;font-weight:900;color:'+k[2]+';margin-top:6px;">'+rfFmtExport(k[1])+'</div></div>';
+    });
+    h+='</div>';
+    if(netMat) h+='<div style="font-size:13px;background:#eff6ff;padding:12px 16px;border-radius:10px;border-left:4px solid #2563eb;margin-bottom:24px;"><strong>Budget Formula:</strong> '+rfEscHtml(rfNetFormulaText(blockEntries))+'</div>';
+  }
   function pdfTable(title, matrix, color){
     if(!matrix) return '';
-    let t='<h2 style="color:'+color+';font-size:15px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid '+color+'33;">'+title+'</h2>';
+    let t='<h2 style="color:'+color+';font-size:15px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid '+color+'33;">'+rfEscHtml(title)+'</h2>';
     t+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;">';
-    t+='<tr style="background:'+color+';color:#fff;"><th style="padding:10px 12px;text-align:left;">'+matrix.rowLabel+'</th>';
+    t+='<tr style="background:'+color+';color:#fff;"><th style="padding:10px 12px;text-align:left;">'+rfEscHtml(matrix.rowLabel)+'</th>';
     matrix.visibleMonths.forEach(function(m){ t+='<th style="padding:10px 8px;text-align:right;">'+MONTH_NAMES[m]+'</th>'; });
-    t+='<th style="padding:10px 12px;text-align:right;">'+matrix.totalLabel+'</th></tr>';
+    t+='<th style="padding:10px 12px;text-align:right;">'+rfEscHtml(matrix.totalLabel)+'</th></tr>';
     matrix.rows.forEach(function(rv,i){
-      t+='<tr style="background:'+(i%2?'#fff':'#faf5ff')+';"><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #eee;">'+rv+'</td>';
+      t+='<tr style="background:'+(i%2?'#fff':'#faf5ff')+';"><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #eee;">'+rfEscHtml(rv)+'</td>';
       matrix.visibleMonths.forEach(function(m){
         const key=rv+'|'+m;
         const v=matrix.cells[key]||0;
@@ -3768,65 +4008,87 @@ function rfBuildPdfReportHtml(){
       const rtTone=matrix.isNet?rfNetExportColor(matrix,rt,matrix.pipelineRowTotals?matrix.pipelineRowTotals[rv]:0):'';
       t+='<td style="padding:8px 12px;font-weight:700;text-align:right;border-bottom:1px solid #eee;'+(rtTone?'color:'+rtTone+';':'')+'">'+rfFmtExport(rt)+'</td></tr>';
     });
-    t+='<tr style="background:'+color+'22;font-weight:800;"><td style="padding:10px 12px;">'+matrix.totalLabel+'</td>';
+    t+='<tr style="background:'+color+'22;font-weight:800;"><td style="padding:10px 12px;">'+rfEscHtml(matrix.totalLabel)+'</td>';
     matrix.visibleMonths.forEach(function(m){ t+='<td style="padding:10px 8px;text-align:right;">'+rfFmtExport(matrix.colTotals[m]||0)+'</td>'; });
     t+='<td style="padding:10px 12px;text-align:right;color:'+color+';">'+rfFmtExport(matrix.grandTotal)+'</td></tr></table>';
     return t;
   }
-  h+=pdfTable('Pipeline Pivot', pipelineMat, '#15803d');
-  blockEntries.forEach(function(e){ h+=pdfTable(e.block.name+' ('+e.block.op+')', e.matrix, e.block.color); });
-  if(netMat) h+=pdfTable('Net Forecast', netMat, '#2563eb');
-  rfBuildCascadeYears(rfActiveBids()).forEach(function(block){
+  if(opts.pipeline) h+=pdfTable('Pipeline Pivot', pipelineMat, '#15803d');
+  if(opts.scenarios) blockEntries.forEach(function(e){
+    const op=rfBlockOp(e.op||e.block.op);
+    h+=pdfTable(e.block.name+' ('+op+')', e.matrix, e.block.color);
+  });
+  if(opts.netForecast&&netMat) h+=pdfTable('Net Forecast', netMat, '#2563eb');
+  if(opts.rollForward) rfBuildCascadeYears(rfActiveBids()).forEach(function(block){
     h+='<h2 style="color:#2563eb;font-size:15px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid #2563eb33;">Recurring Revenue Roll-Forward — '+block.year+'</h2>';
     h+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;">';
     h+='<tr style="background:#2563eb;color:#fff;"><th style="padding:10px 12px;text-align:left;">Cohort</th>';
     block.visibleMonths.forEach(function(m){ h+='<th style="padding:10px 8px;text-align:right;">'+MONTH_NAMES[m]+'</th>'; });
     h+='<th style="padding:10px 12px;text-align:right;">Total</th></tr>';
     block.rows.forEach(function(row,i){
-      h+='<tr style="background:'+(i%2?'#fff':'#eff6ff')+';"><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #eee;">'+row.label+'</td>';
+      h+='<tr style="background:'+(i%2?'#fff':'#eff6ff')+';"><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #eee;">'+rfEscHtml(row.label)+'</td>';
       block.visibleMonths.forEach(function(m){
         const v=row.cells[m]||0;
         h+='<td style="padding:8px;text-align:right;border-bottom:1px solid #eee;">'+(v?rfFmtExport(v):'—')+'</td>';
       });
       h+='<td style="padding:8px 12px;font-weight:700;text-align:right;border-bottom:1px solid #eee;">'+rfFmtExport(row.rowTotal||0)+'</td></tr>';
     });
-    h+='<tr style="background:#dbeafe;font-weight:800;"><td style="padding:10px 12px;">'+block.totalLabel+'</td>';
+    h+='<tr style="background:#dbeafe;font-weight:800;"><td style="padding:10px 12px;">'+rfEscHtml(block.totalLabel)+'</td>';
     block.visibleMonths.forEach(function(m){
       h+='<td style="padding:10px 8px;text-align:right;">'+rfFmtExport(block.footerColTotals[m]||0)+'</td>';
     });
     h+='<td style="padding:10px 12px;text-align:right;">'+rfFmtExport(block.footerGrandTotal||0)+'</td></tr></table>';
   });
-  h+='<p style="font-size:10px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:12px;">'+APP_NAME+' · Confidential budget analysis</p></div>';
+  if(chartImages.length){
+    h+='<h2 style="color:#7c3aed;font-size:15px;margin:32px 0 14px;padding-bottom:6px;border-bottom:2px solid #e9d5ff;">Forecast Charts</h2>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">';
+    chartImages.forEach(function(c){
+      h+='<div style="border:1px solid #e9d5ff;border-radius:10px;padding:10px 12px;background:#faf5ff;break-inside:avoid;">';
+      h+='<div style="font-size:9px;font-weight:800;color:#555;text-transform:uppercase;margin-bottom:6px;">'+rfEscHtml(c.title)+'</div>';
+      h+='<img src="'+c.img+'" style="width:100%;height:190px;object-fit:contain;display:block;" alt=""/>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  h+='<p style="font-size:10px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:12px;">'+rfEscHtml(APP_NAME)+' · Confidential budget analysis</p></div>';
   return h;
 }
-async function rfCaptureChartImages(){
-  const specs=[
-    {id:'rfChartForecast',title:'12-Month Revenue Forecast'},
-    {id:'rfChartWaterfall',title:'Budget Bridge'},
-    {id:'rfChartScenario',title:'Scenario Comparison'},
-    {id:'rfChartNetForecast',title:'Net Budget Forecast'},
-    {id:'rfChartRunRate',title:'Run-Rate Build-Up'}
-  ];
+async function rfCaptureChartImages(chartIds){
+  const idSet=chartIds?new Set(chartIds):null;
   const out=[];
-  specs.forEach(function(s){
+  RF_PDF_CHART_SPECS.forEach(function(s){
+    if(idSet&&!idSet.has(s.id)) return;
     const canvas=el(s.id);
     if(canvas&&canvas.width>0) out.push({title:s.title,img:canvas.toDataURL('image/png',1.0)});
   });
   return out;
 }
-async function rfExportPDF(){
+async function rfExportPDF(opts){
   const JSPDF=(window.jspdf&&window.jspdf.jsPDF)?window.jspdf.jsPDF:(typeof jsPDF!=='undefined'?jsPDF:null);
   if(!JSPDF||typeof html2canvas==='undefined'){ alert('PDF libraries still loading — please try again in a moment.'); return; }
+  opts=opts||rfPdfOptsFromTemplate('full')||{summary:true,pipeline:true,scenarios:true,netForecast:true,rollForward:true,charts:[]};
+  const chartIds=rfPdfNormalizeChartIds(opts.charts);
+  const needsCharts=chartIds.length>0;
   const wasVisible=rfChartsVisible;
-  if(!wasVisible){ rfChartsVisible=true; el('rfChartsSection').style.display='block'; el('rfChartsToggleText').textContent='Hide Forecast Charts'; }
-  rfRenderCharts();
-  rfResizeAllCharts();
-  await new Promise(function(r){ setTimeout(r,700); });
-  const chartImages=await rfCaptureChartImages();
-  if(!wasVisible){ rfChartsVisible=false; el('rfChartsSection').style.display='none'; el('rfChartsToggleText').textContent='Show Forecast Charts'; }
+  if(needsCharts&&!wasVisible){
+    rfChartsVisible=true;
+    el('rfChartsSection').style.display='block';
+    el('rfChartsToggleText').textContent='Hide Forecast Charts';
+  }
+  if(needsCharts){
+    rfRenderCharts();
+    rfResizeAllCharts();
+    await new Promise(function(r){ setTimeout(r,700); });
+  }
+  const chartImages=needsCharts?await rfCaptureChartImages(chartIds):[];
+  if(!wasVisible&&needsCharts){
+    rfChartsVisible=false;
+    el('rfChartsSection').style.display='none';
+    el('rfChartsToggleText').textContent='Show Forecast Charts';
+  }
   const wrap=document.createElement('div');
   wrap.style.cssText='position:fixed;left:-9999px;top:0;width:900px;';
-  wrap.innerHTML=rfBuildPdfReportHtml();
+  wrap.innerHTML=rfBuildPdfReportHtml(opts,chartImages);
   document.body.appendChild(wrap);
   const root=wrap.querySelector('#rfPdfRoot');
   const margin=12;
@@ -3834,7 +4096,6 @@ async function rfExportPDF(){
     const canvas=await html2canvas(root,{scale:1.35,useCORS:true,backgroundColor:'#ffffff',windowWidth:900});
     const pdf=new JSPDF('p','mm','a4');
     rfPdfAddCanvasPages(pdf,canvas,margin);
-    chartImages.forEach(function(c){ rfPdfAddChartImage(pdf,c.title,c.img,margin); });
     pdf.save('Revenue_Forecast_'+new Date().toISOString().split('T')[0]+'.pdf');
   }catch(err){
     alert('PDF export failed: '+(err.message||err));
@@ -4044,7 +4305,12 @@ function rfRenderModal(){
   const existing=document.getElementById('rfModalOverlay');
   if(existing) existing.replaceWith(newOverlay); else document.body.appendChild(newOverlay);
 }
-document.addEventListener('keydown',function(e){ if(e.key==='Escape' && rfModalCtx) rfCloseDrilldown(); });
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    if(document.getElementById('rfPdfExportOverlay')) rfClosePdfExportModal();
+    else if(rfModalCtx) rfCloseDrilldown();
+  }
+});
 
 // ── FORECAST CHARTS (BA / CEO / budget-level view) ────────────────
 function rfToggleCharts(){
