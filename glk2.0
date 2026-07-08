@@ -3542,14 +3542,20 @@ function rfBuildCascadeYears(bids){
     visibleMonths.forEach(function(m){
       if(rfCascadeOriginVisible(year,m)) newCells[m]=base[m];
     });
-    rows.push({label:'New This Month',cells:newCells,isNew:true,origin:null});
+    let newRowTotal=0;
+    visibleMonths.forEach(function(m){ if(newCells[m]) newRowTotal+=newCells[m]; });
+    rows.push({label:'New This Month',cells:newCells,isNew:true,origin:null,rowTotal:newRowTotal});
+    let footerGrandTotal=0;
     for(let origin=0;origin<11;origin++){
       if(!base[origin]||!rfCascadeOriginVisible(year,origin)) continue;
-      const cells={}; let has=false;
+      const cells={}; let has=false; let rowTotal=0;
       for(let target=origin+1;target<12;target++){
-        if(visibleMonths.includes(target)){ cells[target]=base[origin]; has=true; }
+        if(visibleMonths.includes(target)){ cells[target]=base[origin]; has=true; rowTotal+=base[origin]; }
       }
-      if(has) rows.push({label:MONTH_NAMES[origin]+' cohort',cells:cells,isNew:false,origin:origin});
+      if(has){
+        rows.push({label:MONTH_NAMES[origin]+' cohort',cells:cells,isNew:false,origin:origin,rowTotal:rowTotal});
+        footerGrandTotal+=rowTotal;
+      }
     }
     const footerColTotals={};
     visibleMonths.forEach(m=>footerColTotals[m]=0);
@@ -3564,6 +3570,7 @@ function rfBuildCascadeYears(bids){
       visibleMonths:visibleMonths,
       rows:rows,
       footerColTotals:footerColTotals,
+      footerGrandTotal:footerGrandTotal,
       totalLabel:rfHidePast?'Remaining Total':'Grand Total'
     });
   });
@@ -3577,22 +3584,22 @@ function rfExcelCascadeTables(bids){
     h+='<h3 style="color:#4c6fff;">'+rfEscHtml(block.year)+'</h3>';
     h+='<table class="xtable"><colgroup><col style="width:140px;">';
     block.visibleMonths.forEach(function(){ h+='<col style="width:92px;">'; });
-    h+='</colgroup><tr><th style="background:#4c6fff;text-align:left;">Cohort</th>';
+    h+='<col style="width:100px;"></colgroup><tr><th style="background:#4c6fff;text-align:left;">Cohort</th>';
     block.visibleMonths.forEach(function(m){ h+='<th style="background:#4c6fff;">'+MONTH_NAMES[m]+'</th>'; });
-    h+='</tr>';
+    h+='<th style="background:#4c6fff;">Total</th></tr>';
     block.rows.forEach(function(row,i){
       const bg=i%2===0?'#eff6ff':'#ffffff';
       h+='<tr>'+rfExcelCell(row.label,{label:true,bg:bg});
       block.visibleMonths.forEach(function(m){
         h+=rfExcelCell(row.cells[m]||0,{bg:bg});
       });
-      h+='</tr>';
+      h+=rfExcelCell(row.rowTotal||0,{bg:bg})+'</tr>';
     });
     h+='<tr class="total"><td class="label" style="background:#4c6fff;color:#fff;">'+rfEscHtml(block.totalLabel)+'</td>';
     block.visibleMonths.forEach(function(m){
       h+=rfExcelCell(block.footerColTotals[m]||0,{bg:'#dbeafe'});
     });
-    h+='</tr></table><div class="spacer"></div>';
+    h+=rfExcelCell(block.footerGrandTotal||0,{bg:'#dbeafe'})+'</tr></table><div class="spacer"></div>';
   });
   return h;
 }
@@ -3774,20 +3781,20 @@ function rfBuildPdfReportHtml(){
     h+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;">';
     h+='<tr style="background:#2563eb;color:#fff;"><th style="padding:10px 12px;text-align:left;">Cohort</th>';
     block.visibleMonths.forEach(function(m){ h+='<th style="padding:10px 8px;text-align:right;">'+MONTH_NAMES[m]+'</th>'; });
-    h+='</tr>';
+    h+='<th style="padding:10px 12px;text-align:right;">Total</th></tr>';
     block.rows.forEach(function(row,i){
       h+='<tr style="background:'+(i%2?'#fff':'#eff6ff')+';"><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #eee;">'+row.label+'</td>';
       block.visibleMonths.forEach(function(m){
         const v=row.cells[m]||0;
         h+='<td style="padding:8px;text-align:right;border-bottom:1px solid #eee;">'+(v?rfFmtExport(v):'—')+'</td>';
       });
-      h+='</tr>';
+      h+='<td style="padding:8px 12px;font-weight:700;text-align:right;border-bottom:1px solid #eee;">'+rfFmtExport(row.rowTotal||0)+'</td></tr>';
     });
     h+='<tr style="background:#dbeafe;font-weight:800;"><td style="padding:10px 12px;">'+block.totalLabel+'</td>';
     block.visibleMonths.forEach(function(m){
       h+='<td style="padding:10px 8px;text-align:right;">'+rfFmtExport(block.footerColTotals[m]||0)+'</td>';
     });
-    h+='</tr></table>';
+    h+='<td style="padding:10px 12px;text-align:right;">'+rfFmtExport(block.footerGrandTotal||0)+'</td></tr></table>';
   });
   h+='<p style="font-size:10px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:12px;">'+APP_NAME+' · Confidential budget analysis</p></div>';
   return h;
@@ -3888,7 +3895,7 @@ function rfRenderCascade(bids){
     html+='<div class="rf-cascade-block"><div class="rf-cascade-block-title">'+block.year+'</div>';
     html+='<div class="rf-panel"><div class="rf-table-scroll"><table class="rf-table"><thead><tr><th>Cohort</th>';
     block.visibleMonths.forEach(m=>html+='<th>'+MONTH_NAMES[m]+'</th>');
-    html+='</tr></thead><tbody>';
+    html+='<th class="rf-total-col">Total</th></tr></thead><tbody>';
     block.rows.forEach(function(row){
       html+='<tr><td>'+row.label+'</td>';
       block.visibleMonths.forEach(function(m){
@@ -3896,13 +3903,18 @@ function rfRenderCascade(bids){
         const drillM=row.isNew?m:row.origin;
         html+= v ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+drillM+',\''+block.year+'\')">'+rfFmtVal(v)+'</td>' : '<td class="rf-cell-empty">—</td>';
       });
-      html+='</tr>';
+      const rt=row.rowTotal||0;
+      if(row.isNew){
+        html+= rt ? '<td class="rf-total-col">'+rfFmtVal(rt)+'</td></tr>' : '<td class="rf-total-col">—</td></tr>';
+      } else {
+        html+= rt ? '<td class="rf-total-col rf-cell-btn" onclick="rfOpenDrilldown(null,'+row.origin+',\''+block.year+'\')">'+rfFmtVal(rt)+'</td></tr>' : '<td class="rf-total-col">—</td></tr>';
+      }
     });
     html+='</tbody><tfoot><tr><td>'+block.totalLabel+'</td>';
     block.visibleMonths.forEach(function(m){
       html+='<td>'+(block.footerColTotals[m]?rfFmtVal(block.footerColTotals[m]):'—')+'</td>';
     });
-    html+='</tr></tfoot></table></div></div></div>';
+    html+='<td class="rf-total-col">'+rfFmtVal(block.footerGrandTotal||0)+'</td></tr></tfoot></table></div></div></div>';
   });
   container.innerHTML=html;
 }
