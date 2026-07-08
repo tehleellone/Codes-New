@@ -729,6 +729,9 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 .rf-net-panel .rf-panel-head{background:linear-gradient(135deg,rgba(76,111,255,.06),rgba(168,85,247,.04));}
 .rf-table td.rf-cell-neg{color:#dc2626;font-weight:700;}
 .rf-table td.rf-cell-pos{color:#16a34a;font-weight:700;}
+.rf-table td.rf-cell-btn{color:var(--t1);}
+.rf-table td.rf-cell-btn.rf-cell-neg{color:#dc2626;}
+.rf-table td.rf-cell-btn.rf-cell-pos{color:#16a34a;}
 .rf-modal-overlay{position:fixed;inset:0;background:rgba(10,4,20,.55);backdrop-filter:blur(2px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:1.25rem;}
 .rf-modal{background:var(--bg-card);border-radius:16px;border:1px solid var(--border-s);box-shadow:0 20px 60px rgba(0,0,0,.4);width:min(1150px,100%);height:min(88vh,900px);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;}
 .rf-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -3301,31 +3304,50 @@ function rfGetBlockEntries(){
     return {block:block, matrix:rfBuildMatrix(rfGetBlockBids(block)), op:rfBlockOp(block.op)};
   });
 }
+function rfNetCellClass(matrix, val, base){
+  if(!matrix||!matrix.isNet||!val) return '';
+  const b=base==null?0:base;
+  if(val<b) return ' rf-cell-neg';
+  if(val>b) return ' rf-cell-pos';
+  return '';
+}
+function rfNetExportColor(matrix, val, base){
+  if(!matrix||!matrix.isNet||!val) return '';
+  const b=base==null?0:base;
+  if(val<b) return '#b91c1c';
+  if(val>b) return '#15803d';
+  return '';
+}
 function rfPaintMatrixHtml(matrix, drillOpts){
   if(!matrix) return '<div style="padding:1.5rem;text-align:center;color:var(--t3);">No data matches filters.</div>';
   const {visibleMonths,rows,cells,colTotals,rowTotals,grandTotal,rowLabel,totalLabel,isNet}=matrix;
   const clickFn=drillOpts&&drillOpts.blockId
     ? function(rv,m){ const rvArg=rv==null?'null':JSON.stringify(rv); const mArg=m==null?'null':m; return 'rfOpenBlockDrilldown(\''+drillOpts.blockId+'\','+rvArg+','+mArg+',null)'; }
     : function(rv,m){ const rvArg=rv==null?'null':JSON.stringify(rv); const mArg=m==null?'null':m; return 'rfOpenDrilldown('+rvArg+','+mArg+',null)'; };
-  function cellClass(v){ if(!isNet||!v) return ''; return v<0?' rf-cell-neg':(v>0?' rf-cell-pos':''); }
+  function cellClass(v, base){ return rfNetCellClass(matrix, v, base); }
   let html='<table class="rf-table"><thead><tr><th>'+rowLabel+'</th>';
   visibleMonths.forEach(m=>html+='<th>'+MONTH_NAMES[m]+'</th>');
   html+='<th class="rf-total-col">'+totalLabel+'</th></tr></thead><tbody>';
   rows.forEach(function(rowVal){
     html+='<tr><td>'+rowVal+'</td>';
     visibleMonths.forEach(function(m){
-      const val=cells[rowVal+'|'+m]||0;
-      html+= val ? '<td class="rf-cell-btn'+cellClass(val)+'" onclick="'+clickFn(rowVal,m)+'">'+rfFmtVal(val)+'</td>' : '<td class="rf-cell-empty">—</td>';
+      const key=rowVal+'|'+m;
+      const val=cells[key]||0;
+      const base=matrix.pipelineCells?matrix.pipelineCells[key]:0;
+      html+= val ? '<td class="rf-cell-btn'+cellClass(val,base)+'" onclick="'+clickFn(rowVal,m)+'">'+rfFmtVal(val)+'</td>' : '<td class="rf-cell-empty">—</td>';
     });
     const rt=rowTotals[rowVal]||0;
-    html+= rt ? '<td class="rf-total-col rf-cell-btn'+cellClass(rt)+'" onclick="'+clickFn(rowVal,null)+'">'+rfFmtVal(rt)+'</td></tr>' : '<td class="rf-total-col">—</td></tr>';
+    const rtBase=matrix.pipelineRowTotals?matrix.pipelineRowTotals[rowVal]:0;
+    html+= rt ? '<td class="rf-total-col rf-cell-btn'+cellClass(rt,rtBase)+'" onclick="'+clickFn(rowVal,null)+'">'+rfFmtVal(rt)+'</td></tr>' : '<td class="rf-total-col">—</td></tr>';
   });
   html+='</tbody><tfoot><tr><td>'+totalLabel+'</td>';
   visibleMonths.forEach(function(m){
     const v=colTotals[m]||0;
-    html+= v ? '<td class="rf-cell-btn'+cellClass(v)+'" onclick="'+clickFn(null,m)+'">'+rfFmtVal(v)+'</td>' : '<td class="rf-cell-empty">—</td>';
+    const base=matrix.pipelineColTotals?matrix.pipelineColTotals[m]:0;
+    html+= v ? '<td class="rf-cell-btn'+cellClass(v,base)+'" onclick="'+clickFn(null,m)+'">'+rfFmtVal(v)+'</td>' : '<td class="rf-cell-empty">—</td>';
   });
-  html+= grandTotal ? '<td class="rf-total-col rf-cell-btn'+cellClass(grandTotal)+'" onclick="'+clickFn(null,null)+'">'+rfFmtVal(grandTotal)+'</td></tr></tfoot></table>' : '<td class="rf-total-col">—</td></tr></tfoot></table>';
+  const gtBase=matrix.pipelineGrandTotal||0;
+  html+= grandTotal ? '<td class="rf-total-col rf-cell-btn'+cellClass(grandTotal,gtBase)+'" onclick="'+clickFn(null,null)+'">'+rfFmtVal(grandTotal)+'</td></tr></tfoot></table>' : '<td class="rf-total-col">—</td></tr></tfoot></table>';
   return html;
 }
 function rfComputeNetMatrix(pipelineMat, blockEntries){
@@ -3356,7 +3378,14 @@ function rfComputeNetMatrix(pipelineMat, blockEntries){
     });
     rowTotals[rowVal]=rowTotal; grandTotal+=rowTotal;
   });
-  return Object.assign({},pipelineMat,{rows,cells,colTotals,rowTotals,grandTotal,isNet:true,totalLabel:'Net Total'});
+  return Object.assign({},pipelineMat,{
+    rows,cells,colTotals,rowTotals,grandTotal,
+    isNet:true,totalLabel:'Net Total',
+    pipelineCells:pipelineMat.cells,
+    pipelineRowTotals:pipelineMat.rowTotals,
+    pipelineColTotals:pipelineMat.colTotals,
+    pipelineGrandTotal:pipelineMat.grandTotal||0
+  });
 }
 function rfGetBlockMatrices(){
   return rfGetBlockEntries();
@@ -3524,19 +3553,19 @@ function rfExcelMatrixTable(title, matrix, headerBg, rowTint, showNeg){
     h+='<tr>'+rfExcelCell(rowVal,{label:true,bg:bg});
     visibleMonths.forEach(function(m){
       const v=cells[rowVal+'|'+m]||0;
-      let color='';
-      if(showNeg&&v<0) color='#b91c1c'; else if(showNeg&&v>0) color='#15803d';
+      const key=rowVal+'|'+m;
+      const color=showNeg?rfNetExportColor(matrix,v,matrix.pipelineCells?matrix.pipelineCells[key]:0):'';
       h+=rfExcelCell(v,{bg:bg,color:color});
     });
     const rt=rowTotals[rowVal]||0;
-    h+=rfExcelCell(rt,{bg:bg,color:showNeg&&rt<0?'#b91c1c':(showNeg&&rt>0?'#15803d':'')})+'</tr>';
+    h+=rfExcelCell(rt,{bg:bg,color:showNeg?rfNetExportColor(matrix,rt,matrix.pipelineRowTotals?matrix.pipelineRowTotals[rowVal]:0):''})+'</tr>';
   });
   h+='<tr class="total"><td class="label" style="background:'+headerBg+';color:#fff;">'+totalLabel+'</td>';
   visibleMonths.forEach(function(m){
     const v=colTotals[m]||0;
-    h+=rfExcelCell(v,{bg:'#f3e8ff',color:showNeg&&v<0?'#b91c1c':(showNeg&&v>0?'#15803d':'')});
+    h+=rfExcelCell(v,{bg:'#f3e8ff',color:showNeg?rfNetExportColor(matrix,v,matrix.pipelineColTotals?matrix.pipelineColTotals[m]:0):''});
   });
-  h+=rfExcelCell(grandTotal,{bg:'#ede9fe',color:showNeg&&grandTotal<0?'#b91c1c':'#5b21b6'})+'</tr></table><div class="spacer"></div>';
+  h+=rfExcelCell(grandTotal,{bg:'#ede9fe',color:showNeg?rfNetExportColor(matrix,grandTotal,matrix.pipelineGrandTotal||0):'#5b21b6'})+'</tr></table><div class="spacer"></div>';
   return h;
 }
 function rfExportExcel(){
@@ -3603,10 +3632,15 @@ function rfBuildPdfReportHtml(chartImages){
     matrix.rows.forEach(function(rv,i){
       t+='<tr style="background:'+(i%2?'#fff':'#faf5ff')+';"><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #eee;">'+rv+'</td>';
       matrix.visibleMonths.forEach(function(m){
-        const v=matrix.cells[rv+'|'+m]||0;
-        t+='<td style="padding:8px;text-align:right;border-bottom:1px solid #eee;'+(matrix.isNet&&v<0?'color:#dc2626;font-weight:700;':'')+'">'+(v?rfFmtExport(v):'—')+'</td>';
+        const key=rv+'|'+m;
+        const v=matrix.cells[key]||0;
+        const tone=matrix.isNet?rfNetExportColor(matrix,v,matrix.pipelineCells?matrix.pipelineCells[key]:0):'';
+        const style=tone?'color:'+tone+';font-weight:700;':'';
+        t+='<td style="padding:8px;text-align:right;border-bottom:1px solid #eee;'+style+'">'+(v?rfFmtExport(v):'—')+'</td>';
       });
-      t+='<td style="padding:8px 12px;font-weight:700;text-align:right;border-bottom:1px solid #eee;">'+rfFmtExport(matrix.rowTotals[rv]||0)+'</td></tr>';
+      const rt=matrix.rowTotals[rv]||0;
+      const rtTone=matrix.isNet?rfNetExportColor(matrix,rt,matrix.pipelineRowTotals?matrix.pipelineRowTotals[rv]:0):'';
+      t+='<td style="padding:8px 12px;font-weight:700;text-align:right;border-bottom:1px solid #eee;'+(rtTone?'color:'+rtTone+';':'')+'">'+rfFmtExport(rt)+'</td></tr>';
     });
     t+='<tr style="background:'+color+'22;font-weight:800;"><td style="padding:10px 12px;">'+matrix.totalLabel+'</td>';
     matrix.visibleMonths.forEach(function(m){ t+='<td style="padding:10px 8px;text-align:right;">'+rfFmtExport(matrix.colTotals[m]||0)+'</td>'; });
