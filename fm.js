@@ -34,9 +34,10 @@ function fmResolveSiteUrl() {
       return String(_spPageContextInfo.webAbsoluteUrl).replace(/\/$/, '');
     }
   } catch (e) {}
-  if (typeof window !== 'undefined' && window.location && window.location.pathname) {
-    var m = window.location.pathname.match(/^(\/sites\/[^/]+)/i);
-    if (m) return m[1];
+  if (typeof window !== 'undefined' && window.location) {
+    var loc = window.location;
+    var m = loc.pathname.match(/^(\/sites\/[^/]+)/i);
+    if (m) return loc.origin + m[1];
   }
   return FM_CONFIG.SITE_URL || '/sites/FM';
 }
@@ -580,6 +581,9 @@ function spCleanActivityItemForRest(body) {
 }
 
 function getCurrentUser() {
+  var fromCtx = fmUserFromPageContext();
+  if (fromCtx) return Promise.resolve(fromCtx);
+
   return fetch(FM_CONFIG.SITE_URL + '/_api/web/currentuser', {
     headers: { Accept: 'application/json;odata=verbose' },
     credentials: 'same-origin',
@@ -596,6 +600,27 @@ function getCurrentUser() {
       initials: initialsOf(d.d.Title || ''),
     };
   });
+}
+
+/** SharePoint page context — avoids cross-port REST when embedded on FM site. */
+function fmUserFromPageContext() {
+  try {
+    if (typeof _spPageContextInfo === 'undefined') return null;
+    var ctx = _spPageContextInfo;
+    var email = normEmail(ctx.userEmail || '');
+    var login = (ctx.userLoginName || '').trim();
+    if (!email && login.indexOf('@') !== -1) email = normEmail(login);
+    var name = (ctx.userDisplayName || ctx.userLoginName || nameFromEmail(email) || '').trim();
+    if (!email && !name) return null;
+    return {
+      id: ctx.userId != null ? ctx.userId : null,
+      name: name,
+      email: email || login,
+      initials: initialsOf(name),
+    };
+  } catch (e) {
+    return null;
+  }
 }
 
 /* ════════════════════════════════════════════════════════
@@ -3525,9 +3550,15 @@ function populateLanding() {
     if (noteT) noteT.innerHTML = 'Access granted as <b>' + escapeHtml(u.role) + '</b>. Click to launch the portal.';
   } else if (u.accessError === 'network') {
     if (btn) { btn.disabled = true; }
-    if (btnTx) btnTx.textContent = 'Verifying access…';
+    if (btnTx) btnTx.textContent = 'No Access';
     if (note) note.classList.add('deny');
-    if (noteT) noteT.innerHTML = 'Cannot reach SharePoint. Confirm this page loads <b>fm.js</b> from <b>/sites/FM/SiteAssets/</b> (not fmtracker.js from FGKA).';
+    var wrongPortal = (document.title || '').indexOf('Fixed Rollout') !== -1 ||
+      (document.body && document.body.textContent.indexOf('Fixed Rollout Portal') !== -1);
+    if (noteT) {
+      noteT.innerHTML = wrongPortal
+        ? 'This page is still the <b>Fixed Rollout (FNE)</b> template — not FreeMove. Replace the page HTML with <b>freemove.html</b> and load <b>/sites/FM/SiteAssets/fm.js</b> only (remove fnetracker.js / FGKA).'
+        : 'Cannot reach SharePoint on this site. Confirm <b>fm.js</b> is uploaded to <b>/sites/FM/SiteAssets/</b> and you are on <b>/sites/FM/</b>.';
+    }
   } else {
     if (btn) { btn.disabled = true; }
     if (btnTx) btnTx.textContent = 'No Access';
