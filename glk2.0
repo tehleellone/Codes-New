@@ -435,18 +435,20 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 /* ═══════ LANDING ════════════════════════════════════════════════════════ */
 .landing-page{
   width:100%;max-width:100%;
-  height:auto;min-height:0;
+  min-height:520px;height:auto;
   display:none;flex-direction:row;align-items:stretch;
-  background:var(--bg-body);border-radius:12px;
+  background:var(--bg-body);
   position:relative;z-index:1;
-  overflow:hidden;
 }
 .landing-page.is-visible{display:flex!important;}
 .landing-left,.landing-right{
-  flex:1;display:flex;align-items:flex-start;justify-content:center;
-  padding:1.25rem 1.5rem;min-width:0;
+  flex:1;display:flex;align-items:center;justify-content:center;
+  padding:2rem 1.75rem;min-width:0;
 }
-.landing-right{align-items:flex-start;padding-top:1.25rem;}
+.landing-stat-card .stat-label{font-size:.65rem;text-transform:uppercase;color:var(--t3);margin-bottom:.12rem;font-weight:600;letter-spacing:.04em}
+.landing-brand-logo{margin-bottom:.85rem}
+.landing-brand-title{font-size:1.85rem;font-weight:900;color:var(--t1);line-height:1.15}
+.landing-brand-title span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .landing-container{width:100%;max-width:420px}
 .landing-card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:1.4rem;box-shadow:var(--cs);margin-bottom:1rem}
 .landing-header{text-align:center;margin-bottom:1.4rem}
@@ -491,9 +493,7 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 .landing-note svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;margin-top:1px}
 .landing-footer{text-align:center;font-size:.72rem;color:var(--t3);margin-top:.4rem}
 .landing-branding{max-width:420px}
-.landing-brand-title{font-size:1.9rem;font-weight:900;color:var(--t1)}
-.landing-brand-title span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.landing-brand-subtitle{font-size:.86rem;color:var(--t3);margin-top:.4rem}
+.landing-brand-subtitle{font-size:.86rem;color:var(--t3);margin-top:.4rem;line-height:1.55}
 .landing-features{margin-top:1.3rem;display:flex;flex-direction:column;gap:.7rem}
 .landing-feature{display:flex;align-items:flex-start;gap:.65rem}
 .landing-feature-icon{
@@ -760,28 +760,33 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 <div id="landingPage" class="landing-page">
   <div class="landing-left animate-fade-in">
     <div class="landing-branding">
-      <h1 class="landing-brand-title">Revenue<br><span>Pipeline &amp; Forecast</span></h1>
-      <p class="landing-brand-subtitle">Live pipeline tracking, budget scenarios, and revenue forecasting — powered by SharePoint.</p>
+      <div class="landing-brand-logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+        </div>
+      </div>
+      <h1 class="landing-brand-title">Revenue<br><span>Pipeline</span><br>Dashboard</h1>
+      <p class="landing-brand-subtitle">Real-time bid tracking, revenue analytics, and team performance insights across your entire sales hierarchy.</p>
       <div class="landing-features">
         <div class="landing-feature">
-          <div class="landing-feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+          <div class="landing-feature-icon"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div>
           <div>
-            <div class="landing-feature-title">Pipeline Dashboard</div>
-            <div class="landing-feature-desc">Head Director → AD → AM hierarchy with live bid performance</div>
+            <div class="landing-feature-title">Real-time Analytics</div>
+            <div class="landing-feature-desc">Track bid trends and pipeline performance live from SharePoint</div>
+          </div>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div>
+            <div class="landing-feature-title">Team Hierarchy View</div>
+            <div class="landing-feature-desc">Head Director → Account Director → Account Manager performance</div>
           </div>
         </div>
         <div class="landing-feature">
           <div class="landing-feature-icon"><svg viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 6.5H9.75a3.25 3.25 0 0 0 0 6.5h4.5a3.25 3.25 0 0 1 0 6.5H6"/></svg></div>
           <div>
             <div class="landing-feature-title">Revenue Forecast</div>
-            <div class="landing-feature-desc">Budget scenarios, net forecast tables, and export to Excel / PDF</div>
-          </div>
-        </div>
-        <div class="landing-feature">
-          <div class="landing-feature-icon"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div>
-          <div>
-            <div class="landing-feature-title">Forecast Analytics</div>
-            <div class="landing-feature-desc">12-month forecast charts, budget bridge, and run-rate build-up</div>
+            <div class="landing-feature-desc">Budget scenarios, net forecast tables, charts, and Excel / PDF export</div>
           </div>
         </div>
       </div>
@@ -793,11 +798,11 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
       <div class="landing-header animate-slide-up">
         <div class="landing-logo">
           <div class="logo-icon">
-            <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           </div>
         </div>
-        <h1 class="landing-title">Welcome</h1>
-        <p class="landing-subtitle">Sign in with your SharePoint account to continue</p>
+        <h1 class="landing-title">Welcome Back</h1>
+        <p class="landing-subtitle">Sign in to access your pipeline dashboard</p>
       </div>
 
       <div class="landing-card animate-slide-up" style="animation-delay:.2s;">
@@ -809,8 +814,8 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
           </div>
           <div class="landing-details">
             <h3 id="lName">Loading...</h3>
-            <p id="lEmail">Connecting to SharePoint...</p>
-            <p id="lRole" class="landing-role">—</p>
+            <p id="lEmail">Verifying access...</p>
+            <p id="lRole" class="landing-role" style="display:none;">—</p>
           </div>
         </div>
 
@@ -838,19 +843,20 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
             </div>
           </div>
           <div class="stats-secondary">
-            <div class="stat-mini"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Live SharePoint Data</span></div>
+            <div class="stat-mini"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Secure Session</span></div>
+            <div class="stat-mini"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Live SharePoint</span></div>
           </div>
         </div>
 
         <div class="landing-actions">
           <button type="button" id="launchBtn" class="landing-btn btn-primary-enhanced" disabled>
-            <span class="btn-icon"><svg viewBox="0 0 24 24"><polyline points="5 12 19 12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-            <span class="btn-text">Connecting...</span>
+            <span class="btn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+            <span class="btn-text">Verifying Access...</span>
             <span class="btn-shine"></span>
           </button>
           <p class="landing-note" id="accessNote">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>Please wait while we load your profile...</span>
+            <span>Please wait while we verify your permissions...</span>
           </p>
         </div>
       </div>
@@ -1395,14 +1401,13 @@ function populateLanding(){
   el('lAvatar').textContent=getInitials(USER.name);
   set('lName',USER.name);
   set('lEmail',USER.email||'SharePoint user');
-  set('lRole','Ready');
   set('lVisits',getVisitCount());
   set('lLastVisit',getLastVisit());
   const btn=el('launchBtn');
   btn.disabled=false;
-  btn.innerHTML='<span class="btn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><span class="btn-text">Go to Dashboard</span><span class="btn-shine"></span>';
+  btn.innerHTML='<span class="btn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><span class="btn-text">Launch Dashboard</span><span class="btn-shine"></span>';
   btn.onclick=launchDashboard;
-  el('accessNote').innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#16a34a;fill:none;stroke-width:2"><polyline points="20 6 9 17 4 12"/></svg><span style="color:#16a34a;font-weight:600;">Ready — click above to open the dashboard</span>';
+  el('accessNote').innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#16a34a;fill:none;stroke-width:2"><polyline points="20 6 9 17 4 12"/></svg><span style="color:#16a34a;font-weight:600;">Access granted — click above to proceed</span>';
 }
 function launchDashboard(){
   incVisit();
