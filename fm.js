@@ -27,6 +27,24 @@ const FM_CONFIG = {
   SP_REST_LEAD_STRINGIFY_NUMBERS: false,
 };
 
+/** Resolve SharePoint web URL from the hosting page (same origin as FMNEW.aspx). */
+function fmResolveSiteUrl() {
+  try {
+    if (typeof _spPageContextInfo !== 'undefined' && _spPageContextInfo.webAbsoluteUrl) {
+      return String(_spPageContextInfo.webAbsoluteUrl).replace(/\/$/, '');
+    }
+  } catch (e) {}
+  if (typeof window !== 'undefined' && window.location && window.location.pathname) {
+    var m = window.location.pathname.match(/^(\/sites\/[^/]+)/i);
+    if (m) return m[1];
+  }
+  return FM_CONFIG.SITE_URL || '/sites/FM';
+}
+
+function fmInitSiteUrl() {
+  FM_CONFIG.SITE_URL = fmResolveSiteUrl();
+}
+
 /* ── ROLE CONSTANTS ─────────────────────────────────── */
 var FM_ROLES = {
   ADMIN:    'Admin',
@@ -97,6 +115,7 @@ var USER_CONTEXT = {
   userEmail: '',
   role:      FM_ROLES.NONE,
   hasAccess: false,
+  accessError: null,
   isAdmin:   false,
   isDirector:false,
   isAM:      false,
@@ -391,7 +410,7 @@ function spGet(list, filter, select, expand) {
   if (filter) url += '&$filter=' + encodeURIComponent(filter);
   if (select) url += '&$select=' + encodeURIComponent(select);
   if (expand) url += '&$expand=' + encodeURIComponent(expand);
-  return fetch(url, { headers: { Accept: 'application/json;odata=verbose' } })
+  return fetch(url, { headers: { Accept: 'application/json;odata=verbose' }, credentials: 'same-origin' })
     .then(function(r) { if (!r.ok) throw new Error('SP GET failed: ' + r.status); return r.json(); })
     .then(function(d) { return d.d.results; });
 }
@@ -562,9 +581,13 @@ function spCleanActivityItemForRest(body) {
 
 function getCurrentUser() {
   return fetch(FM_CONFIG.SITE_URL + '/_api/web/currentuser', {
-    headers: { Accept: 'application/json;odata=verbose' }
+    headers: { Accept: 'application/json;odata=verbose' },
+    credentials: 'same-origin',
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    if (!r.ok) throw new Error('SP user lookup failed: ' + r.status);
+    return r.json();
+  })
   .then(function(d) {
     return {
       id: d.d.Id,
@@ -592,10 +615,12 @@ function loadUserAccess() {
     USER_CONTEXT.isAdmin    = (role === FM_ROLES.ADMIN);
     USER_CONTEXT.isDirector = (role === FM_ROLES.DIRECTOR);
     USER_CONTEXT.isAM       = (role === FM_ROLES.AM);
+    USER_CONTEXT.accessError = null;
     FM.currentUser = { name: mockName, email: mockEmail, initials: initialsOf(mockName) };
     return Promise.resolve(USER_CONTEXT);
   }
 
+  USER_CONTEXT.accessError = null;
   return getCurrentUser()
     .then(function(u){
       USER_CONTEXT.userEmail = normEmail(u.email);
@@ -616,8 +641,13 @@ function loadUserAccess() {
         var rawRole = (hit.Role || '').toString().trim();
         USER_CONTEXT.role = rawRole || FM_ROLES.NONE;
         if (hit.Title && !USER_CONTEXT.userName) USER_CONTEXT.userName = hit.Title;
+      } else if (FM_CONFIG.ACCESS_CONTACTS.some(function (e) {
+        return normEmail(e) === USER_CONTEXT.userEmail;
+      })) {
+        USER_CONTEXT.role = FM_ROLES.ADMIN;
       } else {
         USER_CONTEXT.role = FM_ROLES.NONE;
+        USER_CONTEXT.accessError = 'no_row';
       }
       USER_CONTEXT.hasAccess  = (USER_CONTEXT.role && USER_CONTEXT.role !== FM_ROLES.NONE);
       USER_CONTEXT.isAdmin    = (USER_CONTEXT.role === FM_ROLES.ADMIN);
@@ -629,6 +659,7 @@ function loadUserAccess() {
       console.error('Access check failed:', e);
       USER_CONTEXT.role = FM_ROLES.NONE;
       USER_CONTEXT.hasAccess = false;
+      USER_CONTEXT.accessError = 'network';
       return USER_CONTEXT;
     });
 }
@@ -3339,6 +3370,14 @@ function switchChartTab(group, tab, btnEl) {
     }
   });
   fmResizeAnalyticsChartsDeferred();
+  if (activeId && typeof Chart !== 'undefined' && Chart.getChart) {
+    requestAnimationFrame(function () {
+      var cv = document.getElementById(activeId);
+      if (!cv || cv.offsetWidth < 2) return;
+      var ch = Chart.getChart(cv);
+      if (ch) ch.resize();
+    });
+  }
 }
 
 function toggleFmChartsMaster() {
@@ -3422,9 +3461,9 @@ function populateLanding() {
   var em = document.getElementById('lp-uemail');
   var rt = document.getElementById('lp-role-txt');
   if (av) av.textContent = initialsOf(u.userName) || '?';
-  if (nm) nm.textContent = u.userName || 'Guest';
-  if (em) em.textContent = u.userEmail || '—';
-  if (rt) rt.textContent = u.hasAccess ? u.role : 'No Access';
+  if (nm) nm.textContent = u.accessError === 'network' ? 'Access Denied' : (u.userName || 'Guest');
+  if (em) em.textContent = u.accessError === 'network' ? 'Cannot reach SharePoint' : (u.userEmail || '—');
+  if (rt) rt.textContent = u.accessError === 'network' ? 'No Access' : (u.hasAccess ? u.role : 'No Access');
 
   var myCount = FM.allLeads.filter(function(l){
     return normEmail(l.DirectorEmail) === u.userEmail || normEmail(l.LocalAMEmail) === u.userEmail;
@@ -3448,6 +3487,11 @@ function populateLanding() {
     if (btnTx) btnTx.textContent = 'Go to Portal';
     if (note) { note.classList.remove('deny'); }
     if (noteT) noteT.innerHTML = 'Access granted as <b>' + escapeHtml(u.role) + '</b>. Click to launch the portal.';
+  } else if (u.accessError === 'network') {
+    if (btn) { btn.disabled = true; }
+    if (btnTx) btnTx.textContent = 'Verifying access…';
+    if (note) note.classList.add('deny');
+    if (noteT) noteT.innerHTML = 'Cannot reach SharePoint. Confirm this page loads <b>fm.js</b> from <b>/sites/FM/SiteAssets/</b> (not fmtracker.js from FGKA).';
   } else {
     if (btn) { btn.disabled = true; }
     if (btnTx) btnTx.textContent = 'No Access';
@@ -3482,6 +3526,7 @@ function enterPortal() {
    INIT
    ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function() {
+  fmInitSiteUrl();
   fmInitHeaderDate();
   fmHydrateThemeFromStorage();
 
