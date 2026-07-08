@@ -3511,6 +3511,124 @@ function rfOpenBlockDrilldown(blockId, rowVal, monthIdx, year){
 }
 
 // ── Export: Excel & PDF ──────────────────────────────────────────
+function rfEscHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function rfDownloadFile(content, filename, mime){
+  const blob=new Blob([content],{type:mime||'application/octet-stream'});
+  if(window.navigator&&window.navigator.msSaveOrOpenBlob){
+    window.navigator.msSaveOrOpenBlob(blob,filename);
+    return;
+  }
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); if(a.parentNode) a.parentNode.removeChild(a); }, 300);
+}
+function rfBuildCascadeYears(bids){
+  bids=bids||rfActiveBids();
+  const years=[...new Set(bids.map(rfGetYear).filter(Boolean))].sort().filter(rfCascadeYearVisible);
+  const out=[];
+  years.forEach(function(year){
+    const base=rfYearBase(bids,year);
+    if(!base.some(v=>v)) return;
+    const visibleMonths=[];
+    for(let m=0;m<12;m++) if(rfCascadeMonthVisible(year,m)) visibleMonths.push(m);
+    if(!visibleMonths.length) return;
+    const rows=[];
+    const newCells={};
+    visibleMonths.forEach(function(m){
+      if(rfCascadeOriginVisible(year,m)) newCells[m]=base[m];
+    });
+    rows.push({label:'New This Month',cells:newCells,isNew:true,origin:null});
+    for(let origin=0;origin<11;origin++){
+      if(!base[origin]||!rfCascadeOriginVisible(year,origin)) continue;
+      const cells={}; let has=false;
+      for(let target=origin+1;target<12;target++){
+        if(visibleMonths.includes(target)){ cells[target]=base[origin]; has=true; }
+      }
+      if(has) rows.push({label:MONTH_NAMES[origin]+' cohort',cells:cells,isNew:false,origin:origin});
+    }
+    const footerColTotals={};
+    visibleMonths.forEach(m=>footerColTotals[m]=0);
+    for(let origin=0;origin<11;origin++){
+      if(!base[origin]||!rfCascadeOriginVisible(year,origin)) continue;
+      for(let target=origin+1;target<12;target++){
+        if(visibleMonths.includes(target)) footerColTotals[target]+=base[origin];
+      }
+    }
+    out.push({
+      year:year,
+      visibleMonths:visibleMonths,
+      rows:rows,
+      footerColTotals:footerColTotals,
+      totalLabel:rfHidePast?'Remaining Total':'Grand Total'
+    });
+  });
+  return out;
+}
+function rfExcelCascadeTables(bids){
+  const blocks=rfBuildCascadeYears(bids);
+  if(!blocks.length) return '';
+  let h='<h2>Recurring Revenue Roll-Forward</h2>';
+  blocks.forEach(function(block){
+    h+='<h3 style="color:#4c6fff;">'+rfEscHtml(block.year)+'</h3>';
+    h+='<table class="xtable"><colgroup><col style="width:140px;">';
+    block.visibleMonths.forEach(function(){ h+='<col style="width:92px;">'; });
+    h+='</colgroup><tr><th style="background:#4c6fff;text-align:left;">Cohort</th>';
+    block.visibleMonths.forEach(function(m){ h+='<th style="background:#4c6fff;">'+MONTH_NAMES[m]+'</th>'; });
+    h+='</tr>';
+    block.rows.forEach(function(row,i){
+      const bg=i%2===0?'#eff6ff':'#ffffff';
+      h+='<tr>'+rfExcelCell(row.label,{label:true,bg:bg});
+      block.visibleMonths.forEach(function(m){
+        h+=rfExcelCell(row.cells[m]||0,{bg:bg});
+      });
+      h+='</tr>';
+    });
+    h+='<tr class="total"><td class="label" style="background:#4c6fff;color:#fff;">'+rfEscHtml(block.totalLabel)+'</td>';
+    block.visibleMonths.forEach(function(m){
+      h+=rfExcelCell(block.footerColTotals[m]||0,{bg:'#dbeafe'});
+    });
+    h+='</tr></table><div class="spacer"></div>';
+  });
+  return h;
+}
+function rfPdfAddCanvasPages(pdf, canvas, margin){
+  const pw=pdf.internal.pageSize.getWidth();
+  const ph=pdf.internal.pageSize.getHeight();
+  const imgW=pw-margin*2;
+  const imgH=(canvas.height*imgW)/canvas.width;
+  const pageH=ph-margin*2;
+  let yOff=0;
+  let first=true;
+  while(yOff<imgH){
+    if(!first) pdf.addPage();
+    first=false;
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',margin,margin-yOff,imgW,imgH);
+    yOff+=pageH;
+  }
+}
+function rfPdfAddChartImage(pdf, title, imgData, margin){
+  const pw=pdf.internal.pageSize.getWidth();
+  const ph=pdf.internal.pageSize.getHeight();
+  pdf.addPage();
+  let y=margin;
+  pdf.setFontSize(11);
+  pdf.setTextColor(60,60,60);
+  pdf.text(title,margin,y);
+  y+=7;
+  const props=pdf.getImageProperties(imgData);
+  const maxW=pw-margin*2;
+  const maxH=ph-margin*2-y;
+  let w=maxW;
+  let h=(props.height*w)/props.width;
+  if(h>maxH){ h=maxH; w=(props.width*h)/props.height; }
+  const x=margin+(maxW-w)/2;
+  pdf.addImage(imgData,'PNG',x,y,w,h);
+}
 function rfFmtExport(v){
   if(v===null||v===undefined||v==='—') return '—';
   const n=num(v);
@@ -3538,14 +3656,14 @@ function rfExcelCell(v, opts){
   let style='';
   if(opts.color) style='color:'+opts.color+';';
   if(opts.bg) style+='background:'+opts.bg+';';
-  return '<td class="'+cls.trim()+'" style="'+style+'">'+(opts.label?(v||''):rfFmtExport(v))+'</td>';
+  return '<td class="'+cls.trim()+'" style="'+style+'">'+(opts.label?rfEscHtml(v||''):rfFmtExport(v))+'</td>';
 }
 function rfExcelMatrixTable(title, matrix, headerBg, rowTint, showNeg){
   if(!matrix) return '';
   const {visibleMonths,rows,cells,colTotals,rowTotals,grandTotal,rowLabel,totalLabel}=matrix;
-  let h='<h3 style="color:'+headerBg+';">'+title+'</h3><table class="xtable"><colgroup><col style="width:180px;">';
+  let h='<h3 style="color:'+headerBg+';">'+rfEscHtml(title)+'</h3><table class="xtable"><colgroup><col style="width:180px;">';
   visibleMonths.forEach(function(){ h+='<col style="width:92px;">'; });
-  h+='<col style="width:110px;"></colgroup><tr><th style="background:'+headerBg+';text-align:left;">'+rowLabel+'</th>';
+  h+='<col style="width:110px;"></colgroup><tr><th style="background:'+headerBg+';text-align:left;">'+rfEscHtml(rowLabel)+'</th>';
   visibleMonths.forEach(function(m){ h+='<th style="background:'+headerBg+';">'+MONTH_NAMES[m]+'</th>'; });
   h+='<th style="background:'+headerBg+';">'+totalLabel+'</th></tr>';
   rows.forEach(function(rowVal, i){
@@ -3569,36 +3687,43 @@ function rfExcelMatrixTable(title, matrix, headerBg, rowTint, showNeg){
   return h;
 }
 function rfExportExcel(){
-  rfSyncAllBlockFiltersFromDom();
-  const pipelineMat=rfBuildMatrix(rfActiveBids());
-  const blockEntries=rfGetBlockMatrices();
-  const netMat=rfComputeNetMatrix(pipelineMat, blockEntries);
-  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
-  const rowLabel=RF_ROW_DIMS.find(r=>r.key===rfRowDim).label;
-  const conf=rfConfidenceFor(rfActiveBids());
-  const dateStr=new Date().toISOString().split('T')[0];
-  let html='<?xml version="1.0"?><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">';
-  html+=rfExcelStyles()+'</head><body>';
-  html+='<h1>'+APP_NAME+' — Budget Scenario Export</h1>';
-  html+='<div class="meta"><strong>Date:</strong> '+dateStr+' &nbsp;|&nbsp; <strong>Prepared by:</strong> '+(USER.name||'')+' &nbsp;|&nbsp; <strong>Metric:</strong> '+metricLabel+' &nbsp;|&nbsp; <strong>Group By:</strong> '+rowLabel+'</div>';
-  html+='<h2>Executive Summary</h2><table class="xtable kpi"><tr><th style="background:#7c3aed;text-align:left;">KPI</th><th style="background:#7c3aed;">Value ('+metricLabel+')</th></tr>';
-  html+='<tr><td>Total Active Pipeline</td><td>'+rfFmtExport(conf.bestCaseVal)+'</td></tr>';
-  html+='<tr><td>Committed (Won / Billed)</td><td style="color:#15803d;">'+rfFmtExport(conf.committedVal)+'</td></tr>';
-  html+='<tr><td>Probability-Weighted Forecast</td><td>'+rfFmtExport(conf.weightedVal)+'</td></tr>';
-  if(netMat) html+='<tr><td style="background:#dbeafe;font-weight:800;">Net Budget Forecast</td><td style="color:#1d4ed8;font-weight:800;">'+rfFmtExport(netMat.grandTotal)+'</td></tr>';
-  html+='</table><div class="spacer"></div>';
-  html+=rfExcelMatrixTable('Table 1 — Pipeline Pivot', pipelineMat, '#15803d', '#ecfdf5', false);
-  blockEntries.forEach(function(e){
-    const opTag=e.block.op==='add'?'+ ADD':(e.block.op==='subtract'?'− SUBTRACT':'VIEW ONLY');
-    html+=rfExcelMatrixTable('Scenario: '+e.block.name+' ('+opTag+')', e.matrix, e.block.color, e.block.color+'14', false);
-  });
-  if(netMat) html+=rfExcelMatrixTable('Net Forecast — '+rfNetFormulaText(blockEntries), netMat, '#1d4ed8', '#eff6ff', true);
-  html+='<p style="font-size:10px;color:#888;margin-top:24px;">Generated by '+APP_NAME+' · Revenue Forecast module</p></body></html>';
-  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='Revenue_Forecast_'+dateStr+'.xls'; a.click();
+  try{
+    rfSyncAllBlockFiltersFromDom();
+    const bids=rfActiveBids();
+    const pipelineMat=rfBuildMatrix(bids);
+    const blockEntries=rfGetBlockMatrices();
+    const netMat=rfComputeNetMatrix(pipelineMat, blockEntries);
+    const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+    const rowLabel=RF_ROW_DIMS.find(r=>r.key===rfRowDim).label;
+    const conf=rfConfidenceFor(bids);
+    const dateStr=new Date().toISOString().split('T')[0];
+    let html='\uFEFF<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head>';
+    html+='<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">';
+    html+='<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Forecast</x:Name></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+    html+=rfExcelStyles()+'</head><body>';
+    html+='<h1>'+rfEscHtml(APP_NAME)+' - Budget Scenario Export</h1>';
+    html+='<div class="meta"><strong>Date:</strong> '+dateStr+' | <strong>Prepared by:</strong> '+rfEscHtml(USER.name||'')+' | <strong>Metric:</strong> '+rfEscHtml(metricLabel)+' | <strong>Group By:</strong> '+rfEscHtml(rowLabel)+'</div>';
+    html+='<h2>Executive Summary</h2><table class="xtable kpi"><tr><th style="background:#7c3aed;text-align:left;">KPI</th><th style="background:#7c3aed;">Value ('+rfEscHtml(metricLabel)+')</th></tr>';
+    html+='<tr><td>Total Active Pipeline</td><td>'+rfFmtExport(conf.bestCaseVal)+'</td></tr>';
+    html+='<tr><td>Committed (Won / Billed)</td><td style="color:#15803d;">'+rfFmtExport(conf.committedVal)+'</td></tr>';
+    html+='<tr><td>Probability-Weighted Forecast</td><td>'+rfFmtExport(conf.weightedVal)+'</td></tr>';
+    if(netMat) html+='<tr><td style="background:#dbeafe;font-weight:800;">Net Budget Forecast</td><td style="color:#1d4ed8;font-weight:800;">'+rfFmtExport(netMat.grandTotal)+'</td></tr>';
+    html+='</table><div class="spacer"></div>';
+    html+=rfExcelMatrixTable('Table 1 - Pipeline Pivot', pipelineMat, '#15803d', '#ecfdf5', false);
+    blockEntries.forEach(function(e){
+      const op=rfBlockOp(e.op||e.block.op);
+      const opTag=op==='add'?'+ ADD':(op==='subtract'?'- SUBTRACT':'VIEW ONLY');
+      html+=rfExcelMatrixTable('Scenario: '+e.block.name+' ('+opTag+')', e.matrix, e.block.color, e.block.color+'14', false);
+    });
+    if(netMat) html+=rfExcelMatrixTable('Net Forecast - '+rfNetFormulaText(blockEntries), netMat, '#1d4ed8', '#eff6ff', true);
+    html+=rfExcelCascadeTables(bids);
+    html+='<p style="font-size:10px;color:#888;margin-top:24px;">Generated by '+rfEscHtml(APP_NAME)+'</p></body></html>';
+    rfDownloadFile(html,'Revenue_Forecast_'+dateStr+'.xls','application/vnd.ms-excel;charset=utf-8');
+  }catch(err){
+    alert('Excel export failed: '+(err.message||err));
+  }
 }
-function rfBuildPdfReportHtml(chartImages){
+function rfBuildPdfReportHtml(){
   rfSyncAllBlockFiltersFromDom();
   const pipelineMat=rfBuildMatrix(rfActiveBids());
   const blockEntries=rfGetBlockMatrices();
@@ -3616,12 +3741,6 @@ function rfBuildPdfReportHtml(chartImages){
   });
   h+='</div>';
   if(netMat) h+='<div style="font-size:13px;background:#eff6ff;padding:12px 16px;border-radius:10px;border-left:4px solid #2563eb;margin-bottom:24px;"><strong>Budget Formula:</strong> '+rfNetFormulaText(blockEntries)+'</div>';
-  if(chartImages&&chartImages.length){
-    h+='<h2 style="color:#7c3aed;font-size:16px;margin:28px 0 12px;">Forecast Visuals</h2>';
-    chartImages.forEach(function(c){
-      h+='<div style="margin-bottom:22px;page-break-inside:avoid;"><div style="font-size:12px;font-weight:800;color:#444;margin-bottom:8px;">'+c.title+'</div><img src="'+c.img+'" style="width:100%;max-width:980px;border:1px solid #e5e7eb;border-radius:10px;"></div>';
-    });
-  }
   function pdfTable(title, matrix, color){
     if(!matrix) return '';
     let t='<h2 style="color:'+color+';font-size:15px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid '+color+'33;">'+title+'</h2>';
@@ -3650,6 +3769,26 @@ function rfBuildPdfReportHtml(chartImages){
   h+=pdfTable('Pipeline Pivot', pipelineMat, '#15803d');
   blockEntries.forEach(function(e){ h+=pdfTable(e.block.name+' ('+e.block.op+')', e.matrix, e.block.color); });
   if(netMat) h+=pdfTable('Net Forecast', netMat, '#2563eb');
+  rfBuildCascadeYears(rfActiveBids()).forEach(function(block){
+    h+='<h2 style="color:#2563eb;font-size:15px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid #2563eb33;">Recurring Revenue Roll-Forward — '+block.year+'</h2>';
+    h+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;">';
+    h+='<tr style="background:#2563eb;color:#fff;"><th style="padding:10px 12px;text-align:left;">Cohort</th>';
+    block.visibleMonths.forEach(function(m){ h+='<th style="padding:10px 8px;text-align:right;">'+MONTH_NAMES[m]+'</th>'; });
+    h+='</tr>';
+    block.rows.forEach(function(row,i){
+      h+='<tr style="background:'+(i%2?'#fff':'#eff6ff')+';"><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #eee;">'+row.label+'</td>';
+      block.visibleMonths.forEach(function(m){
+        const v=row.cells[m]||0;
+        h+='<td style="padding:8px;text-align:right;border-bottom:1px solid #eee;">'+(v?rfFmtExport(v):'—')+'</td>';
+      });
+      h+='</tr>';
+    });
+    h+='<tr style="background:#dbeafe;font-weight:800;"><td style="padding:10px 12px;">'+block.totalLabel+'</td>';
+    block.visibleMonths.forEach(function(m){
+      h+='<td style="padding:10px 8px;text-align:right;">'+rfFmtExport(block.footerColTotals[m]||0)+'</td>';
+    });
+    h+='</tr></table>';
+  });
   h+='<p style="font-size:10px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:12px;">'+APP_NAME+' · Confidential budget analysis</p></div>';
   return h;
 }
@@ -3679,29 +3818,16 @@ async function rfExportPDF(){
   const chartImages=await rfCaptureChartImages();
   if(!wasVisible){ rfChartsVisible=false; el('rfChartsSection').style.display='none'; el('rfChartsToggleText').textContent='Show Forecast Charts'; }
   const wrap=document.createElement('div');
-  wrap.style.cssText='position:fixed;left:-9999px;top:0;width:1100px;';
-  wrap.innerHTML=rfBuildPdfReportHtml(chartImages);
+  wrap.style.cssText='position:fixed;left:-9999px;top:0;width:900px;';
+  wrap.innerHTML=rfBuildPdfReportHtml();
   document.body.appendChild(wrap);
   const root=wrap.querySelector('#rfPdfRoot');
+  const margin=12;
   try{
-    const canvas=await html2canvas(root,{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:1100});
-    const img=canvas.toDataURL('image/png');
+    const canvas=await html2canvas(root,{scale:1.35,useCORS:true,backgroundColor:'#ffffff',windowWidth:900});
     const pdf=new JSPDF('p','mm','a4');
-    const pw=pdf.internal.pageSize.getWidth();
-    const ph=pdf.internal.pageSize.getHeight();
-    const margin=10;
-    const imgW=pw-margin*2;
-    const imgH=(canvas.height*imgW)/canvas.width;
-    let heightLeft=imgH;
-    let yPos=0;
-    pdf.addImage(img,'PNG',margin,margin-yPos,imgW,imgH);
-    heightLeft-=ph-margin*2;
-    while(heightLeft>0){
-      yPos+=ph-margin*2;
-      pdf.addPage();
-      pdf.addImage(img,'PNG',margin,margin-yPos,imgW,imgH);
-      heightLeft-=ph-margin*2;
-    }
+    rfPdfAddCanvasPages(pdf,canvas,margin);
+    chartImages.forEach(function(c){ rfPdfAddChartImage(pdf,c.title,c.img,margin); });
     pdf.save('Revenue_Forecast_'+new Date().toISOString().split('T')[0]+'.pdf');
   }catch(err){
     alert('PDF export failed: '+(err.message||err));
@@ -3750,53 +3876,35 @@ function rfRenderPivot(pipelineMat){
 function rfRenderCascade(bids){
   const container=el('rfCascadeTables'); if(!container) return;
   bids=bids||rfActiveBids();
-  if(!bids.length){ container.innerHTML='<div style="padding:1rem;color:var(--t3);">No data matches the current filters.</div>'; return; }
-  const years=[...new Set(bids.map(rfGetYear).filter(Boolean))].sort().filter(rfCascadeYearVisible);
-  if(!years.length){ container.innerHTML='<div style="padding:1rem;color:var(--t3);">No upcoming years to show — try turning off "Hide past months".</div>'; return; }
-  const totalLabel = rfHidePast ? 'Remaining Total' : 'Grand Total';
+  const blocks=rfBuildCascadeYears(bids);
+  if(!blocks.length){
+    container.innerHTML=bids.length
+      ? '<div style="padding:1rem;color:var(--t3);">No upcoming years to show — try turning off "Hide past months".</div>'
+      : '<div style="padding:1rem;color:var(--t3);">No data matches the current filters.</div>';
+    return;
+  }
   let html='';
-  years.forEach(function(year){
-    const base=rfYearBase(bids,year);
-    if(!base.some(v=>v)) return;
-    const visibleMonths=[]; for(let m=0;m<12;m++) if(rfCascadeMonthVisible(year,m)) visibleMonths.push(m);
-    if(!visibleMonths.length) return;
-
-    html+='<div class="rf-cascade-block"><div class="rf-cascade-block-title">'+year+'</div>';
+  blocks.forEach(function(block){
+    html+='<div class="rf-cascade-block"><div class="rf-cascade-block-title">'+block.year+'</div>';
     html+='<div class="rf-panel"><div class="rf-table-scroll"><table class="rf-table"><thead><tr><th>Cohort</th>';
-    visibleMonths.forEach(m=>html+='<th>'+MONTH_NAMES[m]+'</th>');
-    html+='<th class="rf-total-col">Total</th></tr></thead><tbody>';
-
-    html+='<tr><td>New This Month</td>';
-    let baseVisTotal=0;
-    visibleMonths.forEach(function(m){
-      if(!rfCascadeOriginVisible(year,m)) return;
-      baseVisTotal+=base[m];
-      html+= base[m] ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+m+',\''+year+'\')">'+rfFmtVal(base[m])+'</td>' : '<td class="rf-cell-empty">—</td>';
-    });
-    html+='<td class="rf-total-col">'+rfFmtVal(baseVisTotal)+'</td></tr>';
-
-    const colTotals={}; visibleMonths.forEach(m=>colTotals[m]=0);
-    let grand=0;
-    for(let origin=0; origin<11; origin++){
-      if(!base[origin]) continue;
-      if(!rfCascadeOriginVisible(year,origin)) continue;
-      const rowCells={};
-      for(let target=origin+1; target<12; target++) rowCells[target]=base[origin];
-      let rowTotal=0, hasVisibleCell=false;
-      visibleMonths.forEach(function(m){ if(rowCells[m]!=null){ hasVisibleCell=true; colTotals[m]+=rowCells[m]; rowTotal+=rowCells[m]; } });
-      if(!hasVisibleCell) continue;
-      grand+=rowTotal;
-      html+='<tr><td>'+MONTH_NAMES[origin]+' cohort</td>';
-      visibleMonths.forEach(function(m){
-        html+= rowCells[m]!=null ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+origin+',\''+year+'\')">'+rfFmtVal(rowCells[m])+'</td>' : '<td class="rf-cell-empty">—</td>';
+    block.visibleMonths.forEach(m=>html+='<th>'+MONTH_NAMES[m]+'</th>');
+    html+='</tr></thead><tbody>';
+    block.rows.forEach(function(row){
+      html+='<tr><td>'+row.label+'</td>';
+      block.visibleMonths.forEach(function(m){
+        const v=row.cells[m];
+        const drillM=row.isNew?m:row.origin;
+        html+= v ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+drillM+',\''+block.year+'\')">'+rfFmtVal(v)+'</td>' : '<td class="rf-cell-empty">—</td>';
       });
-      html+='<td class="rf-total-col rf-cell-btn" onclick="rfOpenDrilldown(null,'+origin+',\''+year+'\')">'+rfFmtVal(rowTotal)+'</td></tr>';
-    }
-    html+='</tbody><tfoot><tr><td>'+totalLabel+'</td>';
-    visibleMonths.forEach(function(m){ html+='<td>'+(colTotals[m]?rfFmtVal(colTotals[m]):'—')+'</td>'; });
-    html+='<td class="rf-total-col">'+rfFmtVal(grand)+'</td></tr></tfoot></table></div></div></div>';
+      html+='</tr>';
+    });
+    html+='</tbody><tfoot><tr><td>'+block.totalLabel+'</td>';
+    block.visibleMonths.forEach(function(m){
+      html+='<td>'+(block.footerColTotals[m]?rfFmtVal(block.footerColTotals[m]):'—')+'</td>';
+    });
+    html+='</tr></tfoot></table></div></div></div>';
   });
-  container.innerHTML=html || '<div style="padding:1rem;color:var(--t3);">No recurring revenue to roll forward.</div>';
+  container.innerHTML=html;
 }
 
 // ── excluded items banner ─────────────────────────────────────────
