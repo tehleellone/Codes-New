@@ -1964,6 +1964,7 @@ buildFmToggle('fm-trend-period-toggle', FM.fmTrendPeriod, 'trend', [
 }
 
 function renderFmTrendChart() {
+  if (!fmChartsMasterOpen()) return;
   var leads = FM.filteredLeads || [];
   var c = fmChartColors();
   var p = FM.fmTrendPeriod;
@@ -1972,12 +1973,7 @@ function renderFmTrendChart() {
   var logged = buckets.map(function(b){
     return leads.filter(function(l){ return fmLeadInBucket(l, b.key, p); }).length;
   });
-  var trendEl = document.getElementById('fm-ch-trend');
-  if (!trendEl) return;
-var _oldTrend = FM.charts['fm-ch-trend'] || (typeof Chart !== 'undefined' && Chart.getChart && Chart.getChart(trendEl));
-  if (_oldTrend) { try { _oldTrend.destroy(); } catch(e){} }
-  delete FM.charts['fm-ch-trend'];
-  trendEl.getContext('2d').clearRect(0, 0, trendEl.width, trendEl.height);
+  if (!document.getElementById('fm-ch-trend')) return;
   var fillRgb = c.p1 === '#0d9488' ? 'rgba(13,148,136,0.16)' : 'rgba(37,99,235,0.16)';
   makeChart('fm-ch-trend', {
     type: 'line',
@@ -2005,9 +2001,11 @@ var _oldTrend = FM.charts['fm-ch-trend'] || (typeof Chart !== 'undefined' && Cha
       },
     },
   });
+  fmResizeChartById('fm-ch-trend');
 }
 
 function renderFmAvcChart() {
+  if (!fmChartsMasterOpen()) return;
   var leads = FM.filteredLeads || [];
   var c = fmChartColors();
   var p = FM.fmAvcPeriod;
@@ -2022,12 +2020,7 @@ function renderFmAvcChart() {
       return fmLeadInBucket(l, b.key, p);
     }).length;
   });
-  var avcEl = document.getElementById('fm-ch-avc');
-  if (!avcEl) return;
-var _oldAvc = FM.charts['fm-ch-avc'] || (typeof Chart !== 'undefined' && Chart.getChart && Chart.getChart(avcEl));
-  if (_oldAvc) { try { _oldAvc.destroy(); } catch(e){} }
-  delete FM.charts['fm-ch-avc'];
-  avcEl.getContext('2d').clearRect(0, 0, avcEl.width, avcEl.height);
+  if (!document.getElementById('fm-ch-avc')) return;
   makeChart('fm-ch-avc', {
     type: 'bar',
     data: {
@@ -2051,6 +2044,7 @@ var _oldAvc = FM.charts['fm-ch-avc'] || (typeof Chart !== 'undefined' && Chart.g
       },
     },
   });
+  fmResizeChartById('fm-ch-avc');
 }
 
 
@@ -2289,12 +2283,12 @@ function fmApplyChartTabVisibility(group) {
         el.removeAttribute('data-fm-hidden');
         el.style.display = 'block';
         el.style.visibility = 'visible';
+        if (p) p.style.display = 'block';
       } else {
         el.setAttribute('data-fm-hidden', '1');
         el.style.display = 'none';
         el.style.visibility = 'hidden';
       }
-      if (shareWrap && p) p.style.display = 'block';
       return;
     }
 
@@ -2315,6 +2309,67 @@ function fmSyncAllChartTabs() {
   fmResizeAnalyticsChartsDeferred();
 }
 
+var FM_TAB_RENDERERS = {
+  overview: {
+    status: function (l) { renderStatusChart(l); },
+    imp: function (l) { renderImpChart(l); },
+    du: function (l) { renderDuChart(l); },
+  },
+  winloss: {
+    wl: function (l) { renderWLChart(l); },
+    reasons: function (l) { renderReasonsChart(l); },
+  },
+  director: {
+    lb: function (l) { renderLeaderboard(l); },
+    tcvdir: function (l) { renderTCVByDir(l); },
+  },
+  am: {
+    amlb: function (l) { renderAMLeaderboard(l); },
+    amtcv: function (l) { renderAMTCVChart(l); },
+    ammix: function (l) { renderAMMixChart(l); },
+  },
+};
+
+function fmRenderChartTab(group, tab, leads) {
+  var renderers = FM_TAB_RENDERERS[group];
+  if (!renderers) return;
+  var fn = renderers[tab];
+  if (!fn) return;
+  var data = leads || FM.filteredLeads || [];
+  try {
+    fn(data);
+  } catch (e) {
+    console.error('FM tab chart render failed:', group, tab, e);
+  }
+}
+
+function fmRenderAllActiveTabCharts(leads) {
+  var data = leads || FM.filteredLeads || [];
+  fmRenderChartTab('overview', FM.chartTabs.overview, data);
+  fmRenderChartTab('winloss', FM.chartTabs.winloss, data);
+  if (USER_CONTEXT.isAdmin) {
+    fmRenderChartTab('director', FM.chartTabs.director, data);
+  }
+  if (!USER_CONTEXT.isAM) {
+    fmRenderChartTab('am', FM.chartTabs.am, data);
+  }
+}
+
+function fmResizeChartById(id) {
+  if (!id || typeof Chart === 'undefined' || !Chart.getChart) return;
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      var cv = document.getElementById(id);
+      if (!cv || cv.offsetWidth < 2) return;
+      var ch = Chart.getChart(cv);
+      if (ch) {
+        ch.resize();
+        ch.update('none');
+      }
+    });
+  });
+}
+
 function renderDashboardCharts() {
   if (!fmChartsMasterOpen()) return;
   if (typeof Chart === 'undefined') return;
@@ -2323,19 +2378,10 @@ function renderDashboardCharts() {
   destroyAnalyticsCharts();
   var leads = FM.filteredLeads;
   var steps = [
-    function () { renderStatusChart(leads); },
-    function () { renderImpChart(leads); },
-    function () { renderWLChart(leads); },
     function () { renderTrendChart(leads); },
-    function () { renderMRCChart(leads); },
     function () { renderFunnel(leads); },
-    function () { renderRadar(leads); },
-    function () { renderReasonsChart(leads); },
-    function () { renderRelChart(leads); },
-    function () { renderDuChart(leads); },
-    function () { if (USER_CONTEXT.isAdmin) { renderLeaderboard(leads); renderTCVByDir(leads); } },
-    function () { if (!USER_CONTEXT.isAM) { renderAMLeaderboard(leads); renderAMTCVChart(leads); renderAMMixChart(leads); } },
     function () { renderAging(leads); },
+    function () { fmRenderAllActiveTabCharts(leads); },
   ];
   steps.forEach(function (fn) {
     try { fn(); } catch (e) { console.error('FM chart render failed:', e); }
@@ -3420,7 +3466,7 @@ function selectALFilter(wrapId, key, val, label) {
    CHART TABS / ANALYTICS TOGGLE / SIDEBAR / THEME
    ════════════════════════════════════════════════════════ */
 function switchChartTab(group, tab, btnEl) {
-  if (!FM.chartTabs[group]) return;
+  if (FM.chartTabs[group] === undefined) return;
   FM.chartTabs[group] = tab;
   var bar = btnEl.parentElement;
   bar.querySelectorAll('.chart-tab').forEach(function(b){ b.classList.remove('active'); });
@@ -3429,16 +3475,19 @@ function switchChartTab(group, tab, btnEl) {
   var spec = FM_CHART_TAB_MAP[group];
   if (!spec) return;
   fmApplyChartTabVisibility(group);
+  if (group === 'perf') {
+    if (tab === 'director') fmRenderChartTab('director', FM.chartTabs.director, FM.filteredLeads);
+    else if (tab === 'am') fmRenderChartTab('am', FM.chartTabs.am, FM.filteredLeads);
+  } else {
+    fmRenderChartTab(group, tab, FM.filteredLeads);
+  }
 
   var activeId = spec.active[tab];
-  if (activeId && typeof Chart !== 'undefined' && Chart.getChart) {
-    requestAnimationFrame(function () {
-      var cv = document.getElementById(activeId);
-      if (!cv || cv.offsetWidth < 2) return;
-      var ch = Chart.getChart(cv);
-      if (ch) ch.resize();
-    });
+  if (group === 'perf') {
+    var sub = FM.chartTabs[tab === 'director' ? 'director' : 'am'];
+    activeId = FM_CHART_TAB_MAP[tab === 'director' ? 'director' : 'am'].active[sub];
   }
+  fmResizeChartById(activeId);
 }
 
 function toggleFmChartsMaster() {
