@@ -125,22 +125,25 @@ h1,h2,h3,h4,h5,h6{margin:0!important;padding:0!important;font-weight:inherit}
 html{scroll-behavior:smooth;}
 body{
   font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:var(--bg-body);
+  background:transparent;
   color:var(--t1);
   min-height:0;
   overflow-x:hidden;
-  overflow-y:auto;
+  overflow-y:visible;
   -webkit-font-smoothing:antialiased;
   transition:background .3s,color .3s;
   line-height:1.5;
+  margin:0;
 }
 select,input,textarea,button{font-family:inherit}
 
 /* ═══════ PORTAL SHELL ══════════════════════════════════════════════════ */
 .portal-shell{
   width:100%;max-width:100%;min-height:0;margin:0;
-  display:flex;flex-direction:column;background:var(--bg-body);
+  display:none;flex-direction:column;background:var(--bg-body);
+  border-radius:12px;overflow:hidden;
 }
+.portal-shell.is-active{display:flex;}
 .main-container{display:flex;flex:1;min-height:0;position:relative;width:100%;min-width:0;}
 
 /* ═══════ HEADER ════════════════════════════════════════════════════════ */
@@ -432,12 +435,18 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 /* ═══════ LANDING ════════════════════════════════════════════════════════ */
 .landing-page{
   width:100%;max-width:100%;
-  min-height:520px;display:none;flex-direction:row;
+  height:auto;min-height:0;
+  display:none;flex-direction:row;align-items:stretch;
   background:var(--bg-body);border-radius:12px;
   position:relative;z-index:1;
+  overflow:hidden;
 }
 .landing-page.is-visible{display:flex!important;}
-.landing-left,.landing-right{flex:1!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:2rem!important;min-width:0!important}
+.landing-left,.landing-right{
+  flex:1;display:flex;align-items:flex-start;justify-content:center;
+  padding:1.25rem 1.5rem;min-width:0;
+}
+.landing-right{align-items:flex-start;padding-top:1.25rem;}
 .landing-container{width:100%;max-width:420px}
 .landing-card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:1.4rem;box-shadow:var(--cs);margin-bottom:1rem}
 .landing-header{text-align:center;margin-bottom:1.4rem}
@@ -527,7 +536,8 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 @media(max-width:900px){.charts-section{grid-template-columns:1fr}}
 @media(max-width:768px){
   .sidebar{width:180px;min-width:180px}
-  .landing-page{flex-direction:column!important}
+  .landing-page{flex-direction:column!important;}
+  .landing-left,.landing-right{padding:1rem 1.1rem!important;}
   .top-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:.85rem;margin-bottom:1rem}
 }
 .stat-detail{
@@ -1398,8 +1408,10 @@ function launchDashboard(){
   incVisit();
   saveLastVisit();
   el('landingPage').classList.remove('is-visible');
-  el('dashboardContent').style.display='flex';
-  el('dashboardContent').style.flexDirection='column';
+  const dash=el('dashboardContent');
+  dash.style.display='flex';
+  dash.style.flexDirection='column';
+  dash.classList.add('is-active');
   set('dbUserBadge',USER.name||'Pipeline User');
   set('currentDate',new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'}));
   try{
