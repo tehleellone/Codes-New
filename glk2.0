@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GLK Enterprise Pipeline Dashboard</title>
+<title>Revenue Pipeline & Forecast</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -122,12 +122,13 @@ body[data-theme="duralux-dark"] {
 /* ═══════ RESET ════════════════════════════════════════════════════════ */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 h1,h2,h3,h4,h5,h6{margin:0!important;padding:0!important;font-weight:inherit}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;height:100%;}
 body{
   font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   background:var(--bg-body);
   color:var(--t1);
-  min-height:100vh;
+  height:100%;
+  overflow:hidden;
   -webkit-font-smoothing:antialiased;
   transition:background .3s,color .3s;
   line-height:1.5;
@@ -136,10 +137,10 @@ select,input,textarea,button{font-family:inherit}
 
 /* ═══════ PORTAL SHELL ══════════════════════════════════════════════════ */
 .portal-shell{
-  width:100%;max-width:none;min-height:100vh;margin:0;
-  display:flex;flex-direction:column;background:var(--bg-body);
+  width:100%;max-width:none;height:100vh;margin:0;
+  display:flex;flex-direction:column;background:var(--bg-body);overflow:hidden;
 }
-.main-container{display:flex;flex:1;min-height:0;position:relative;width:100%;min-width:0;}
+.main-container{display:flex;flex:1;min-height:0;position:relative;width:100%;min-width:0;overflow:hidden;}
 
 /* ═══════ HEADER ════════════════════════════════════════════════════════ */
 .header{
@@ -226,8 +227,8 @@ body[data-theme="dark"] .status-dot,body[data-theme="duralux-dark"] .status-dot{
 .nav-item.active{background:var(--nab);border-color:var(--nab2);color:var(--t1);font-weight:600}
 
 /* ═══════ CONTENT ═══════════════════════════════════════════════════════ */
-.content{width:100%;flex:1;overflow-y:auto;min-width:0;background:var(--bg-content);padding:1.1rem 1.25rem;}
-#dashboard-view,#revenue-forecast-view{width:100%;max-width:100%;min-width:0;}
+.content{width:100%;flex:1;overflow-y:auto;overflow-x:hidden;min-width:0;min-height:0;background:var(--bg-content);padding:1.1rem 1.25rem;-webkit-overflow-scrolling:touch;}
+#dashboard-view,#revenue-forecast-view{width:100%;max-width:100%;min-width:0;overflow:visible;}
 .dashboard-section{animation:fadeSection .25s ease;padding:.5rem 0;width:100%;}
 @keyframes fadeSection{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
@@ -738,116 +739,11 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 </head>
 <body>
 
-<!-- ═══════ LANDING PAGE ══════════════════════════════════════════════ -->
+<!-- Loading screen -->
 <div id="landingPage" class="landing-page" style="display:none;">
-  <!-- LEFT — Branding -->
-  <div class="landing-left animate-fade-in">
-    <div class="landing-branding">
-      <div style="margin-bottom:.85rem">
-        <div class="logo-icon" style="width:60px;height:60px;">
-          <img src="http://sharedspaces:8086/sites/GKA/Shared%20Documents/Image%20(1).png" style="width:60px;height:60px;object-fit:cover;border-radius:15px;transform:scale(1.4);" alt="GLK">
-        </div>
-      </div>
-      <h1 class="landing-brand-title">Salim Khoussas' Legacy...<br>GLK<br><span>Pipeline</span><br>Dashboard</h1>
-      <p class="landing-brand-subtitle">Real-time bid tracking, revenue analytics, and team performance insights across your entire sales hierarchy.</p>
-      <div class="landing-features">
-        <div class="landing-feature">
-          <div class="landing-feature-icon"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div>
-          <div>
-            <div class="landing-feature-title">Real-time Analytics</div>
-            <div class="landing-feature-desc">Track bid trends and pipeline performance live from SharePoint</div>
-          </div>
-        </div>
-        <div class="landing-feature">
-          <div class="landing-feature-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-          <div>
-            <div class="landing-feature-title">Role-Based Access</div>
-            <div class="landing-feature-desc">Head Director → Account Director → Account Manager hierarchy</div>
-          </div>
-        </div>
-        <div class="landing-feature">
-          <div class="landing-feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="6" x2="15" y2="15"/><line x1="12" y1="12" x2="12" y2="15"/></svg></div>
-          <div>
-            <div class="landing-feature-title">CEO-Level Analytics</div>
-            <div class="landing-feature-desc">Win rates, TCV tracking, GA points and closure probability</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- RIGHT — Login Card -->
-  <div class="landing-right">
-    <div class="landing-container">
-      <div class="landing-header animate-slide-up">
-        <div class="landing-logo">
-          <div class="logo-icon">
-           <img src="http://sharedspaces:8086/sites/GKA/Shared%20Documents/Image%20(1).png" style="width:60px;height:60px;object-fit:cover;border-radius:15px;transform:scale(1.4);" alt="GLK">
-          </div>
-        </div>
-        <h1 class="landing-title">Welcome Back</h1>
-        <p class="landing-subtitle">Sign in to access your pipeline dashboard</p>
-      </div>
-
-      <div class="landing-card animate-slide-up" style="animation-delay:.2s;">
-        <div class="welcome-badge"><span class="badge-pulse"></span><span>GLK Pipeline Portal</span></div>
-        <div class="landing-user-info">
-          <div class="landing-avatar">
-            <div class="avatar-ring"></div>
-            <div class="avatar-placeholder" id="lAvatar">?</div>
-          </div>
-          <div class="landing-details">
-            <h3 id="lName">Loading...</h3>
-            <p id="lEmail">Verifying access...</p>
-            <p id="lRole" class="landing-role">—</p>
-          </div>
-        </div>
-
-        <div class="landing-stats-container">
-          <div class="stats-grid">
-            <div class="landing-stat-card">
-              <div class="stat-icon-wrapper">
-                <div class="stat-icon-bg"></div>
-                <svg class="stat-icon" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
-              </div>
-              <div class="stat-content">
-                <div class="stat-label">Total Visits</div>
-                <div class="stat-value" id="lVisits" style="font-size:1.1rem;font-weight:800;color:var(--sc)">--</div>
-              </div>
-            </div>
-            <div class="landing-stat-card">
-              <div class="stat-icon-wrapper">
-                <div class="stat-icon-bg"></div>
-                <svg class="stat-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </div>
-              <div class="stat-content">
-                <div class="stat-label">Last Visit</div>
-                <div class="stat-value" id="lLastVisit" style="font-size:.85rem;font-weight:800;color:var(--sc)">--</div>
-              </div>
-            </div>
-          </div>
-          <div class="stats-secondary">
-            <div class="stat-mini"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Secure Session</span></div>
-            <div class="stat-mini"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Live SharePoint</span></div>
-          </div>
-        </div>
-
-        <div class="landing-actions">
-          <button  type="button" id="launchBtn" class="landing-btn btn-primary-enhanced" disabled>
-            <span class="btn-icon"><svg viewBox="0 0 24 24"><polyline points="5 12 19 12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-            <span class="btn-text">Verifying Access...</span>
-            <span class="btn-shine"></span>
-          </button>
-          <p class="landing-note" id="accessNote">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>Please wait while we verify your permissions...</span>
-          </p>
-        </div>
-      </div>
-      <div class="landing-footer animate-fade-in" style="animation-delay:.6s;">
-        <p>GLK Enterprise Pipeline Dashboard · Powered by SharePoint</p>
-      </div>
-    </div>
+  <div style="text-align:center;padding:2rem;">
+    <h1 style="font-size:1.6rem;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.75rem;">Revenue Pipeline &amp; Forecast</h1>
+    <p style="color:var(--t3);font-size:.9rem;">Connecting to SharePoint pipeline data…</p>
   </div>
 </div>
 
@@ -856,10 +752,7 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
   <!-- Header -->
   <div class="header">
     <div class="logo-section">
-      <div class="logo">
-      <img src="http://sharedspaces:8086/sites/GKA/Shared%20Documents/Image%20(1).png" style="width:36px;height:36px;object-fit:cover;border-radius:10px;" alt="GLK">
-      </div>
-      <span class="header-title">GLK Pipeline Dashboard</span>
+      <span class="header-title">Revenue Pipeline &amp; Forecast</span>
     </div>
     <div class="header-center">
       <div class="live-badge-pill"><span class="status-dot"></span><span>Live</span></div>
@@ -896,9 +789,6 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 </div><div class="nav-item" id="navRevenueForecast" onclick="glkShowRevenueForecast();">
   <div class="nav-icon"><svg viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 6.5H9.75a3.25 3.25 0 0 0 0 6.5h4.5a3.25 3.25 0 0 1 0 6.5H6"/></svg></div>
   <div class="nav-label">Revenue Forecast</div>
-</div><div class="nav-item" id="navAnalytics" style="display:none;" onclick="glkShowAnalytics();">
-  <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></div>
-  <div class="nav-label">Portal Analytics</div>
 </div>
       </div>
     </div>
@@ -1065,7 +955,6 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
         </div>
 
       </div><!-- /dashboard-view -->
-      <div id="analytics-nav" style="display:none;"></div>
 
       <!-- ═══════ REVENUE FORECAST VIEW ═══════ -->
       <div id="revenue-forecast-view" style="display:none;">
@@ -1185,6 +1074,20 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 
           <div class="rf-charts-grid" style="margin-bottom:.85rem;">
             <div class="chart-card">
+              <div class="chart-title"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>12-Month Revenue Forecast — Committed · Weighted · Pipeline · Net</div>
+              <div class="chart-container" style="height:360px;"><canvas id="rfChartForecast"></canvas></div>
+            </div>
+          </div>
+
+          <div class="rf-charts-grid" style="margin-bottom:.85rem;">
+            <div class="chart-card">
+              <div class="chart-title"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Budget Bridge — Pipeline to Net Forecast</div>
+              <div class="chart-container" style="height:320px;"><canvas id="rfChartWaterfall"></canvas></div>
+            </div>
+          </div>
+
+          <div class="rf-charts-grid" style="margin-bottom:.85rem;">
+            <div class="chart-card">
               <div class="chart-title"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>Run-Rate Build-Up — New Business vs Cumulative Run-Rate</div>
               <div class="chart-container" style="height:320px;"><canvas id="rfChartRunRate"></canvas></div>
             </div>
@@ -1228,26 +1131,13 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
   </div><!-- /main-container -->
 </div><!-- /portal-shell -->
 
-<!-- Developer Console Login -->
-<div class="dev-console" id="devConsole" style="display:none;">
-  <span class="dev-console-label">Dev Login</span>
-  <input type="text" id="devEmailInput" placeholder="email@example.com" onkeydown="if(event.key==='Enter')devLogin()">
-  <select id="devRoleInput" style="padding:.3rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.75rem;">
-    <option value="Admin">Admin</option>
-    <option value="Head Director">Head Director</option>
-    <option value="Account Director">Account Director</option>
-    <option value="Account Manager">Account Manager</option>
-  </select>
-  <button type="button" onclick="devLogin()">Login As</button>
-</div>
-
 <script>
 // ══════════════════════════════════════════════════════════════════
 //  CONFIG
 // ══════════════════════════════════════════════════════════════════
+const APP_NAME  = 'Revenue Pipeline & Forecast';
 const SP_SITE   = 'http://sharedspaces:8086/sites/GKA';
 const SP_LIST   = 'GLK Pipeline Portal';
-const SP_ACCESS = 'GKLA_ACCESS';
 const STATUS_WON  = ['Won','Billed'];
 const STATUS_IP   = ['Lead','Opportunity','On Hold','Proposed'];
 const STATUS_LOST = ['Lost','Cancelled','No Bid'];
@@ -1372,289 +1262,35 @@ function spGet(url,cb){
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  ACCESS CONTROL
+//  ACCESS — open to all SharePoint users
 // ══════════════════════════════════════════════════════════════════
 function initAccess(){
   spGet(SP_SITE+'/_api/web/currentuser?$select=Title,Email',function(err,data){
-    if(err){ showDenied('Cannot reach SharePoint'); return; }
-    USER.email=data.d.Email; USER.name=data.d.Title;
-    spGet(SP_SITE+"/_api/web/lists/getbytitle('"+SP_ACCESS+"')/items?$select=UserEmailID,Role&$filter=UserEmailID eq '"+USER.email+"'",function(err2,data2){
-if(err2||!data2.d.results.length){ 
-    showDenied('You are not authorised. Contact tehleel.lone@du.ae');
-    return; 
-}
-const role=(data2.d.results[0].Role||'').trim();
-const ALLOWED=['Admin','CEO','Head Director','Account Director','Account Manager','Viewer'];
-if(!ALLOWED.includes(role)){
-    showDenied('Your role "'+role+'" has no access. Contact tehleel.lone@du.ae');
-    return;
-}
-USER.role=role;
-      console.log('[GLK] Role:', JSON.stringify(data2.d.results[0]));
-      populateLanding();
-    });
+    if(!err&&data&&data.d){
+      USER.email=data.d.Email||'';
+      USER.name=data.d.Title||'User';
+    } else {
+      USER.email='';
+      USER.name='Guest User';
+    }
+    USER.role='Admin';
+    goToApp();
   });
 }
-function showDenied(msg){
-  set('lName','Access Denied'); set('lEmail',msg); set('lRole','No Access');
-  el('accessNote').innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#dc2626;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg><span style="color:#dc2626;">'+msg+'</span>';
-}
-function populateLanding(){
-  el('lAvatar').textContent=getInitials(USER.name);
-  set('lName',USER.name); set('lEmail',USER.email); set('lRole',USER.role);
-  set('lVisits',getVisitCount()); set('lLastVisit',getLastVisit());
-  const btn=el('launchBtn');
-  btn.disabled=false;
-  btn.innerHTML='<span class="btn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><span class="btn-text">Launch Dashboard</span><span class="btn-shine"></span>';
-  btn.onclick=launchDashboard;
-  el('accessNote').innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#16a34a;fill:none;stroke-width:2"><polyline points="20 6 9 17 4 12"/></svg><span style="color:#16a34a;font-weight:600;">Access granted — click above to proceed</span>';
-}
-function launchDashboard(){
-  incVisit(); saveLastVisit();
-document.getElementById('landingPage').style.cssText='display:none!important';
-el('dashboardContent').style.display='flex';
-el('dashboardContent').style.flexDirection='column';
-  set('dbUserBadge',USER.name+' · '+USER.role);
-  // Role-based UI visibility
-  const role=USER.role;
-  
-  // Portal Intelligence — Admin, HD, AD only
-  if(role==='Admin'||role==='CEO'||role==='Head Director'||role==='Account Director'){
-    el('navAnalytics').style.display='flex';
-  }
-  
-  // HD section — hide completely for AD and AM
-  if(role==='Account Director'||role==='Account Manager'||role==='Viewer'){
-    el('hd-section-nav').style.display='none';
-  }
-  
-
-  el('currentDate').textContent=new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
-  loadData();
-if(typeof glkStartSession === 'function') glkStartSession();
-setTimeout(function(){
-    if(USER.role==='Admin'||USER.role==='CEO'||USER.role.toLowerCase().includes('admin')){
-        document.getElementById('navAnalytics').style.display='flex';
-    }
-}, 500);
-  // restore saved theme
-  try{
-    const bt=localStorage.getItem('glk_base_theme')||'magenta';
-    const dm=localStorage.getItem('glk_dark_mode')==='true';
-    const sel=el('colorSchemeSelector'); if(sel) sel.value=bt;
-    applyTheme(bt,dm);
-  }catch(e){}
-
-    
-    
-    setTimeout(function(){
-    if(USER.email.toLowerCase()==='tehleel.lone@du.ae') glkInitViewAs();
-  },1500);
-}
-
-function glkInitViewAs(){
-  if(document.getElementById('viewAsPanel')) return;
-  if(USER.email.toLowerCase()!=='tehleel.lone@du.ae') return;
-  const panel=document.createElement('div');
-  panel.id='viewAsPanel';
-  panel.style.cssText='position:fixed;bottom:16px;left:16px;z-index:999999;background:var(--bg-card);border:2px solid var(--border-s);border-radius:14px;padding:12px 16px;box-shadow:0 8px 32px rgba(0,0,0,0.35);font-family:Inter,sans-serif;font-size:.78rem;min-width:320px;';
-  panel.innerHTML=`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div style="font-weight:800;font-size:.82rem;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
-        🔍 View As &nbsp;<span style="font-size:.65rem;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.4);color:var(--acc);padding:2px 8px;border-radius:20px;font-weight:700;-webkit-text-fill-color:var(--acc);">ADMIN ONLY</span>
-      </div>
-      <div onclick="document.getElementById('viewAsPanel').classList.toggle('va-collapsed')" style="cursor:pointer;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--t3);">▼</div>
-    </div>
-    <div id="vaBody">
-      <div id="vaCurrentUser" style="font-size:.72rem;color:var(--t3);padding:6px 10px;background:var(--bg-secondary);border-radius:7px;border:1px solid var(--border);margin-bottom:8px;">
-        Viewing as: <strong style="color:var(--acc)">${USER.email}</strong> · <strong style="color:var(--acc)">${USER.role}</strong>
-      </div>
-      <div style="display:flex;gap:.5rem;margin-bottom:8px;">
-        <input type="text" id="vaEmailInput" placeholder="email@du.ae"
-          style="flex:1;padding:.4rem .7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.78rem;font-family:inherit;"
-          onkeydown="if(event.key==='Enter')glkViewAs()">
-        <select id="vaRoleOverride"
-          style="padding:.4rem .6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.78rem;font-family:inherit;">
-          <option value="">Auto</option>
-          <option value="Admin">Admin</option>
-          <option value="Viewer">Viewer</option>
-          <option value="Head Director">Head Director</option>
-          <option value="Account Director">Account Director</option>
-          <option value="Account Manager">Account Manager</option>
-        </select>
-      </div>
-      <div style="display:flex;gap:.5rem;margin-bottom:6px;">
-        <button onclick="glkViewAs()" style="flex:1;padding:.4rem 1rem;border-radius:8px;background:var(--grad);color:#fff;border:none;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">Apply View</button>
-      </div>
-      <button id="vaRestoreBtn" onclick="glkRestoreMyView()"
-        style="display:none;width:100%;margin-top:4px;padding:.38rem;border-radius:8px;background:var(--bg-secondary);color:var(--t2);border:1px solid var(--border);font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;">
-        ↩ Restore My View (${USER.email})
-      </button>
-      <div id="vaLog" style="margin-top:8px;font-size:.68rem;color:var(--t3);max-height:50px;overflow-y:auto;"></div>
-    </div>`;
-  document.body.appendChild(panel);
-  const s=document.createElement('style');
-  s.innerHTML='#viewAsPanel.va-collapsed #vaBody{display:none}';
-  document.head.appendChild(s);
-}
-
-let _realUser=null;
-
-function glkViewAs(){
-  const email=(document.getElementById('vaEmailInput').value||'').trim();
-  const roleOv=document.getElementById('vaRoleOverride').value;
-  if(!email){document.getElementById('vaLog').innerHTML='⚠ Enter an email';return;}
-
-  document.getElementById('vaLog').innerHTML='⏳ Looking up '+email+'...';
-  if(!_realUser) _realUser={email:USER.email,name:USER.name,role:USER.role};
-
-  // Step 1: Get real display name from SharePoint
-  spGet(SP_SITE+"/_api/web/siteusers?$filter=Email eq '"+email+"'&$select=Title,Email",
-    function(err,userData){
-      const resolvedName=(!err&&userData.d.results.length)
-        ?userData.d.results[0].Title
-        :email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-
-      // Step 2: Get role from access list
-      spGet(SP_SITE+"/_api/web/lists/getbytitle('"+SP_ACCESS+"')/items?$select=UserEmailID,Role&$filter=UserEmailID eq '"+email+"'",
-        function(err2,data){
-          let role=roleOv;
-          if(!err2&&data.d.results.length){
-            role=(data.d.results[0].Role||'').trim();
-            document.getElementById('vaLog').innerHTML='✓ Found: '+resolvedName+' · '+role;
-          } else if(!role){
-            document.getElementById('vaLog').innerHTML='⚠ Not in access list. Select role manually.';
-            return;
-          }
-
-          USER.email=email;
-          USER.name=resolvedName;
-          USER.role=role;
-
-          el('dashboardContent').style.cssText='display:none!important';
-          el('landingPage').style.cssText='display:flex!important';
-          el('lAvatar').textContent=getInitials(resolvedName);
-          set('lName',resolvedName);
-          set('lEmail',email);
-          set('lRole',role+' (Spoofed)');
-          set('lVisits',getVisitCount());
-          set('lLastVisit',getLastVisit());
-
-          const btn=el('launchBtn');
-          btn.disabled=false;
-          btn.innerHTML='<span class="btn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><span class="btn-text">Launch as '+resolvedName+'</span><span class="btn-shine"></span>';
-          btn.onclick=function(){glkLaunchSpoofed();};
-          el('accessNote').innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#f97316;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span style="color:#f97316;font-weight:600;">👁 Spoofed as '+resolvedName+'</span>';
-          document.getElementById('vaLog').innerHTML='✓ Ready. Click Launch to enter as '+resolvedName+' ('+role+')';
-        }
-      );
-    }
-  );
-}function glkRestoreMyView(){
-  if(!_realUser) return;
-  USER.email=_realUser.email;
-  USER.name=_realUser.name;
-  USER.role=_realUser.role;
-
-  // Go back to landing as real user
-  el('dashboardContent').style.cssText='display:none!important';
-  el('landingPage').style.cssText='display:flex!important';
-
-  el('lAvatar').textContent=getInitials(USER.name);
-  set('lName',USER.name);
-  set('lEmail',USER.email);
-  set('lRole',USER.role);
-  set('lVisits',getVisitCount());
-  set('lLastVisit',getLastVisit());
-
-  const btn=el('launchBtn');
-  btn.disabled=false;
-  btn.innerHTML='<span class="btn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><span class="btn-text">Launch Dashboard</span><span class="btn-shine"></span>';
-  btn.onclick=launchDashboard;
-  el('accessNote').innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#16a34a;fill:none;stroke-width:2"><polyline points="20 6 9 17 4 12"/></svg><span style="color:#16a34a;font-weight:600;">Access granted — click above to proceed</span>';
-
-  el('vaRestoreBtn').style.display='none';
-  el('vaCurrentUser').innerHTML='Viewing as: <strong style="color:var(--acc)">'+USER.email+'</strong> · <strong style="color:var(--acc)">'+USER.role+'</strong>';
-  document.getElementById('vaLog').innerHTML='↩ Restored to '+USER.email;
-}
-function glkLaunchSpoofed(){
-  incVisit(); saveLastVisit();
-  el('landingPage').style.cssText='display:none!important';
+function goToApp(){
+  el('landingPage').style.display='none';
   el('dashboardContent').style.display='flex';
   el('dashboardContent').style.flexDirection='column';
-  
-  set('dbUserBadge','👁 '+USER.name+' · '+USER.role+' (Spoofed)');
-  el('dbUserBadge').style.color='#f97316';
-  el('dbUserBadge').style.fontWeight='800';
-
-  el('currentDate').textContent=new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
-
-  // Apply role-based UI for spoofed user
-  glkApplyRoleUI();
-
-  // Restore theme
+  set('dbUserBadge',USER.name||'Pipeline User');
+  set('currentDate',new Date().toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'}));
   try{
     const bt=localStorage.getItem('glk_base_theme')||'magenta';
     const dm=localStorage.getItem('glk_dark_mode')==='true';
     const sel=el('colorSchemeSelector'); if(sel) sel.value=bt;
     applyTheme(bt,dm);
   }catch(e){}
-
-  // Reset and rebuild everything scoped to spoofed user
-  resetAll();
-  buildFilters();
-  applyRoleLocks();
-  applyAll();
-
-  // Re-show the View-As panel with restore button visible
-  setTimeout(function(){
-    const cur=el('vaCurrentUser');
-    if(cur) cur.innerHTML='👁 Spoofed: <strong style="color:#f97316">'+USER.email+'</strong> · <strong style="color:#f97316">'+USER.role+'</strong>';
-    const rb=el('vaRestoreBtn');
-    if(rb) rb.style.display='block';
-  },200);
+  loadData();
 }
-function glkApplyRoleUI(){
-  const role=USER.role;
-  const na=el('navAnalytics');
-  if(na) na.style.display=(role==='Admin'||role==='CEO'||role==='Head Director'||role==='Account Director')?'flex':'none';
-  const hds=el('hd-section-nav');
-  if(hds) hds.style.display=(role==='Account Director'||role==='Account Manager'||role==='Viewer')?'none':'block';
-  const pft=el('pfTabs');
-  if(pft) pft.style.display='flex';
-}
-// ══════════════════════════════════════════════════════════════════
-//  DEV CONSOLE — login as any email
-// ══════════════════════════════════════════════════════════════════
-// Activate with: Ctrl+Shift+D
-document.addEventListener('keydown',function(e){
-  if(e.ctrlKey&&e.shiftKey&&e.key==='D'){
-    const dc=el('devConsole'); dc.style.display=dc.style.display==='none'?'flex':'none';
-  }
-});
-function devLogin(){
-  const email=el('devEmailInput').value.trim();
-  if(!email){ alert('Enter an email'); return; }
-  USER.email=email;
-  USER.name=email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-USER.role=el('devRoleInput').value.trim()||'Admin';  el('devConsole').style.display='none';
-  // Bypass SP and launch directly
-  el('lAvatar').textContent=getInitials(USER.name);
-  set('lName',USER.name); set('lEmail',USER.email); set('lRole',USER.role+' (Dev)');
-  set('lVisits',getVisitCount()); set('lLastVisit',getLastVisit());
-  const btn=el('launchBtn');
-  btn.disabled=false;
-  btn.innerHTML='<span class="btn-text">Launch Dashboard (Dev)</span>';
-  btn.onclick=launchDashboard;
-  el('landingPage').style.display='flex';
-  console.log('[DEV] Logged in as:',USER.email);
-}
-// Also expose as console function: window.loginAs('email@x.com')
-window.loginAs=function(email,role){
-  el('devEmailInput').value=email;
-  if(role) USER.role=role;
-  devLogin();
-};
 
 // ══════════════════════════════════════════════════════════════════
 //  LOAD DATA
@@ -1686,11 +1322,11 @@ function loadData(){
         return;
       }
       allResults=allResults.concat(data.d.results);
-      console.log('[GLK] Fetched so far:',allResults.length);
+      console.log('['+APP_NAME+'] Fetched so far:',allResults.length);
       if(data.d.__next){
         fetchPage(data.d.__next);
       } else {
-        console.log('[GLK] All records loaded:',allResults.length);
+        console.log('['+APP_NAME+'] All records loaded:',allResults.length);
         ALL_BIDS=allResults.map(mapItem).filter(function(bid){
           const rd=getRelevantDate(bid); if(!rd) return false;
           const d=new Date(rd); return !isNaN(d)&&d>=cutoff;
@@ -3103,7 +2739,7 @@ function exportExcel(){
   html+='</table></body></html>';
   const blob=new Blob([html],{type:'application/vnd.ms-excel'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='GLK_Pipeline_'+new Date().toISOString().split('T')[0]+'.xls'; a.click();
+  a.download='Pipeline_Export_'+new Date().toISOString().split('T')[0]+'.xls'; a.click();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3141,19 +2777,9 @@ function applyTheme(base,dark){
     '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>':
     '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
 }
-function glkShowAnalytics() {
-    document.getElementById('dashboard-view').style.display = 'none';
-    document.getElementById('table-nav').style.display = 'none';
-    document.getElementById('analytics-nav').style.display = 'block';
-    document.getElementById('revenue-forecast-view').style.display = 'none';
-    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-    document.getElementById('navAnalytics').classList.add('active');
-    glkLoadAnalytics();
-}
 function glkShowDashboard(){
     document.getElementById('dashboard-view').style.display='block';
     document.getElementById('table-nav').style.display='block';
-    document.getElementById('analytics-nav').style.display='none';
     document.getElementById('revenue-forecast-view').style.display='none';
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
     document.getElementById('navDashboard').classList.add('active');
@@ -3161,7 +2787,6 @@ function glkShowDashboard(){
 function glkShowRevenueForecast(){
     document.getElementById('dashboard-view').style.display='none';
     document.getElementById('table-nav').style.display='none';
-    document.getElementById('analytics-nav').style.display='none';
     document.getElementById('revenue-forecast-view').style.display='block';
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
     document.getElementById('navRevenueForecast').classList.add('active');
@@ -3296,18 +2921,7 @@ function rfGetYear(bid){ if(!bid.expectedActivation) return null; const d=new Da
 function rfGetMonthIdx(bid){ if(!bid.expectedActivation) return null; const d=new Date(bid.expectedActivation); return isNaN(d)?null:d.getMonth(); }
 function probToFraction(p){ if(!p) return 0; const n=parseFloat(p); return isNaN(n)?0:n/100; }
 function rfGetBaseBids(){
-  let bids=ALL_BIDS.filter(b=>b.expectedActivation && !isNaN(new Date(b.expectedActivation)));
-  if(USER.role==='Head Director'){
-    const myHD=findMyHD();
-    bids=myHD?bids.filter(b=>b.headDirector===myHD):[];
-  } else if(USER.role==='Account Director'){
-    const myAD=findMyAD();
-    bids=myAD?bids.filter(b=>b.accountDirector===myAD):[];
-  } else if(USER.role==='Account Manager'){
-    const byEmail=bids.filter(b=>b.amEmail&&b.amEmail.toLowerCase()===USER.email.toLowerCase());
-    bids=byEmail.length?byEmail:bids.filter(b=>b.amName&&b.amName.toLowerCase()===USER.name.toLowerCase());
-  }
-  return bids;
+  return ALL_BIDS.filter(b=>b.expectedActivation && !isNaN(new Date(b.expectedActivation)));
 }
 function rfGetFilterVals(fd){
   const base=rfGetBaseBids();
@@ -3704,31 +3318,61 @@ function rfOpenBlockDrilldown(blockId, rowVal, monthIdx, year){
 }
 
 // ── Export: Excel & PDF ──────────────────────────────────────────
-function rfExcelMatrixTable(title, matrix, headerBg, tint, showNeg){
+function rfFmtExport(v){
+  if(v===null||v===undefined||v==='—') return '—';
+  const n=num(v);
+  if(!n) return '—';
+  const sign=n<0?'-':'';
+  const abs=Math.abs(n);
+  if(abs>=1e9) return sign+(abs/1e9).toFixed(2)+' B';
+  if(abs>=1e6) return sign+(abs/1e6).toFixed(2)+' M';
+  if(abs>=1e3) return sign+(abs/1e3).toFixed(1)+' K';
+  return sign+Math.round(abs).toLocaleString('en-US');
+}
+function rfExcelStyles(){
+  return '<style>body{font-family:Calibri,Arial,sans-serif;margin:20px;color:#1a1025;}'+
+    'h1{font-size:22px;color:#7c3aed;margin:0 0 6px;}h2{font-size:15px;color:#4c6fff;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid #e9d5ff;}'+
+    'h3{font-size:13px;margin:22px 0 8px;font-weight:700;}.meta{font-size:11px;color:#666;margin-bottom:18px;}'+
+    '.xtable{border-collapse:collapse;width:100%;margin-bottom:8px;}.xtable th,.xtable td{border:1px solid #d1d5db;padding:10px 14px;font-size:11px;}'+
+    '.xtable th{color:#fff;font-weight:700;text-align:center;white-space:nowrap;}.xtable td.num{text-align:right;white-space:nowrap;mso-number-format:"\\@";}'+
+    '.xtable td.label{text-align:left;font-weight:600;background:#fafafa;}.xtable tr.total td{font-weight:800;background:#f3e8ff;}'+
+    '.kpi td:first-child{font-weight:600;background:#faf5ff;width:220px;}.kpi td:last-child{text-align:right;font-weight:700;mso-number-format:"\\@";}'+
+    '.spacer{height:16px;}</style>';
+}
+function rfExcelCell(v, opts){
+  opts=opts||{};
+  const cls=(opts.label?' label':' num');
+  let style='';
+  if(opts.color) style='color:'+opts.color+';';
+  if(opts.bg) style+='background:'+opts.bg+';';
+  return '<td class="'+cls.trim()+'" style="'+style+'">'+(opts.label?(v||''):rfFmtExport(v))+'</td>';
+}
+function rfExcelMatrixTable(title, matrix, headerBg, rowTint, showNeg){
   if(!matrix) return '';
   const {visibleMonths,rows,cells,colTotals,rowTotals,grandTotal,rowLabel,totalLabel}=matrix;
-  let h='<h3 style="color:'+headerBg+';margin:24px 0 8px;font-family:Arial;">'+title+'</h3>';
-  h+='<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial;font-size:12px;">';
-  h+='<tr><th style="background:'+headerBg+';color:#fff;padding:10px;">'+rowLabel+'</th>';
-  visibleMonths.forEach(function(m){ h+='<th style="background:'+headerBg+';color:#fff;padding:10px;">'+MONTH_NAMES[m]+'</th>'; });
-  h+='<th style="background:'+headerBg+';color:#fff;padding:10px;">'+totalLabel+'</th></tr>';
+  let h='<h3 style="color:'+headerBg+';">'+title+'</h3><table class="xtable"><colgroup><col style="width:180px;">';
+  visibleMonths.forEach(function(){ h+='<col style="width:92px;">'; });
+  h+='<col style="width:110px;"></colgroup><tr><th style="background:'+headerBg+';text-align:left;">'+rowLabel+'</th>';
+  visibleMonths.forEach(function(m){ h+='<th style="background:'+headerBg+';">'+MONTH_NAMES[m]+'</th>'; });
+  h+='<th style="background:'+headerBg+';">'+totalLabel+'</th></tr>';
   rows.forEach(function(rowVal, i){
-    const bg=i%2===0?tint:'#ffffff';
-    h+='<tr><td style="background:'+bg+';font-weight:600;">'+rowVal+'</td>';
+    const bg=i%2===0?rowTint:'#ffffff';
+    h+='<tr>'+rfExcelCell(rowVal,{label:true,bg:bg});
     visibleMonths.forEach(function(m){
       const v=cells[rowVal+'|'+m]||0;
-      const style='background:'+bg+';padding:8px;'+(showNeg&&v<0?'color:#dc2626;font-weight:bold;':(showNeg&&v>0?'color:#16a34a;font-weight:bold;':''));
-      h+='<td style="'+style+'">'+(v?rfFmtVal(v):'—')+'</td>';
+      let color='';
+      if(showNeg&&v<0) color='#b91c1c'; else if(showNeg&&v>0) color='#15803d';
+      h+=rfExcelCell(v,{bg:bg,color:color});
     });
     const rt=rowTotals[rowVal]||0;
-    h+='<td style="background:'+bg+';font-weight:700;padding:8px;">'+(rt?rfFmtVal(rt):'—')+'</td></tr>';
+    h+=rfExcelCell(rt,{bg:bg,color:showNeg&&rt<0?'#b91c1c':(showNeg&&rt>0?'#15803d':'')})+'</tr>';
   });
-  h+='<tr><td style="background:'+headerBg+';color:#fff;font-weight:bold;padding:10px;">'+totalLabel+'</td>';
+  h+='<tr class="total"><td class="label" style="background:'+headerBg+';color:#fff;">'+totalLabel+'</td>';
   visibleMonths.forEach(function(m){
     const v=colTotals[m]||0;
-    h+='<td style="background:#f3e8ff;font-weight:700;padding:8px;">'+(v?rfFmtVal(v):'—')+'</td>';
+    h+=rfExcelCell(v,{bg:'#f3e8ff',color:showNeg&&v<0?'#b91c1c':(showNeg&&v>0?'#15803d':'')});
   });
-  h+='<td style="background:#a855f7;color:#fff;font-weight:bold;padding:10px;">'+rfFmtVal(grandTotal)+'</td></tr></table>';
+  h+=rfExcelCell(grandTotal,{bg:'#ede9fe',color:showNeg&&grandTotal<0?'#b91c1c':'#5b21b6'})+'</tr></table><div class="spacer"></div>';
   return h;
 }
 function rfExportExcel(){
@@ -3740,29 +3384,28 @@ function rfExportExcel(){
   const rowLabel=RF_ROW_DIMS.find(r=>r.key===rfRowDim).label;
   const conf=rfConfidenceFor(rfActiveBids());
   const dateStr=new Date().toISOString().split('T')[0];
-  let html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'+
-    '<style>body{font-family:Arial,sans-serif;} h1{color:#a855f7;} h2{color:#4c6fff;font-size:14px;}</style></head><body>';
-  html+='<h1>GLK Revenue Forecast — Budget Scenario Export</h1>';
-  html+='<p><strong>Date:</strong> '+dateStr+' · <strong>User:</strong> '+(USER.name||'')+' · <strong>Metric:</strong> '+metricLabel+' · <strong>Group By:</strong> '+rowLabel+'</p>';
-  html+='<h2>Executive Summary</h2><table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">';
-  html+='<tr><th style="background:#a855f7;color:#fff;">KPI</th><th style="background:#a855f7;color:#fff;">Value</th></tr>';
-  html+='<tr><td style="background:#f9f0ff;">Total Active Pipeline</td><td>'+rfFmtVal(conf.bestCaseVal)+'</td></tr>';
-  html+='<tr><td style="background:#fff;">Committed (Won/Billed)</td><td style="color:#16a34a;font-weight:bold;">'+rfFmtVal(conf.committedVal)+'</td></tr>';
-  html+='<tr><td style="background:#f9f0ff;">Weighted Forecast</td><td>'+rfFmtVal(conf.weightedVal)+'</td></tr>';
-  if(netMat) html+='<tr><td style="background:#dbeafe;font-weight:bold;">Net Budget Forecast</td><td style="color:#2563eb;font-weight:bold;">'+rfFmtVal(netMat.grandTotal)+'</td></tr>';
-  html+='</table>';
-  html+=rfExcelMatrixTable('Table 1 — Pipeline Pivot', pipelineMat, '#16a34a', '#dcfce7', false);
+  let html='<?xml version="1.0"?><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">';
+  html+=rfExcelStyles()+'</head><body>';
+  html+='<h1>'+APP_NAME+' — Budget Scenario Export</h1>';
+  html+='<div class="meta"><strong>Date:</strong> '+dateStr+' &nbsp;|&nbsp; <strong>Prepared by:</strong> '+(USER.name||'')+' &nbsp;|&nbsp; <strong>Metric:</strong> '+metricLabel+' &nbsp;|&nbsp; <strong>Group By:</strong> '+rowLabel+'</div>';
+  html+='<h2>Executive Summary</h2><table class="xtable kpi"><tr><th style="background:#7c3aed;text-align:left;">KPI</th><th style="background:#7c3aed;">Value ('+metricLabel+')</th></tr>';
+  html+='<tr><td>Total Active Pipeline</td><td>'+rfFmtExport(conf.bestCaseVal)+'</td></tr>';
+  html+='<tr><td>Committed (Won / Billed)</td><td style="color:#15803d;">'+rfFmtExport(conf.committedVal)+'</td></tr>';
+  html+='<tr><td>Probability-Weighted Forecast</td><td>'+rfFmtExport(conf.weightedVal)+'</td></tr>';
+  if(netMat) html+='<tr><td style="background:#dbeafe;font-weight:800;">Net Budget Forecast</td><td style="color:#1d4ed8;font-weight:800;">'+rfFmtExport(netMat.grandTotal)+'</td></tr>';
+  html+='</table><div class="spacer"></div>';
+  html+=rfExcelMatrixTable('Table 1 — Pipeline Pivot', pipelineMat, '#15803d', '#ecfdf5', false);
   blockEntries.forEach(function(e){
     const opTag=e.block.op==='add'?'+ ADD':(e.block.op==='subtract'?'− SUBTRACT':'VIEW ONLY');
-    html+=rfExcelMatrixTable('Scenario: '+e.block.name+' ('+opTag+')', e.matrix, e.block.color, e.block.color+'18', false);
+    html+=rfExcelMatrixTable('Scenario: '+e.block.name+' ('+opTag+')', e.matrix, e.block.color, e.block.color+'14', false);
   });
-  if(netMat) html+=rfExcelMatrixTable('Net Forecast — '+rfNetFormulaText(blockEntries), netMat, '#2563eb', '#dbeafe', true);
-  html+='<p style="margin-top:24px;font-size:11px;color:#666;">Generated by GLK Enterprise Pipeline · Revenue Forecast module</p></body></html>';
-  const blob=new Blob([html],{type:'application/vnd.ms-excel'});
+  if(netMat) html+=rfExcelMatrixTable('Net Forecast — '+rfNetFormulaText(blockEntries), netMat, '#1d4ed8', '#eff6ff', true);
+  html+='<p style="font-size:10px;color:#888;margin-top:24px;">Generated by '+APP_NAME+' · Revenue Forecast module</p></body></html>';
+  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='GLK_Revenue_Forecast_'+dateStr+'.xls'; a.click();
+  a.download='Revenue_Forecast_'+dateStr+'.xls'; a.click();
 }
-function rfBuildPdfReportHtml(){
+function rfBuildPdfReportHtml(chartImages){
   rfSyncAllBlockFiltersFromDom();
   const pipelineMat=rfBuildMatrix(rfActiveBids());
   const blockEntries=rfGetBlockMatrices();
@@ -3770,71 +3413,98 @@ function rfBuildPdfReportHtml(){
   const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
   const conf=rfConfidenceFor(rfActiveBids());
   const dateStr=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-  let h='<div id="rfPdfRoot" style="font-family:Inter,Arial,sans-serif;padding:32px;max-width:1100px;background:#fff;color:#1a1025;">';
-  h+='<div style="border-bottom:3px solid #a855f7;padding-bottom:16px;margin-bottom:24px;">';
-  h+='<h1 style="margin:0;color:#a855f7;font-size:22px;">Revenue Forecast — Budget Analysis</h1>';
-  h+='<p style="margin:6px 0 0;font-size:12px;color:#666;">'+dateStr+' · '+metricLabel+' · Prepared for '+(USER.name||'AM')+'</p></div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">';
-  [['Pipeline',conf.bestCaseVal,'#a855f7'],['Committed',conf.committedVal,'#16a34a'],['Weighted',conf.weightedVal,'#f59e0b'],['Net Forecast',netMat?netMat.grandTotal:'—','#2563eb']].forEach(function(k){
-    h+='<div style="background:#f9f0ff;border-radius:10px;padding:14px;border-left:4px solid '+k[2]+';"><div style="font-size:10px;font-weight:700;color:#666;text-transform:uppercase;">'+k[0]+'</div><div style="font-size:18px;font-weight:800;color:'+k[2]+';">'+rfFmtVal(k[1])+'</div></div>';
+  let h='<div id="rfPdfRoot" style="font-family:Inter,Calibri,Arial,sans-serif;padding:36px 40px;background:#fff;color:#1a1025;box-sizing:border-box;">';
+  h+='<div style="border-bottom:4px solid #7c3aed;padding-bottom:18px;margin-bottom:28px;">';
+  h+='<h1 style="margin:0;color:#7c3aed;font-size:26px;font-weight:900;">'+APP_NAME+'</h1>';
+  h+='<p style="margin:8px 0 0;font-size:13px;color:#555;">Budget Analysis Report · '+dateStr+' · '+metricLabel+' · '+(USER.name||'User')+'</p></div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">';
+  [['Pipeline',conf.bestCaseVal,'#7c3aed'],['Committed',conf.committedVal,'#15803d'],['Weighted',conf.weightedVal,'#d97706'],['Net Forecast',netMat?netMat.grandTotal:conf.bestCaseVal,'#2563eb']].forEach(function(k){
+    h+='<div style="background:linear-gradient(135deg,#faf5ff,#fff);border-radius:12px;padding:16px;border:1px solid #e9d5ff;border-left:5px solid '+k[2]+';"><div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;">'+k[0]+'</div><div style="font-size:20px;font-weight:900;color:'+k[2]+';margin-top:6px;">'+rfFmtExport(k[1])+'</div></div>';
   });
   h+='</div>';
-  if(netMat){
-    h+='<p style="font-size:13px;background:#eff6ff;padding:10px 14px;border-radius:8px;border-left:4px solid #2563eb;"><strong>Formula:</strong> '+rfNetFormulaText(blockEntries)+'</p>';
+  if(netMat) h+='<div style="font-size:13px;background:#eff6ff;padding:12px 16px;border-radius:10px;border-left:4px solid #2563eb;margin-bottom:24px;"><strong>Budget Formula:</strong> '+rfNetFormulaText(blockEntries)+'</div>';
+  if(chartImages&&chartImages.length){
+    h+='<h2 style="color:#7c3aed;font-size:16px;margin:28px 0 12px;">Forecast Visuals</h2>';
+    chartImages.forEach(function(c){
+      h+='<div style="margin-bottom:22px;page-break-inside:avoid;"><div style="font-size:12px;font-weight:800;color:#444;margin-bottom:8px;">'+c.title+'</div><img src="'+c.img+'" style="width:100%;max-width:980px;border:1px solid #e5e7eb;border-radius:10px;"></div>';
+    });
   }
   function pdfTable(title, matrix, color){
     if(!matrix) return '';
-    let t='<h3 style="color:'+color+';margin-top:28px;font-size:14px;">'+title+'</h3>';
-    t+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:8px;">';
-    t+='<tr style="background:'+color+';color:#fff;"><th style="padding:8px;text-align:left;">'+matrix.rowLabel+'</th>';
-    matrix.visibleMonths.forEach(function(m){ t+='<th style="padding:8px;">'+MONTH_NAMES[m]+'</th>'; });
-    t+='<th style="padding:8px;">'+matrix.totalLabel+'</th></tr>';
-    matrix.rows.slice(0,15).forEach(function(rv,i){
-      t+='<tr style="background:'+(i%2?'#fff':'#faf5ff')+';"><td style="padding:6px;font-weight:600;">'+rv+'</td>';
+    let t='<h2 style="color:'+color+';font-size:15px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid '+color+'33;">'+title+'</h2>';
+    t+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px;">';
+    t+='<tr style="background:'+color+';color:#fff;"><th style="padding:10px 12px;text-align:left;">'+matrix.rowLabel+'</th>';
+    matrix.visibleMonths.forEach(function(m){ t+='<th style="padding:10px 8px;text-align:right;">'+MONTH_NAMES[m]+'</th>'; });
+    t+='<th style="padding:10px 12px;text-align:right;">'+matrix.totalLabel+'</th></tr>';
+    matrix.rows.forEach(function(rv,i){
+      t+='<tr style="background:'+(i%2?'#fff':'#faf5ff')+';"><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #eee;">'+rv+'</td>';
       matrix.visibleMonths.forEach(function(m){
         const v=matrix.cells[rv+'|'+m]||0;
-        t+='<td style="padding:6px;text-align:right;'+(matrix.isNet&&v<0?'color:#dc2626;':'')+'">'+(v?rfFmtVal(v):'—')+'</td>';
+        t+='<td style="padding:8px;text-align:right;border-bottom:1px solid #eee;'+(matrix.isNet&&v<0?'color:#dc2626;font-weight:700;':'')+'">'+(v?rfFmtExport(v):'—')+'</td>';
       });
-      t+='<td style="padding:6px;font-weight:700;text-align:right;">'+rfFmtVal(matrix.rowTotals[rv]||0)+'</td></tr>';
+      t+='<td style="padding:8px 12px;font-weight:700;text-align:right;border-bottom:1px solid #eee;">'+rfFmtExport(matrix.rowTotals[rv]||0)+'</td></tr>';
     });
-    t+='<tr style="background:#f3e8ff;font-weight:800;"><td style="padding:8px;">'+matrix.totalLabel+'</td>';
-    matrix.visibleMonths.forEach(function(m){ t+='<td style="padding:8px;text-align:right;">'+rfFmtVal(matrix.colTotals[m]||0)+'</td>'; });
-    t+='<td style="padding:8px;text-align:right;color:#a855f7;">'+rfFmtVal(matrix.grandTotal)+'</td></tr></table>';
-    if(matrix.rows.length>15) t+='<p style="font-size:10px;color:#888;">Showing top 15 of '+matrix.rows.length+' rows — full data in Excel export.</p>';
+    t+='<tr style="background:'+color+'22;font-weight:800;"><td style="padding:10px 12px;">'+matrix.totalLabel+'</td>';
+    matrix.visibleMonths.forEach(function(m){ t+='<td style="padding:10px 8px;text-align:right;">'+rfFmtExport(matrix.colTotals[m]||0)+'</td>'; });
+    t+='<td style="padding:10px 12px;text-align:right;color:'+color+';">'+rfFmtExport(matrix.grandTotal)+'</td></tr></table>';
     return t;
   }
-  h+=pdfTable('Pipeline Pivot', pipelineMat, '#16a34a');
+  h+=pdfTable('Pipeline Pivot', pipelineMat, '#15803d');
   blockEntries.forEach(function(e){ h+=pdfTable(e.block.name+' ('+e.block.op+')', e.matrix, e.block.color); });
   if(netMat) h+=pdfTable('Net Forecast', netMat, '#2563eb');
-  h+='</div>';
+  h+='<p style="font-size:10px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:12px;">'+APP_NAME+' · Confidential budget analysis</p></div>';
   return h;
+}
+async function rfCaptureChartImages(){
+  const specs=[
+    {id:'rfChartForecast',title:'12-Month Revenue Forecast'},
+    {id:'rfChartWaterfall',title:'Budget Bridge'},
+    {id:'rfChartScenario',title:'Scenario Comparison'},
+    {id:'rfChartNetForecast',title:'Net Budget Forecast'},
+    {id:'rfChartRunRate',title:'Run-Rate Build-Up'}
+  ];
+  const out=[];
+  specs.forEach(function(s){
+    const canvas=el(s.id);
+    if(canvas&&canvas.width>0) out.push({title:s.title,img:canvas.toDataURL('image/png',1.0)});
+  });
+  return out;
 }
 async function rfExportPDF(){
   const JSPDF=(window.jspdf&&window.jspdf.jsPDF)?window.jspdf.jsPDF:(typeof jsPDF!=='undefined'?jsPDF:null);
   if(!JSPDF||typeof html2canvas==='undefined'){ alert('PDF libraries still loading — please try again in a moment.'); return; }
+  const wasVisible=rfChartsVisible;
+  if(!wasVisible){ rfChartsVisible=true; el('rfChartsSection').style.display='block'; el('rfChartsToggleText').textContent='Hide Forecast Charts'; }
+  rfRenderCharts();
+  rfResizeAllCharts();
+  await new Promise(function(r){ setTimeout(r,700); });
+  const chartImages=await rfCaptureChartImages();
+  if(!wasVisible){ rfChartsVisible=false; el('rfChartsSection').style.display='none'; el('rfChartsToggleText').textContent='Show Forecast Charts'; }
   const wrap=document.createElement('div');
-  wrap.style.cssText='position:fixed;left:-9999px;top:0;';
-  wrap.innerHTML=rfBuildPdfReportHtml();
+  wrap.style.cssText='position:fixed;left:-9999px;top:0;width:1100px;';
+  wrap.innerHTML=rfBuildPdfReportHtml(chartImages);
   document.body.appendChild(wrap);
   const root=wrap.querySelector('#rfPdfRoot');
   try{
-    const canvas=await html2canvas(root,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+    const canvas=await html2canvas(root,{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:1100});
     const img=canvas.toDataURL('image/png');
     const pdf=new JSPDF('p','mm','a4');
     const pw=pdf.internal.pageSize.getWidth();
     const ph=pdf.internal.pageSize.getHeight();
-    const margin=8;
+    const margin=10;
     const imgW=pw-margin*2;
     const imgH=(canvas.height*imgW)/canvas.width;
-    let y=0; let left=imgH;
-    pdf.addImage(img,'PNG',margin,margin-y,imgW,imgH);
-    while(left>ph-margin*2){
-      y+=ph-margin*2;
+    let heightLeft=imgH;
+    let yPos=0;
+    pdf.addImage(img,'PNG',margin,margin-yPos,imgW,imgH);
+    heightLeft-=ph-margin*2;
+    while(heightLeft>0){
+      yPos+=ph-margin*2;
       pdf.addPage();
-      pdf.addImage(img,'PNG',margin,margin-y,imgW,imgH);
-      left-=ph-margin*2;
+      pdf.addImage(img,'PNG',margin,margin-yPos,imgW,imgH);
+      heightLeft-=ph-margin*2;
     }
-    pdf.save('GLK_Revenue_Forecast_'+new Date().toISOString().split('T')[0]+'.pdf');
+    pdf.save('Revenue_Forecast_'+new Date().toISOString().split('T')[0]+'.pdf');
   }catch(err){
     alert('PDF export failed: '+(err.message||err));
   }finally{
@@ -4117,6 +3787,43 @@ function rfBuildRunRateData(){
   const visibleMonths=[]; for(let m=0;m<12;m++) if(rfCascadeMonthVisible(year,m)) visibleMonths.push(m);
   return {year,base,cumulative,visibleMonths};
 }
+function rfBuildForecastMonthlyData(){
+  const bids=rfActiveBids();
+  const visibleMonths=[]; for(let m=0;m<12;m++) if(rfPivotMonthVisible(m)) visibleMonths.push(m);
+  if(!visibleMonths.length) return null;
+  const pipeline=visibleMonths.map(function(m){ return rfSum(bids.filter(function(b){ return rfGetMonthIdx(b)===m; })); });
+  const committed=visibleMonths.map(function(m){
+    return rfSum(bids.filter(function(b){ return rfGetMonthIdx(b)===m&&STATUS_WON.includes(b.status); }));
+  });
+  const weighted=visibleMonths.map(function(m){
+    return bids.filter(function(b){ return rfGetMonthIdx(b)===m&&!STATUS_LOST.includes(b.status); })
+      .reduce(function(s,b){ return s+rfMetricVal(b)*(STATUS_WON.includes(b.status)?1:probToFraction(b.closureProb)); },0);
+  });
+  const pipelineMat=rfBuildMatrix(bids);
+  const netMat=rfComputeNetMatrix(pipelineMat, rfGetBlockMatrices());
+  const net=netMat?visibleMonths.map(function(m){ return netMat.colTotals[m]||0; }):pipeline;
+  return {labels:visibleMonths.map(function(m){ return MONTH_NAMES[m]; }),pipeline,committed,weighted,net,visibleMonths};
+}
+function rfBuildWaterfallData(){
+  const conf=rfConfidenceFor(rfActiveBids());
+  const blockEntries=rfGetBlockMatrices();
+  let subtractTotal=0, addTotal=0;
+  blockEntries.forEach(function(e){
+    if(!e.matrix) return;
+    if(e.op==='subtract') subtractTotal+=e.matrix.grandTotal||0;
+    if(e.op==='add') addTotal+=e.matrix.grandTotal||0;
+  });
+  const pipeline=conf.bestCaseVal;
+  const net=pipeline+addTotal-subtractTotal;
+  const items=[{label:'Pipeline',value:pipeline,color:'#15803d'}];
+  blockEntries.forEach(function(e){
+    if(!e.matrix||e.op==='none') return;
+    const v=e.matrix.grandTotal||0;
+    items.push({label:e.block.name+(e.op==='subtract'?' (−)':' (+)'),value:e.op==='subtract'?-v:v,color:e.block.color});
+  });
+  items.push({label:'Net Forecast',value:net,color:'#2563eb'});
+  return items;
+}
 function rfRenderKpis(){
   const grid=el('rfKpiGrid'); if(!grid) return;
   const bids=rfActiveBids();
@@ -4147,6 +3854,50 @@ function rfCenterTextPlugin(id,c,bigText,smallText){
     ctx.fillText(smallText,left+width/2,top+height/2+13);
     ctx.restore();
   }};
+}
+function rfRenderChartForecast(){
+  destroyChart('rfForecast');
+  const canvas=el('rfChartForecast'); if(!canvas) return;
+  const data=rfBuildForecastMonthlyData(); if(!data) return;
+  const c=getChartColors();
+  const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
+  CHARTS.rfForecast=new Chart(canvas,{
+    type:'line',
+    data:{labels:data.labels,datasets:[
+      {label:'Committed (Won/Billed)',data:data.committed,borderColor:'#15803d',backgroundColor:'rgba(21,128,61,.08)',fill:true,tension:.35,borderWidth:2.5,pointRadius:3},
+      {label:'Weighted Forecast',data:data.weighted,borderColor:'#d97706',backgroundColor:'rgba(217,119,6,.06)',fill:true,tension:.35,borderWidth:2.5,pointRadius:3},
+      {label:'Full Pipeline',data:data.pipeline,borderColor:c.p1,borderDash:[6,4],fill:false,tension:.35,borderWidth:2,pointRadius:2},
+      {label:'Net Budget Forecast',data:data.net,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',fill:true,tension:.35,borderWidth:3,pointRadius:4}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',align:'end',labels:{color:c.text,font:{size:11,weight:'600'},usePointStyle:true,padding:14}},
+        tooltip:{backgroundColor:'rgba(0,0,0,.85)',padding:12,cornerRadius:10,callbacks:{label:ctx=>' '+ctx.dataset.label+': '+rfFmtVal(ctx.parsed.y)+' '+metricLabel}}
+      },
+      scales:{
+        x:{ticks:{color:c.text,font:{size:11,weight:'600'}},grid:{display:false}},
+        y:{ticks:{color:c.text,callback:v=>rfFmtVal(v)},grid:{color:c.grid},border:{dash:[4,4]},beginAtZero:true}
+      }}});
+}
+function rfRenderChartWaterfall(){
+  destroyChart('rfWaterfall');
+  const canvas=el('rfChartWaterfall'); if(!canvas) return;
+  const items=rfBuildWaterfallData(); if(!items||!items.length) return;
+  const c=getChartColors();
+  const labels=items.map(function(i){ return i.label; });
+  const colors=items.map(function(i){ return i.color; });
+  CHARTS.rfWaterfall=new Chart(canvas,{
+    type:'bar',
+    data:{labels,datasets:[{label:'Budget Bridge',data:items.map(function(i){ return i.value; }),backgroundColor:colors,borderRadius:8,borderSkipped:false,barPercentage:.55}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'rgba(0,0,0,.85)',padding:12,cornerRadius:10,callbacks:{label:ctx=>' '+rfFmtVal(ctx.parsed.y)}}
+      },
+      scales:{
+        x:{ticks:{color:c.text,font:{size:10,weight:'600'},maxRotation:45,minRotation:0},grid:{display:false}},
+        y:{ticks:{color:c.text,callback:v=>rfFmtVal(v)},grid:{color:c.grid},border:{dash:[4,4]}}
+      }}});
 }
 function rfRenderChartRunRate(){
   destroyChart('rfRunRate');
@@ -4338,13 +4089,15 @@ function rfRenderChartNetForecast(){
 function rfRenderCharts(){
   if(!rfChartsVisible) return;
   rfRenderKpis();
+  rfSafeChart('rfForecast', rfRenderChartForecast);
+  rfSafeChart('rfWaterfall', rfRenderChartWaterfall);
   rfSafeChart('rfRunRate', rfRenderChartRunRate);
+  rfSafeChart('rfScenario', rfRenderChartScenario);
+  rfSafeChart('rfNetForecast', rfRenderChartNetForecast);
   rfSafeChart('rfConfidence', rfRenderChartConfidence);
   rfSafeChart('rfGroup', rfRenderChartGroup);
   rfSafeChart('rfStatusMix', rfRenderChartStatusMix);
   rfSafeChart('rfProb', rfRenderChartProb);
-  rfSafeChart('rfScenario', rfRenderChartScenario);
-  rfSafeChart('rfNetForecast', rfRenderChartNetForecast);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -4360,6 +4113,5 @@ window.addEventListener('load',function(){
   }catch(e){}
   initAccess();
 });
-</script>
-<script src="/sites/GKA/SiteAssets/glk-analytics.js"></script></body>
+</script></body>
 </html>
