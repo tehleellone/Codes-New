@@ -606,7 +606,6 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
 .rf-panel-head{padding:1rem 1.1rem .8rem;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:var(--bg-card);border-radius:12px 12px 0 0;}
 .rf-panel-sub{font-size:.68rem;color:var(--t3);margin-top:.3rem;font-style:italic;}
 .rf-table-scroll{
-  height:min(68vh,680px);
   max-height:min(68vh,680px);
   overflow:auto;
   position:relative;
@@ -615,9 +614,10 @@ body[data-theme="dark"] .badge-warning,body[data-theme="duralux-dark"] .badge-wa
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
 }
+.rf-cascade-block .rf-table-scroll{max-height:min(50vh,420px);}
+.rf-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.78rem;white-space:nowrap;table-layout:auto;}
 .rf-cascade-block{margin-bottom:1.25rem;}
-.rf-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.8rem;white-space:nowrap;table-layout:auto;}
-.rf-table th,.rf-table td{padding:.5rem .7rem;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:right;background:var(--bg-card);}
+.rf-table th,.rf-table td{padding:.32rem .55rem;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:right;background:var(--bg-card);line-height:1.35;}
 .rf-table thead th{
   position:sticky;top:0;z-index:5;
   background:var(--bg-secondary)!important;color:var(--t2);font-weight:700;
@@ -2930,7 +2930,12 @@ function glkShowRevenueForecast(){
     document.getElementById('revenue-forecast-view').style.display='block';
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
     document.getElementById('navRevenueForecast').classList.add('active');
-    rfInit();
+    if(!rfViewInitialized){
+      rfInit();
+      rfViewInitialized=true;
+    } else {
+      rfRenderAll();
+    }
     if(rfChartsVisible) rfScheduleChartRender();
 }
 function changeTheme(event){
@@ -3028,6 +3033,8 @@ const RF_TODAY=new Date();
 const rfCurrentMonthIdx=RF_TODAY.getMonth();
 const rfCurrentYear=RF_TODAY.getFullYear();
 let rfFiltersBuilt=false;
+let rfViewInitialized=false;
+let rfRenderQueued=false;
 
 function rfEnsureDefaultYear(){
   const yearKey='rf_year';
@@ -3050,7 +3057,7 @@ function rfInit(){
   const cb=el('rfHidePastToggle'); if(cb) cb.checked=rfHidePast;
   rfLoadScenariosFromStorage();
   rfRefreshScenarioSelect();
-  rfLoadScenario(rfActiveScenarioName);
+  rfLoadScenario(rfActiveScenarioName, true);
   rfRenderAll();
 }
 
@@ -3100,9 +3107,14 @@ function rfMetricVal(b){ return rfMetric==='count' ? 1 : num(b[rfMetric]); }
 function rfSum(bids){ return bids.reduce((s,b)=>s+rfMetricVal(b),0); }
 function rfFmtVal(v){ if(rfMetric==='count') return String(Math.round(v*10)/10); if(rfMetric==='gaPoints') return fmtGA(v); return fmt(v); }
 function rfYearBase(bids,year){
-  const yb=bids.filter(b=>rfGetYear(b)===year);
   const arr=new Array(12).fill(0);
-  for(let m=0;m<12;m++) arr[m]=rfSum(yb.filter(b=>rfGetMonthIdx(b)===m));
+  for(let i=0;i<bids.length;i++){
+    const b=bids[i];
+    if(rfGetYear(b)!==year) continue;
+    const m=rfGetMonthIdx(b);
+    if(m==null) continue;
+    arr[m]+=rfMetricVal(b);
+  }
   return arr;
 }
 // "Hide past months" visibility rules — Table 1 aggregates by calendar month across years,
@@ -3218,7 +3230,7 @@ function rfSaveScenario(){
   rfRefreshScenarioSelect();
   alert('Scenario "'+rfActiveScenarioName+'" saved.');
 }
-function rfLoadScenario(name){
+function rfLoadScenario(name, skipRender){
   if(!name) return;
   rfLoadScenariosFromStorage();
   const sc=rfScenariosCache[name];
@@ -3228,9 +3240,7 @@ function rfLoadScenario(name){
       return {id:b.id||('b'+Date.now()+Math.random().toString(36).slice(2,5)),name:b.name||'Block',color:b.color||RF_BLOCK_COLORS[0],op:b.op||'none',filters:b.filters||{}};
     });
   } else { RF_EXTRA_BLOCKS=[]; }
-  rfRenderBlocks();
-  rfRenderNetTable();
-  rfScheduleChartRender();
+  if(!skipRender) rfRenderAll();
 }
 function rfSyncBlockFiltersFromDom(block){
   if(!block.filters) block.filters={};
@@ -3241,8 +3251,11 @@ function rfSyncBlockFiltersFromDom(block){
 }
 function rfSyncAllBlockFiltersFromDom(){ RF_EXTRA_BLOCKS.forEach(rfSyncBlockFiltersFromDom); }
 
-function rfGetBlockBids(block){
-  let bids=rfGetBaseBids().filter(function(b){ return !RF_EXCLUDED.has(b.id); });
+function rfGetBlockBids(block, baseBids){
+  let bids=baseBids;
+  if(!bids){
+    bids=rfGetBaseBids().filter(function(b){ return !RF_EXCLUDED.has(b.id); });
+  }
   const filters=block.filters||{};
   return bids.filter(function(b){
     for(const fd of RF_FILTER_DEFS){
@@ -3260,19 +3273,31 @@ function rfBuildMatrix(bids){
   const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
   const totalLabel=rfHidePast?'Remaining Total':'Grand Total';
   if(!bids.length||!visibleMonths.length) return null;
-  const rows=[...new Set(bids.map(b=>b[rfRowDim]).filter(v=>v&&v!=='—'))].sort();
+  const monthSet=new Set(visibleMonths);
   const cells={}; const colTotals={}; visibleMonths.forEach(m=>colTotals[m]=0);
-  const rowTotals={}; let grandTotal=0;
-  rows.forEach(function(rowVal){
-    let rowTotal=0;
-    visibleMonths.forEach(function(m){
-      const val=rfSum(bids.filter(function(b){ return b[rfRowDim]===rowVal&&rfGetMonthIdx(b)===m; }));
-      cells[rowVal+'|'+m]=val;
-      colTotals[m]+=val; rowTotal+=val;
-    });
-    rowTotals[rowVal]=rowTotal; grandTotal+=rowTotal;
-  });
+  const rowTotals={}; const rowSet=new Set();
+  let grandTotal=0;
+  for(let i=0;i<bids.length;i++){
+    const b=bids[i];
+    const rowVal=b[rfRowDim];
+    if(!rowVal||rowVal==='—') continue;
+    const m=rfGetMonthIdx(b);
+    if(m==null||!monthSet.has(m)) continue;
+    const v=rfMetricVal(b);
+    const key=rowVal+'|'+m;
+    cells[key]=(cells[key]||0)+v;
+    rowTotals[rowVal]=(rowTotals[rowVal]||0)+v;
+    colTotals[m]+=v;
+    grandTotal+=v;
+    rowSet.add(rowVal);
+  }
+  const rows=[...rowSet].sort();
   return {visibleMonths,rows,cells,colTotals,rowTotals,grandTotal,rowLabel,metricLabel,totalLabel};
+}
+function rfGetBlockEntries(bids){
+  return RF_EXTRA_BLOCKS.map(function(block){
+    return {block:block, matrix:rfBuildMatrix(rfGetBlockBids(block, bids)), op:block.op};
+  });
 }
 function rfPaintMatrixHtml(matrix, drillOpts){
   if(!matrix) return '<div style="padding:1.5rem;text-align:center;color:var(--t3);">No data matches filters.</div>';
@@ -3330,10 +3355,8 @@ function rfComputeNetMatrix(pipelineMat, blockEntries){
   });
   return Object.assign({},pipelineMat,{rows,cells,colTotals,rowTotals,grandTotal,isNet:true,totalLabel:'Net Total'});
 }
-function rfGetBlockMatrices(){
-  return RF_EXTRA_BLOCKS.map(function(block){
-    return {block: block, matrix: rfBuildMatrix(rfGetBlockBids(block)), op: block.op};
-  });
+function rfGetBlockMatrices(bids){
+  return rfGetBlockEntries(bids||rfActiveBids());
 }
 function rfNetFormulaText(blockEntries){
   let t='Pipeline';
@@ -3403,12 +3426,15 @@ function rfBuildBlockFilters(block){
   html+='</div>';
   return html;
 }
-function rfRenderBlocks(){
+function rfRenderBlocks(blockEntries, bids){
   const container=el('rfExtraBlocksContainer'); if(!container) return;
   if(!RF_EXTRA_BLOCKS.length){ container.innerHTML=''; return; }
+  const activeBids=bids||rfActiveBids();
+  const entries=blockEntries||rfGetBlockEntries(activeBids);
   const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
-  container.innerHTML=RF_EXTRA_BLOCKS.map(function(block, i){
-    const matrix=rfBuildMatrix(rfGetBlockBids(block));
+  container.innerHTML=entries.map(function(entry){
+    const block=entry.block;
+    const matrix=entry.matrix;
     const opLabel=block.op==='add'?'+ Add to Pipeline':(block.op==='subtract'?'− Subtract from Pipeline':'No calculation');
     return '<div class="rf-block-card" style="--blk-color:'+block.color+'" id="rfBlock_'+block.id+'">'+
       '<div class="rf-block-head">'+
@@ -3434,10 +3460,11 @@ function rfRenderBlocks(){
     });
   });
 }
-function rfRenderNetTable(){
+function rfRenderNetTable(pipelineMat, blockEntries){
   const panel=el('rfNetPanel'); const container=el('rfNetTable'); if(!panel||!container) return;
-  const pipelineMat=rfBuildMatrix(rfActiveBids());
-  const blockEntries=rfGetBlockMatrices();
+  const bids=rfActiveBids();
+  if(!pipelineMat) pipelineMat=rfBuildMatrix(bids);
+  if(!blockEntries) blockEntries=rfGetBlockEntries(bids);
   const netMat=rfComputeNetMatrix(pipelineMat, blockEntries);
   if(!netMat){
     panel.style.display='none';
@@ -3654,55 +3681,43 @@ async function rfExportPDF(){
 
 // ── render: everything ───────────────────────────────────────────
 function rfRenderAll(){
+  if(rfRenderQueued) return;
+  rfRenderQueued=true;
+  requestAnimationFrame(function(){
+    rfRenderQueued=false;
+    rfRenderAllNow();
+  });
+}
+function rfRenderAllNow(){
+  const bids=rfActiveBids();
+  const pipelineMat=rfBuildMatrix(bids);
+  const blockEntries=rfGetBlockEntries(bids);
   rfRenderExcludedBanner();
-  rfRenderPivot();
-  rfRenderBlocks();
-  rfRenderNetTable();
-  rfRenderCascade();
+  rfRenderPivot(pipelineMat);
+  rfRenderBlocks(blockEntries, bids);
+  rfRenderNetTable(pipelineMat, blockEntries);
+  rfRenderCascade(bids);
   if(rfModalCtx) rfRenderModal();
   rfScheduleChartRender();
 }
 
 // ── TABLE 1: pivot ────────────────────────────────────────────────
-function rfRenderPivot(){
+function rfRenderPivot(pipelineMat){
   const container=el('rfPivotTable'); if(!container) return;
   const rowLabel=RF_ROW_DIMS.find(r=>r.key===rfRowDim).label;
   const metricLabel=RF_METRICS.find(m=>m.key===rfMetric).label;
   set('rfPivotTitle', metricLabel+' by '+rowLabel+' & Month (Expected Activation)'+(rfHidePast?' — remaining year':''));
-  const bids=rfActiveBids();
-  if(!bids.length){ container.innerHTML='<div style="padding:2rem;text-align:center;color:var(--t3);">No data matches the current filters.</div>'; return; }
-  const visibleMonths=[]; for(let m=0;m<12;m++) if(rfPivotMonthVisible(m)) visibleMonths.push(m);
-  if(!visibleMonths.length){ container.innerHTML='<div style="padding:2rem;text-align:center;color:var(--t3);">No months to show — try turning off "Hide past months".</div>'; return; }
-  const totalLabel = rfHidePast ? 'Remaining Total' : 'Grand Total';
-  const rows=[...new Set(bids.map(b=>b[rfRowDim]).filter(v=>v&&v!=='—'))].sort();
-  let html='<table class="rf-table"><thead><tr><th>'+rowLabel+'</th>';
-  visibleMonths.forEach(m=>html+='<th>'+MONTH_NAMES[m]+'</th>');
-  html+='<th class="rf-total-col">'+totalLabel+'</th></tr></thead><tbody>';
-  const colTotals={}; visibleMonths.forEach(m=>colTotals[m]=0);
-  let grandTotal=0;
-  rows.forEach(function(rowVal){
-    html+='<tr><td>'+rowVal+'</td>';
-    let rowTotal=0;
-    visibleMonths.forEach(function(m){
-      const val=rfSum(rfGetCellBids(rowVal,m,null,false));
-      colTotals[m]+=val; rowTotal+=val;
-      html+= val ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown('+JSON.stringify(rowVal)+','+m+',null)">'+rfFmtVal(val)+'</td>' : '<td class="rf-cell-empty">—</td>';
-    });
-    grandTotal+=rowTotal;
-    html+= rowTotal ? '<td class="rf-total-col rf-cell-btn" onclick="rfOpenDrilldown('+JSON.stringify(rowVal)+',null,null)">'+rfFmtVal(rowTotal)+'</td></tr>' : '<td class="rf-total-col">—</td></tr>';
-  });
-  html+='</tbody><tfoot><tr><td>'+totalLabel+'</td>';
-  visibleMonths.forEach(function(m){
-    html+= colTotals[m] ? '<td class="rf-cell-btn" onclick="rfOpenDrilldown(null,'+m+',null)">'+rfFmtVal(colTotals[m])+'</td>' : '<td class="rf-cell-empty">—</td>';
-  });
-  html+= grandTotal ? '<td class="rf-total-col rf-cell-btn" onclick="rfOpenDrilldown(null,null,null)">'+rfFmtVal(grandTotal)+'</td></tr></tfoot></table>' : '<td class="rf-total-col">—</td></tr></tfoot></table>';
-  container.innerHTML=html;
+  if(!pipelineMat){
+    container.innerHTML='<div style="padding:2rem;text-align:center;color:var(--t3);">No data matches the current filters.</div>';
+    return;
+  }
+  container.innerHTML=rfPaintMatrixHtml(pipelineMat, null);
 }
 
 // ── TABLE 2: recurring revenue roll-forward (cascade) ────────────
-function rfRenderCascade(){
+function rfRenderCascade(bids){
   const container=el('rfCascadeTables'); if(!container) return;
-  const bids=rfActiveBids();
+  bids=bids||rfActiveBids();
   if(!bids.length){ container.innerHTML='<div style="padding:1rem;color:var(--t3);">No data matches the current filters.</div>'; return; }
   const years=[...new Set(bids.map(rfGetYear).filter(Boolean))].sort().filter(rfCascadeYearVisible);
   if(!years.length){ container.innerHTML='<div style="padding:1rem;color:var(--t3);">No upcoming years to show — try turning off "Hide past months".</div>'; return; }
