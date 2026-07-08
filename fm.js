@@ -2208,9 +2208,86 @@ function makeChart(id, config) {
   var parent = canvas.parentNode;
   var newCanvas = document.createElement('canvas');
   newCanvas.id = id;
+  if (canvas.dataset && canvas.dataset.fmTab) newCanvas.dataset.fmTab = canvas.dataset.fmTab;
+  if (canvas.dataset && canvas.dataset.fmHidden) newCanvas.dataset.fmHidden = canvas.dataset.fmHidden;
+  if (canvas.getAttribute('data-fm-hidden') === '1') {
+    newCanvas.setAttribute('data-fm-hidden', '1');
+  }
   parent.replaceChild(newCanvas, canvas);
   FM.charts[id] = new Chart(newCanvas, config);
   return FM.charts[id];
+}
+
+var FM_CHART_TAB_MAP = {
+  overview: { ids: ['ch-status', 'ch-imp', 'ch-du'], active: { status: 'ch-status', imp: 'ch-imp', du: 'ch-du' } },
+  winloss:  { ids: ['ch-wl', 'ch-reasons'], active: { wl: 'ch-wl', reasons: 'ch-reasons' } },
+  director: { ids: ['leaderboard', 'ch-tcvdir'], active: { lb: 'leaderboard', tcvdir: 'ch-tcvdir' } },
+  am:       { ids: ['am-leaderboard', 'ch-amtcv', 'ch-ammix'], active: { amlb: 'am-leaderboard', amtcv: 'ch-amtcv', ammix: 'ch-ammix' } },
+  perf:     { ids: ['perf-director', 'perf-am'], active: { director: 'perf-director', am: 'perf-am' } },
+};
+
+function fmApplyChartTabVisibility(group) {
+  var spec = FM_CHART_TAB_MAP[group];
+  if (!spec) return;
+  var tab = FM.chartTabs[group];
+  var activeId = spec.active[tab];
+  if (!activeId) return;
+
+  var parents = {};
+  var elsById = {};
+  spec.ids.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    elsById[id] = el;
+    parents[id] = el.classList && el.classList.contains('chart-wrap') ? el : (el.closest('.chart-wrap') || null);
+  });
+
+  var counts = {};
+  var wrapSeq = 0;
+  spec.ids.forEach(function (id) {
+    var p = parents[id];
+    if (!elsById[id]) return;
+    var key = p ? p.dataset.fmTag || (p.dataset.fmTag = 'fmwrap_' + group + '_' + ++wrapSeq) : id;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+
+  spec.ids.forEach(function (id) {
+    var el = elsById[id];
+    if (!el) return;
+    var show = id === activeId;
+    var p = parents[id];
+    var key = p && p.dataset.fmTag;
+    var shareWrap = key && counts[key] > 1;
+
+    if (el.tagName === 'CANVAS') {
+      if (show) {
+        el.removeAttribute('data-fm-hidden');
+        el.style.display = 'block';
+        el.style.visibility = 'visible';
+      } else {
+        el.setAttribute('data-fm-hidden', '1');
+        el.style.display = 'none';
+        el.style.visibility = 'hidden';
+      }
+      if (shareWrap && p) p.style.display = 'block';
+      return;
+    }
+
+    if (shareWrap) {
+      el.style.display = show ? 'block' : 'none';
+      if (p) p.style.display = 'block';
+    } else {
+      var target = p || el;
+      target.style.display = show ? 'block' : 'none';
+    }
+  });
+}
+
+function fmSyncAllChartTabs() {
+  Object.keys(FM_CHART_TAB_MAP).forEach(function (group) {
+    fmApplyChartTabVisibility(group);
+  });
+  fmResizeAnalyticsChartsDeferred();
 }
 
 function renderDashboardCharts() {
@@ -2238,6 +2315,7 @@ function renderDashboardCharts() {
   steps.forEach(function (fn) {
     try { fn(); } catch (e) { console.error('FM chart render failed:', e); }
   });
+  fmSyncAllChartTabs();
   fmResizeAnalyticsChartsDeferred();
 }
 
@@ -3323,53 +3401,11 @@ function switchChartTab(group, tab, btnEl) {
   bar.querySelectorAll('.chart-tab').forEach(function(b){ b.classList.remove('active'); });
   btnEl.classList.add('active');
 
-  var groupMap = {
-    overview: { ids: ['ch-status','ch-imp','ch-du'],     active: { status:'ch-status', imp:'ch-imp', du:'ch-du' } },
-    winloss:  { ids: ['ch-wl','ch-reasons'],             active: { wl:'ch-wl', reasons:'ch-reasons' } },
-    director: { ids: ['leaderboard','ch-tcvdir'],        active: { lb:'leaderboard', tcvdir:'ch-tcvdir' } },
-    am:       { ids: ['am-leaderboard','ch-amtcv','ch-ammix'], active: { amlb:'am-leaderboard', amtcv:'ch-amtcv', ammix:'ch-ammix' } },
-    perf:     { ids: ['perf-director','perf-am'],        active: { director:'perf-director', am:'perf-am' } },
-  };
-  var spec = groupMap[group];
+  var spec = FM_CHART_TAB_MAP[group];
   if (!spec) return;
-
-  // Group elements by their shared chart-wrap parent (or the element itself)
-  var parents = {};
-  var elsById = {};
-  spec.ids.forEach(function(id){
-    var el = document.getElementById(id);
-    if (!el) return;
-    elsById[id] = el;
-    var p = el.classList && el.classList.contains('chart-wrap') ? el : (el.closest('.chart-wrap') || el);
-    if (!parents[id]) parents[id] = p;
-  });
-
-  // Count siblings sharing the same chart-wrap parent
-  var counts = {};
-  var wrapSeq = 0;
-  spec.ids.forEach(function (id) {
-    var p = parents[id];
-    if (!elsById[id]) return;
-    var key = p ? p.dataset.fmTag || (p.dataset.fmTag = 'fmwrap_' + ++wrapSeq) : id;
-    counts[key] = (counts[key] || 0) + 1;
-  });
+  fmApplyChartTabVisibility(group);
 
   var activeId = spec.active[tab];
-  spec.ids.forEach(function (id) {
-    var el = elsById[id];
-    if (!el) return;
-    var p = parents[id];
-    var key = p && p.dataset.fmTag;
-    var shareWrap = key && counts[key] > 1;
-    if (shareWrap) {
-      el.style.display = id === activeId ? 'block' : 'none';
-      p.style.display = 'block';
-    } else {
-      var target = p || el;
-      target.style.display = id === activeId ? 'block' : 'none';
-    }
-  });
-  fmResizeAnalyticsChartsDeferred();
   if (activeId && typeof Chart !== 'undefined' && Chart.getChart) {
     requestAnimationFrame(function () {
       var cv = document.getElementById(activeId);
