@@ -7229,14 +7229,48 @@ ${USER_CONTEXT.userName}`
             });
         }
 
+        function smGetExportColumns() {
+            if (!agGridApi) return [];
+            return agGridApi.getColumns().filter(function (col) {
+                return col.getColId() !== 'actions';
+            });
+        }
+
+        function smFormatExportCellValue(col, row) {
+            const colDef = col.getColDef();
+            const field = colDef.field;
+            let raw = field ? row[field] : '';
+
+            if (field === 'code') {
+                return row._isExportChild ? '  ↳ ' + (row.code || '') : (row.code || '');
+            }
+            if (field === 'type') {
+                return row._isExportChild ? 'Child' : (row.type || '');
+            }
+            if (field === 'parent') {
+                return row.parent || '-';
+            }
+            if (colDef.type === 'numericColumn' || field === 'avg') {
+                return formatCurrency(raw || 0);
+            }
+            if (field === 'accountType' || field === 'rnpsEligibility') {
+                return raw || '';
+            }
+            return raw != null && raw !== '' ? raw : '';
+        }
+
         function exportToExcel() {
+            if (!agGridApi) return;
+
             const today = new Date();
             const dateStr = today.toLocaleDateString('en-GB') + " " + today.toLocaleTimeString('en-GB', {
                 hour: '2-digit',
                 minute: '2-digit'
             });
 
-            const lastThree = getLastThreeCompletedMonths();
+            const exportColumns = smGetExportColumns();
+            const colCount = exportColumns.length || 1;
+            const thStyle = 'background-color:#a855f7;color:white;font-weight:bold;padding:10px;';
 
             // Build export data: parents with their children underneath
             const exportData = [];
@@ -7263,33 +7297,19 @@ ${USER_CONTEXT.userName}`
             let html = '<html><head><meta charset="utf-8"></head><body>';
             html += '<table border="1" cellspacing="0" cellpadding="4">';
 
-            html += '<tr><td colspan="18" style="background-color:#a855f7;color:white;font-size:16px;font-weight:bold;text-align:center;padding:12px;">';
+            html += '<tr><td colspan="' + colCount + '" style="background-color:#a855f7;color:white;font-size:16px;font-weight:bold;text-align:center;padding:12px;">';
             html += 'Service Management Dashboard - Export</td></tr>';
 
-            html += '<tr><td colspan="18" style="background-color:#e9d5ff;font-size:12px;padding:8px;text-align:center;">';
+            html += '<tr><td colspan="' + colCount + '" style="background-color:#e9d5ff;font-size:12px;padding:8px;text-align:center;">';
             html += '<b>Generated:</b> ' + dateStr + ' | <b>Parents:</b> ' + parentAccounts.length + ' | <b>Total (with children):</b> ' + exportData.length + '</td></tr>';
 
-            html += '<tr><td colspan="18" style="height:10px;"></td></tr>';
+            html += '<tr><td colspan="' + colCount + '" style="height:10px;"></td></tr>';
 
             html += '<tr>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Account Code</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Parent Code</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Customer Name</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Type</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Team</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Line Manager</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Service Manager</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Account Manager</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Account Director</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">POC Name</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">POC Email</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">POC Phone</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Account Type</th>';
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">RNPS Eligibility</th>';
-            lastThree.forEach(month => {
-                html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">' + month.label + '</th>';
+            exportColumns.forEach(function (col) {
+                const headerName = col.getColDef().headerName || col.getColId();
+                html += '<th style="' + thStyle + '">' + headerName + '</th>';
             });
-            html += '<th style="background-color:#a855f7;color:white;font-weight:bold;padding:10px;">Avg Revenue</th>';
             html += '</tr>';
 
             exportData.forEach((a, i) => {
@@ -7300,32 +7320,19 @@ ${USER_CONTEXT.userName}`
                     rowColor = (i % 2 === 0) ? '#f3e8ff' : '#ffffff';
                 }
 
-                const codeDisplay = a._isExportChild ? '  ↳ ' + a.code : a.code;
-                const typeDisplay = a._isExportChild ? 'Child' : 'Group';
-
                 html += '<tr>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;font-weight:' + (a._isExportChild ? '400' : '700') + ';">' + codeDisplay + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + (a.parent || '-') + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.customer + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + typeDisplay + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.team + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.lm + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.sm + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.am + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.ad + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.pocName + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.pocEmail + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + a.pocPhone + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + (a.accountType || '') + '</td>';
-                html += '<td style="background-color:' + rowColor + ';padding:8px;">' + (a.rnpsEligibility || '') + '</td>';
-                lastThree.forEach(month => {
-                    html += '<td style="background-color:' + rowColor + ';padding:8px;text-align:right;">' + formatCurrency(a[month.key] || 0) + '</td>';
+                exportColumns.forEach(function (col) {
+                    const field = col.getColDef().field;
+                    const isNumeric = col.getColDef().type === 'numericColumn' || field === 'avg';
+                    const cellValue = smFormatExportCellValue(col, a);
+                    const fontWeight = field === 'code' ? ';font-weight:' + (a._isExportChild ? '400' : '700') : '';
+                    const align = isNumeric ? ';text-align:right' : '';
+                    html += '<td style="background-color:' + rowColor + ';padding:8px' + fontWeight + align + ';">' + cellValue + '</td>';
                 });
-                html += '<td style="background-color:' + rowColor + ';padding:8px;text-align:right;">' + formatCurrency(a.avg) + '</td>';
                 html += '</tr>';
             });
 
-            html += '<tr><td colspan="18" style="background-color:#e9d5ff;font-weight:bold;padding:10px;text-align:center;">';
+            html += '<tr><td colspan="' + colCount + '" style="background-color:#e9d5ff;font-weight:bold;padding:10px;text-align:center;">';
             html += 'Parent Accounts: ' + parentAccounts.length + ' | Total Records (with children): ' + exportData.length + '</td></tr>';
             html += '</table></body></html>';
 
