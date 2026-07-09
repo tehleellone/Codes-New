@@ -2512,7 +2512,7 @@
                                         <option value="AM_Approved">✅ AM Approved</option>
                                     </select>
                                     <input type="text" class="search-box" id="agGridSearch" placeholder="Search all columns..." oninput="searchAGGrid(this.value)">
-                                    <button type="button" class="export-btn" onclick="exportToExcel()"><i data-lucide="file-spreadsheet" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Export to Excel</button>
+                                    <button type="button" id="smExportExcelBtn" class="export-btn" onclick="exportToExcel()"><i data-lucide="file-spreadsheet" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Export to Excel</button>
                                 </div>
                             </div>
                             <div id="myGrid" class="ag-theme-alpine" style="height: 600px; width: 100%;"></div>
@@ -5362,6 +5362,12 @@ if (rnpsNav) rnpsNav.style.display = 'flex';
                 if (USER_CONTEXT.isTSMManager) {
                     var projNav = document.getElementById('projectMgmtNavItem');
                     if (projNav) projNav.style.display = 'none';
+                }
+
+                // TSM SE Viewer: no export
+                if (USER_CONTEXT.isTSMSEViewer) {
+                    var exportBtn = document.getElementById('smExportExcelBtn');
+                    if (exportBtn) exportBtn.style.display = 'none';
                 }
 
                 // Start session tracking
