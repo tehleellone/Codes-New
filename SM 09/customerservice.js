@@ -212,9 +212,11 @@ async function csFetchAccessControl() {
 
 async function csFetchAccounts() {
     const url = CS_SP_URL + "/_api/web/lists/getbytitle('" + CS_ACCOUNTS_LIST + "')/items?" +
-        "$select=Title,Customer_x0020_Name,Team,Service_Required,Line_x0020_Manager/Title,Service_x0020_Manager/Title,Request_x0020_Status,POC_x0020_Name,POC_x0020_Email_x0020_ID,POC_x0020_Contact_x0020_No&" +
+        "$select=Title,Customer_x0020_Name,Team,Service_Required,Line_x0020_Manager/Title,Service_x0020_Manager/Title," +
+        "Request_x0020_Status,Request_x0020_Type,Proposed_x0020_Team," +
+        "POC_x0020_Name,POC_x0020_Email_x0020_ID,POC_x0020_Contact_x0020_No&" +
         "$expand=Line_x0020_Manager,Service_x0020_Manager&" +
-        "$filter=Request_x0020_Status eq 'OnBoarded' or Request_x0020_Status eq 'AM_Approved'&$top=20000";
+        "$filter=(Request_x0020_Status eq 'OnBoarded' or Request_x0020_Status eq 'AM_Approved' or Request_x0020_Status eq 'Transfer_Pending')&$top=20000";
     const res = await fetch(url, { headers: { 'Accept': 'application/json;odata=verbose' }, credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch accounts');
     const data = await res.json();
@@ -227,7 +229,10 @@ async function csFetchAccounts() {
         pocName:        item.POC_x0020_Name || '-',
         pocEmail:       item.POC_x0020_Email_x0020_ID || '-',
         pocContact:     item.POC_x0020_Contact_x0020_No || '-',
-        serviceRequired: item.Service_Required || 'False'
+        serviceRequired: item.Service_Required || 'False',
+        requestStatus:  item.Request_x0020_Status || '',
+        requestType:    item.Request_x0020_Type || '',
+        proposedTeam:   item.Proposed_x0020_Team || ''
     }));
 }
 
@@ -1535,6 +1540,8 @@ window.csApplyFilters = function () {
             return {
                 type:reviewType, period:review.period, accountCode:account.code,
                 customer:account.customer, team:account.team, sm:account.sm, lm:account.lm,
+                transferPending: account.requestType === 'Transfer' && account.requestStatus === 'Transfer_Pending',
+                proposedTeam: account.proposedTeam || '',
                 status:review.status, dueDate:review.dueDate||'-',
                 reviewId:review.id,
                 // Attempt 1
@@ -1698,7 +1705,14 @@ function csInitGrid(rowData) {
 
     const columnDefs = [
         { field:'period',           headerName:'Period',            width:100, pinned:'left' },
-        { field:'accountCode',      headerName:'Account',           width:130, pinned:'left', cellStyle:{fontWeight:'700'} },
+        { field:'accountCode',      headerName:'Account',           width:170, pinned:'left',
+          cellRenderer: p => {
+            const code = p.value || '';
+            if (!p.data.transferPending) return `<span style="font-weight:700;">${code}</span>`;
+            const teamHint = p.data.proposedTeam ? ` → ${p.data.proposedTeam}` : '';
+            return `<div style="font-weight:700;line-height:1.3;">${code}<div style="font-size:10px;font-weight:600;color:#ea580c;margin-top:2px;">Transfer pending${teamHint}</div></div>`;
+          }
+        },
         { field:'customer',         headerName:'Customer',          flex:1, minWidth:180 },
         { field:'team',             headerName:'Team',              width:85 },
         { field:'sm',               headerName:'Service Manager',   width:155, cellStyle:{fontWeight:'600'} },
