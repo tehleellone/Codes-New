@@ -11,6 +11,13 @@
 <style id="bcr-styles">
 h1,h2,h3,h4,h5,h6{margin:0!important;padding:0!important;font-weight:inherit}
 a,a:hover,a:focus,a:active,label,label:hover,span:hover,div:hover,p:hover,.form-label,.form-label:hover,.review-key,.review-val,.mt-label,.stat-label{text-decoration:none!important;border-bottom:none!important;box-shadow:none!important;background-image:none!important}
+#bcrApp{position:relative;width:100%;isolation:isolate}
+#landingPage{display:none;width:100%}
+#landingPage.bcr-show{display:flex!important;flex-direction:row!important;min-height:100vh;width:100%}
+#dashboardContent{display:none!important;width:100%}
+#dashboardContent.bcr-show{display:flex!important;flex-direction:column!important;width:100%!important;min-height:100vh!important;background:var(--bg-body)!important;margin:0!important;padding:0!important}
+#dashboardContent.bcr-show .main-container{flex:1;min-height:0;overflow:hidden}
+#dashboardContent.bcr-show #bcrMainPanel{overflow-y:auto;-webkit-overflow-scrolling:touch}
 .landing-page{min-height:100vh;display:flex!important;flex-direction:row!important;background:var(--bg-body);width:100%}
 .landing-left,.landing-right{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem}
 .portal-shell{max-width:1800px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-body);width:100%}
@@ -99,6 +106,11 @@ select,input,textarea,button{font-family:inherit}
 .dd-opt input{accent-color:var(--acc)}
 .dd-opt.all{border-bottom:1px solid var(--border);font-weight:700}
 .chart-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem;box-shadow:var(--cs);margin-bottom:1rem}
+.trend-chart-card{background:linear-gradient(145deg,var(--bg-card),rgba(37,99,235,0.05));border:1px solid var(--border);border-radius:16px;padding:1.25rem 1.5rem;box-shadow:var(--ch);margin-bottom:1.25rem}
+.trend-chart-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem}
+.trend-chart-title{font-size:1rem;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:.5rem}
+.trend-chart-sub{font-size:.75rem;color:var(--t3);margin-top:2px}
+.trend-chart-wrap{position:relative;height:340px}
 .chart-title{font-size:.82rem;font-weight:700;color:var(--t2);margin-bottom:.65rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .chart-grid{display:grid;grid-template-columns:1fr 1fr 2fr;gap:1rem;margin-bottom:1rem}
 .mini-toggle{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--bg-secondary);color:var(--t3)}
@@ -189,8 +201,9 @@ select,input,textarea,button{font-family:inherit}
 .dev-console-label{font-size:.68rem;color:var(--t3);font-weight:700;text-transform:uppercase}
 .dev-console select,.dev-console button{padding:.3rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--t1);font-size:.75rem}
 .dev-console button{background:var(--grad);color:#fff;border:none;font-weight:700;cursor:pointer}
-.toast-container{position:fixed;top:70px;right:16px;z-index:10000;display:flex;flex-direction:column;gap:.5rem}
-.toast{padding:.7rem 1rem;border-radius:10px;background:var(--bg-card);border:1px solid var(--border);box-shadow:var(--ch);font-size:.82rem;font-weight:600;animation:slideUp .3s ease}
+.toast-container{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;pointer-events:none;padding:1rem}
+.toast{pointer-events:auto;min-width:300px;max-width:min(420px,92vw);text-align:center;padding:1.1rem 1.6rem;border-radius:12px;background:var(--bg-card);border:1px solid var(--border);box-shadow:0 12px 40px rgba(0,0,0,.22);font-size:.92rem;font-weight:700;animation:toastPop .28s ease}
+@keyframes toastPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 .toast.success{border-color:rgba(22,163,74,.4);color:var(--green)}
 .toast.error{border-color:rgba(220,38,38,.4);color:var(--red)}
 .toast.info{border-color:var(--nab2);color:var(--acc)}
@@ -231,8 +244,14 @@ select,input,textarea,button{font-family:inherit}
 .script-acc-item.open .chev{transform:rotate(180deg)}
 .script-acc-body{display:none;padding:.85rem 1rem;font-size:.82rem;color:var(--t2);line-height:1.65;border-top:1px solid var(--border)}
 .script-acc-item.open .script-acc-body{display:block}
-.agent-mode .sidebar{display:none}
-.agent-mode .content{padding:1.5rem}
+.agent-mode #bcrSidebar{display:none!important;width:0!important;min-width:0!important;border:none!important;padding:0!important;margin:0!important;overflow:hidden!important}
+.agent-mode #bcrSidebarToggle{display:none!important}
+.agent-mode .main-container{display:flex!important;width:100%!important}
+.agent-mode #bcrMainPanel{width:100%!important;flex:1 1 auto!important;padding:1.25rem 1.5rem!important}
+.admin-mode #bcrSidebar{display:flex!important;flex-direction:column!important}
+#dashboardContent.bcr-show{height:100vh!important;max-height:100vh!important;overflow:hidden!important}
+#dashboardContent.bcr-show .main-container{flex:1 1 0!important;min-height:0!important;display:flex!important;overflow:hidden!important}
+#dashboardContent.bcr-show #bcrMainPanel{flex:1 1 0!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;width:100%!important;display:block!important}
 .agent-form-wrap{max-width:1100px;margin:0 auto}
 @media(max-width:900px){.chart-grid{grid-template-columns:1fr}.landing-page{flex-direction:column}}
 @media(max-width:768px){.form-grid{grid-template-columns:1fr}.header-center{display:none}}
@@ -250,6 +269,8 @@ select,input,textarea,button{font-family:inherit}
   <div class="loading-bar-wrap"><div class="loading-bar-fill"></div></div>
   <div class="loading-step" id="loadingStep">Initializing...</div>
 </div>
+
+<div id="bcrApp">
 
 <div id="landingPage" class="landing-page" style="display:none;">
   <div class="landing-left animate-fade-in">
@@ -304,13 +325,15 @@ select,input,textarea,button{font-family:inherit}
     </div>
   </div>
   <div class="main-container">
-    <div class="sidebar" id="sidebar" style="position:relative;">
-      <div class="sidebar-toggle-btn" id="sidebarToggle"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
-      <div class="nav-items" id="navItems"></div>
+    <div class="sidebar" id="bcrSidebar" style="position:relative;">
+      <div class="sidebar-toggle-btn" id="bcrSidebarToggle"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <div class="nav-items" id="bcrNavItems"></div>
     </div>
-    <div class="content" id="mainContent"></div>
+    <div class="content" id="bcrMainPanel"></div>
   </div>
 </div>
+
+</div><!-- /bcrApp -->
 
 <div id="toastContainer" class="toast-container"></div>
 <div id="detailDrawer" class="detail-drawer"><div class="detail-drawer-inner" id="detailDrawerInner"></div></div>
@@ -323,8 +346,6 @@ select,input,textarea,button{font-family:inherit}
 </div>
 
 <script id="bcr-script">(function(){
-'use strict';
-
 'use strict';
 
 /* ════════════════════════════════════════════════════════════
@@ -348,37 +369,37 @@ var SP_CONFIG = {
 };
 var RECORD_SP_FIELDS = [
   'Id','Reference_ID','Serial_Number','Contact_Date','Contact_Time','Entry_Month',
-  'Agent_Name','Agent_Email','Touch_Point','Customer_Location','Contact_Identifier',
+  'Agent_Name','Agent_Email','Touch_Point','Customer_Location',
   'Customer_Type','Complainer_Role','Caller_Name','Customer_Name','Emirates_ID_System',
-  'Emirates_ID_Provided','Email_Address','Alternative_Contact','Currently_In_UAE',
+  'Emirates_ID_Provided','Email_Address','Alternative_Contact',
   'Account_Number','MSISDN','Customer_Segment','Customer_Stack','Service_Calling_For',
   'Service_Status','Plan_Name','Complaint_Summary','Complaint_Details','Action_Taken',
-  'Manager_Callback','TDRA_Mentioned','Script_Topic','Duplicate_Flag','Previous_Entry_ID','Internal_Notes'
+  'Script_Topic','Duplicate_Flag','Previous_Entry_ID','Internal_Notes'
 ];
+
+var FALLBACK_CHOICES = {
+  Touch_Point:['Voice','Chat','Email','Social_Media','Retail_Own','Retail_Franchise','Service_Manager'],
+  Customer_Location:['Inside_UAE','Outside_UAE'],
+  Customer_Type:['Emarati','Non_Emarati'],
+  Complainer_Role:['Owner','Family_Member','Friend','Tenant','PSD'],
+  Customer_Segment:['Consumer','Enterprise'],
+  Customer_Stack:['Ignite','BAU'],
+  Service_Calling_For:['Mobile_Only','Mobile_Fiber','Mobile_HW','Mobile_OW','Mobile_Fiber_HW','Mobile_Fiber_OW','Mobile_Fiber_HW_OW','Mobile_HW_OW'],
+  Service_Status:['Barred','Deactivated','Suspended','Other'],
+  Complaint_Summary:['Reconnect_My_Line','Deactivate_My_Line','Waive_Charges','Line_Not_Working','OTP_Issue','Billing_Query','Manager_Escalation','TDRA_Complaint','SIM_Port_Change','Store_Visit','Other'],
+  Action_Taken:['Registered_Query','Manager_Callback_Initiated','Customer_Informed_Per_Script','Escalated_Internally'],
+  Script_Topic:['Line_Not_Working','Connection_Timeline','Number_Cancelled','SIM_Port_Change','OTP_Issue','Billing_Charges','Speak_To_Manager','Visit_Store','TDRA_Complaint']
+};
+var CHOICES = {};
 
 var BCR_ACCESS = [
   { Title:'Tehleel Lone', User_Email:'tehleel.lone@du.ae', Role:'Admin' },
   { Title:'Ubaid Mir', User_Email:'ubaid.mir@du.ae', Role:'Agent' }
 ];
 
-var CHOICES = {
-  Touch_Point:['Voice','Chat','Email','Social_Media','TT','Retail_Own','Retail_Franchise','Service_Manager'],
-  Customer_Location:['Inside_UAE','Outside_UAE'],
-  Customer_Type:['Emarati','Non_Emarati'],
-  Complainer_Role:['Owner','Family_Member','Friend','Tenant','TDRA','Retention','PSD'],
-  Customer_Segment:['Consumer','Enterprise'],
-  Customer_Stack:['Ignite','BAU'],
-  Service_Calling_For:['Mobile_Only','Mobile_Fiber','Mobile_HW','Mobile_OW','Mobile_Fiber_HW','Mobile_Fiber_OW','Mobile_Fiber_HW_OW','Mobile_HW_OW'],
-  Service_Status:['Barred','Inactive','Suspended','Other'],
-  Complaint_Summary:['Reconnect_My_Line','Deactivate_My_Line','Waive_Charges','Line_Not_Working','OTP_Issue','Billing_Query','Manager_Escalation','TDRA_Complaint','SIM_Port_Change','Store_Visit','Other'],
-  Action_Taken:['Registered_Query','Manager_Callback_Initiated','Customer_Informed_Per_Script','Escalated_Internally'],
-  Script_Topic:['Line_Not_Working','Connection_Timeline','Number_Cancelled','SIM_Port_Change','OTP_Issue','Billing_Charges','Speak_To_Manager','Visit_Store','TDRA_Complaint']
-};
-
 var FORM_FIELDS = [
   { key:'Touch_Point', type:'select', section:'Contact_Context', req:true },
   { key:'Customer_Location', type:'select', section:'Contact_Context', req:true },
-  { key:'Contact_Identifier', type:'text', section:'Contact_Context', req:true },
   { key:'Customer_Type', type:'select', section:'Contact_Context', req:true },
   { key:'Complainer_Role', type:'select', section:'Contact_Context', req:true },
   { key:'Contact_Date', type:'date', section:'Contact_Context', req:true },
@@ -388,7 +409,6 @@ var FORM_FIELDS = [
   { key:'Emirates_ID_Provided', type:'text', section:'Customer_Identity', req:true },
   { key:'Email_Address', type:'text', section:'Customer_Identity', req:true },
   { key:'Alternative_Contact', type:'text', section:'Customer_Identity', req:false },
-  { key:'Currently_In_UAE', type:'yn', section:'Customer_Identity', req:true },
   { key:'Account_Number', type:'text', section:'Account_Details', req:true },
   { key:'MSISDN', type:'text', section:'Account_Details', req:true, dup:true },
   { key:'Customer_Segment', type:'select', section:'Account_Details', req:true },
@@ -398,9 +418,7 @@ var FORM_FIELDS = [
   { key:'Plan_Name', type:'text', section:'Account_Details', req:false },
   { key:'Complaint_Summary', type:'select', section:'Complaint_And_Action', req:true },
   { key:'Complaint_Details', type:'textarea', section:'Complaint_And_Action', req:false },
-  { key:'Action_Taken', type:'select', section:'Complaint_And_Action', req:true },
-  { key:'Manager_Callback', type:'yn', section:'Complaint_And_Action', req:false },
-  { key:'TDRA_Mentioned', type:'yn', section:'Complaint_And_Action', req:false }
+  { key:'Action_Taken', type:'select', section:'Complaint_And_Action', req:true }
 ];
 
 var SCRIPT_DATA = [
@@ -430,15 +448,22 @@ var FILTER_DIMS = [
 var COLORS = ['#2563eb','#0ea5e9','#16a34a','#d97706','#dc2626','#8b5cf6','#0891b2','#e11d48','#65a30d','#f59e0b','#14b8a6','#a855f7'];
 
 var BCR = {
-  all:[], filtered:[], gridApi:null, charts:{}, chartsVisible:false,
+  all:[], filtered:[], gridApi:null, charts:{},
   view:'dashboard', formMode:'entry', pending:{}, dupWarn:null,
-  filters:{}, activeKpi:null, activePanel:null, drillAgent:null,
-  trendPeriod:'D', workloadMetric:'total'
+  filters:{}, activeKpi:null, activePanel:null,
+  trendPeriod:'D'
 };
 FILTER_DIMS.forEach(function(d){ BCR.filters[d.id] = []; });
 
 /* ── helpers ─────────────────────────────────────────────── */
-function $(id){ return document.getElementById(id); }
+function $(id){
+  var app=document.getElementById('bcrApp');
+  if(app){
+    var inside=app.querySelector('[id="'+id+'"]');
+    if(inside) return inside;
+  }
+  return document.getElementById(id);
+}
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normEmail(e){ return String(e||'').trim().toLowerCase(); }
 function emailKey(e){
@@ -454,7 +479,13 @@ function findAccessInList(rows,email){
   }
   return null;
 }
-function isAdmin(){ return USER.role === 'Admin'; }
+function normalizeRole(r){
+  r=String(r||'Agent').trim();
+  if(/^admin$/i.test(r)) return 'Admin';
+  if(/^agent$/i.test(r)) return 'Agent';
+  return r;
+}
+function isAdmin(){ return USER.role==='Admin'; }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function monthStr(d){ var dt=new Date(d); return isNaN(dt)?'':MONTHS[dt.getMonth()]+' '+dt.getFullYear(); }
@@ -464,36 +495,62 @@ function pretty(v){ return String(v==null?'':v).replace(/_/g,' '); }
 
 function toast(msg, type){
   type = type || 'info';
+  var box=$('toastContainer');
+  box.innerHTML='';
   var el = document.createElement('div');
   el.className = 'toast ' + type;
   el.textContent = msg;
-  $('toastContainer').appendChild(el);
-  setTimeout(function(){ el.remove(); }, 3500);
+  box.appendChild(el);
+  setTimeout(function(){ if(el.parentNode) el.remove(); }, 3200);
 }
 function showLoading(step){ $('loadingOverlay').style.display='flex'; if(step) $('loadingStep').textContent=step; }
 function hideLoading(){ $('loadingOverlay').style.display='none'; }
+function scrollBcrTop(){
+  try{
+    var app=$('bcrApp');
+    if(app&&app.scrollIntoView) app.scrollIntoView({behavior:'instant',block:'start'});
+    window.scrollTo(0,0);
+    if(document.documentElement) document.documentElement.scrollTop=0;
+    if(document.body) document.body.scrollTop=0;
+  }catch(e){}
+}
 function showDashboard(){
   var land=$('landingPage'), dash=$('dashboardContent');
-  if(land) land.style.cssText='display:none!important;visibility:hidden!important;position:absolute!important;left:-9999px!important;top:0!important;width:0!important;height:0!important;overflow:hidden!important;z-index:-9999!important;pointer-events:none!important;';
-  if(dash){ dash.style.display='flex'; dash.style.flexDirection='column'; dash.style.position=''; dash.style.visibility='visible'; dash.style.width='100%'; }
-  window.scrollTo(0,0);
+  if(land){ land.classList.remove('bcr-show'); land.style.cssText='display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;'; }
+  if(dash){ dash.classList.add('bcr-show'); dash.style.cssText='display:flex!important;flex-direction:column!important;width:100%!important;min-height:100vh!important;'; }
+  scrollBcrTop();
 }
 function showLandingPage(){
   var land=$('landingPage'), dash=$('dashboardContent');
-  if(dash) dash.style.cssText='display:none!important;visibility:hidden!important;position:absolute!important;left:-9999px!important;top:0!important;width:0!important;height:0!important;overflow:hidden!important;z-index:-9999!important;pointer-events:none!important;';
-  if(land){ land.style.display='flex'; land.style.flexDirection='row'; land.style.visibility='visible'; land.style.position=''; land.style.width='100%'; land.style.height='auto'; }
-  window.scrollTo(0,0);
+  if(dash){ dash.classList.remove('bcr-show'); dash.style.cssText='display:none!important;'; }
+  if(land){ land.classList.add('bcr-show'); land.style.cssText='display:flex!important;flex-direction:row!important;width:100%!important;min-height:100vh!important;visibility:visible!important;height:auto!important;overflow:visible!important;'; }
+  scrollBcrTop();
 }
 var SP_FIELD_TYPES={};
-function ensureListFields(cb){
-  if(Object.keys(SP_FIELD_TYPES).length){ if(cb)cb(); return; }
-  spGet(getSpSite()+spListPath(SP_CONFIG.recordsList,'/fields?$select=InternalName,TypeAsString&$top=300'),function(err,data){
+var SP_META_LOADED=false;
+function getChoices(key){ return (CHOICES[key]&&CHOICES[key].length)?CHOICES[key]:(FALLBACK_CHOICES[key]||[]); }
+function applyFallbackChoices(){
+  Object.keys(FALLBACK_CHOICES).forEach(function(k){
+    if(!CHOICES[k]||!CHOICES[k].length) CHOICES[k]=FALLBACK_CHOICES[k].slice();
+  });
+}
+function ensureListMetadata(cb){
+  if(USE_DUMMY){ applyFallbackChoices(); if(cb)cb(); return; }
+  if(SP_META_LOADED){ if(cb)cb(); return; }
+  spGet(getSpSite()+spListPath(SP_CONFIG.recordsList,'/fields?$select=InternalName,TypeAsString,Choices&$top=300'),function(err,data){
     if(!err&&data.d&&data.d.results){
-      data.d.results.forEach(function(f){ SP_FIELD_TYPES[f.InternalName]=f.TypeAsString; });
+      data.d.results.forEach(function(f){
+        SP_FIELD_TYPES[f.InternalName]=f.TypeAsString;
+        if(f.Choices&&f.Choices.results&&f.Choices.results.length)
+          CHOICES[f.InternalName]=f.Choices.results.slice();
+      });
+      SP_META_LOADED=true;
     }
+    applyFallbackChoices();
     if(cb)cb();
   });
 }
+function ensureListFields(cb){ ensureListMetadata(cb); }
 function valueForSp(field,val){
   var t=SP_FIELD_TYPES[field]||'Text';
   if(val==null||val==='') return null;
@@ -665,7 +722,9 @@ function initAccess(){
         return;
       }
       setupLanding({Title:row.Title||USER.name,User_Email:row.User_Email||USER.email,Role:row.Role||'Agent'});
-      showLandingPage();
+      ensureListMetadata(function(){});
+      $('landingPage').classList.add('bcr-show');
+      $('landingPage').style.cssText='display:flex!important;flex-direction:row!important;width:100%;';
       bcrIcons();
     });
   });
@@ -678,7 +737,7 @@ function makeRecord(obj){
     Id: Math.floor(Math.random()*1e9), Serial_Number:0, Entry_Month: monthStr(d),
     Contact_Time: new Date().toISOString(), Script_Topic:'', Complaint_Details:'',
     Alternative_Contact:'', Emirates_ID_System:'', Plan_Name:'',
-    Manager_Callback:'No', TDRA_Mentioned:'No', Duplicate_Flag:'No',
+    Duplicate_Flag:'No',
     Previous_Entry_ID:'', Internal_Notes:''
   }, obj);
 }
@@ -686,22 +745,22 @@ function makeRecord(obj){
 function seedRecords(){
   var day = function(n){ return new Date(Date.now()-n*86400000).toISOString().slice(0,10); };
   var rows = [
-    ['Voice','Inside_UAE','0501234567','Emarati','Owner','Ahmed Ali','Ahmed Ali','784-1990-1234567-1','ahmed@email.com','Yes','ACC10001','0501234567','Consumer','Ignite','Mobile_Only','Barred','Line_Not_Working','Registered_Query','No','No',0],
-    ['Chat','Outside_UAE','chat-8821','Non_Emarati','Family_Member','Sara Khan','Mohammed Khan','784-1985-7654321-2','sara@email.com','No','ACC10002','0509876543','Enterprise','BAU','Mobile_Fiber','Barred','OTP_Issue','Customer_Informed_Per_Script','No','Yes',1],
-    ['Email','Inside_UAE','cust@du.test','Emarati','Owner','Fatima Noor','Fatima Noor','784-1992-1112233-3','fatima@email.com','Yes','ACC10003','0501234567','Consumer','Ignite','Mobile_Only','Barred','Manager_Escalation','Manager_Callback_Initiated','Yes','No',0],
-    ['Voice','Inside_UAE','0553334444','Emarati','Owner','Khalid Omar','Khalid Omar','784-1988-4445556-4','khalid@email.com','Yes','ACC10004','0553334444','Consumer','Ignite','Mobile_Fiber_HW','Barred','Reconnect_My_Line','Registered_Query','No','No',2],
-    ['Social_Media','Outside_UAE','insta-2231','Non_Emarati','Friend','Lena Park','Jin Park','784-1995-9998887-5','lena@email.com','No','ACC10005','0567778888','Consumer','BAU','Mobile_Only','Inactive','Billing_Query','Customer_Informed_Per_Script','No','No',3],
-    ['Chat','Inside_UAE','chat-9911','Emarati','Tenant','Yousef Saeed','Yousef Saeed','784-1991-3332221-6','yousef@email.com','Yes','ACC10006','0501112222','Enterprise','Ignite','Mobile_Fiber_OW','Barred','SIM_Port_Change','Escalated_Internally','No','No',4],
-    ['Voice','Inside_UAE','0509876543','Non_Emarati','Owner','Ravi Menon','Ravi Menon','784-1987-2223334-7','ravi@email.com','Yes','ACC10002','0509876543','Enterprise','BAU','Mobile_Fiber','Barred','TDRA_Complaint','Escalated_Internally','Yes','Yes',5],
-    ['TT','Inside_UAE','TT-5567','Emarati','PSD','Mariam Ali','Mariam Ali','784-1993-6667778-8','mariam@email.com','Yes','ACC10008','0554445555','Consumer','Ignite','Mobile_HW_OW','Suspended','Waive_Charges','Registered_Query','No','No',6],
-    ['Email','Outside_UAE','abroad@du.test','Non_Emarati','Family_Member','Omar Farooq','Bilal Farooq','784-1994-8889990-9','omar@email.com','No','ACC10009','0568889999','Consumer','BAU','Mobile_Only','Barred','Deactivate_My_Line','Registered_Query','No','No',7],
-    ['Retail_Own','Inside_UAE','walkin-01','Emarati','Owner','Hassan Noor','Hassan Noor','784-1989-1231231-0','hassan@email.com','Yes','ACC10010','0501230000','Consumer','Ignite','Mobile_Fiber','Barred','Store_Visit','Customer_Informed_Per_Script','No','No',8]
+    ['Voice','Inside_UAE','Emarati','Owner','Ahmed Ali','Ahmed Ali','784-1990-1234567-1','ahmed@email.com','ACC10001','0501234567','Consumer','Ignite','Mobile_Only','Barred','Line_Not_Working','Registered_Query',0],
+    ['Chat','Outside_UAE','Non_Emarati','Family_Member','Sara Khan','Mohammed Khan','784-1985-7654321-2','sara@email.com','ACC10002','0509876543','Enterprise','BAU','Mobile_Fiber','Barred','OTP_Issue','Customer_Informed_Per_Script',1],
+    ['Email','Inside_UAE','Emarati','Owner','Fatima Noor','Fatima Noor','784-1992-1112233-3','fatima@email.com','ACC10003','0501234567','Consumer','Ignite','Mobile_Only','Barred','Manager_Escalation','Manager_Callback_Initiated',0],
+    ['Voice','Inside_UAE','Emarati','Owner','Khalid Omar','Khalid Omar','784-1988-4445556-4','khalid@email.com','ACC10004','0553334444','Consumer','Ignite','Mobile_Fiber_HW','Barred','Reconnect_My_Line','Registered_Query',2],
+    ['Social_Media','Outside_UAE','Non_Emarati','Friend','Lena Park','Jin Park','784-1995-9998887-5','lena@email.com','ACC10005','0567778888','Consumer','BAU','Mobile_Only','Deactivated','Billing_Query','Customer_Informed_Per_Script',3],
+    ['Chat','Inside_UAE','Emarati','Tenant','Yousef Saeed','Yousef Saeed','784-1991-3332221-6','yousef@email.com','ACC10006','0501112222','Enterprise','Ignite','Mobile_Fiber_OW','Barred','SIM_Port_Change','Escalated_Internally',4],
+    ['Voice','Inside_UAE','Non_Emarati','Owner','Ravi Menon','Ravi Menon','784-1987-2223334-7','ravi@email.com','ACC10002','0509876543','Enterprise','BAU','Mobile_Fiber','Barred','TDRA_Complaint','Escalated_Internally',5],
+    ['Email','Inside_UAE','Emarati','PSD','Mariam Ali','Mariam Ali','784-1993-6667778-8','mariam@email.com','ACC10008','0554445555','Consumer','Ignite','Mobile_HW_OW','Suspended','Waive_Charges','Registered_Query',6],
+    ['Email','Outside_UAE','Non_Emarati','Family_Member','Omar Farooq','Bilal Farooq','784-1994-8889990-9','omar@email.com','ACC10009','0568889999','Consumer','BAU','Mobile_Only','Barred','Deactivate_My_Line','Registered_Query',7],
+    ['Retail_Own','Inside_UAE','Emarati','Owner','Hassan Noor','Hassan Noor','784-1989-1231231-0','hassan@email.com','ACC10010','0501230000','Consumer','Ignite','Mobile_Fiber','Barred','Store_Visit','Customer_Informed_Per_Script',8]
   ];
-  var keys = ['Touch_Point','Customer_Location','Contact_Identifier','Customer_Type','Complainer_Role','Caller_Name','Customer_Name','Emirates_ID_Provided','Email_Address','Currently_In_UAE','Account_Number','MSISDN','Customer_Segment','Customer_Stack','Service_Calling_For','Service_Status','Complaint_Summary','Action_Taken','Manager_Callback','TDRA_Mentioned'];
+  var keys = ['Touch_Point','Customer_Location','Customer_Type','Complainer_Role','Caller_Name','Customer_Name','Emirates_ID_Provided','Email_Address','Account_Number','MSISDN','Customer_Segment','Customer_Stack','Service_Calling_For','Service_Status','Complaint_Summary','Action_Taken'];
   var out = [];
   rows.forEach(function(r, i){
     var o = {}; keys.forEach(function(k,j){ o[k]=r[j]; });
-    o.Contact_Date = day(r[20]);
+    o.Contact_Date = day(r[16]);
     o.Agent_Name = i%2===0 ? 'Ubaid Mir' : 'Tehleel Lone';
     o.Agent_Email = i%2===0 ? 'ubaid.mir@du.ae' : 'tehleel.lone@du.ae';
     o.Reference_ID = 'BCR-'+o.Contact_Date.replace(/-/g,'')+'-'+String(i+1).padStart(5,'0');
@@ -766,8 +825,6 @@ function applyFilters(){
     var kf = {
       emarati:function(r){return r.Customer_Type==='Emarati';},
       nonEmarati:function(r){return r.Customer_Type==='Non_Emarati';},
-      tdra:function(r){return r.TDRA_Mentioned==='Yes';},
-      manager:function(r){return r.Manager_Callback==='Yes';},
       dup:function(r){return r.Duplicate_Flag==='Yes';}
     }[BCR.activeKpi];
     if(kf) data = data.filter(kf);
@@ -776,14 +833,11 @@ function applyFilters(){
     var pf = {
       Inside_UAE:function(r){return r.Customer_Location==='Inside_UAE';},
       Outside_UAE:function(r){return r.Customer_Location==='Outside_UAE';},
-      In_UAE_Yes:function(r){return r.Currently_In_UAE==='Yes';},
-      In_UAE_No:function(r){return r.Currently_In_UAE==='No';},
       Consumer:function(r){return r.Customer_Segment==='Consumer';},
       Enterprise:function(r){return r.Customer_Segment==='Enterprise';}
     }[BCR.activePanel];
     if(pf) data = data.filter(pf);
   }
-  if(BCR.drillAgent) data = data.filter(function(r){ return r.Agent_Name===BCR.drillAgent; });
   BCR.filtered = data;
   if(BCR.gridApi) BCR.gridApi.setGridOption('rowData', data);
 }
@@ -795,12 +849,8 @@ function getStats(list){
   s.nonEmarati = list.filter(function(r){return r.Customer_Type==='Non_Emarati';}).length;
   s.inside = list.filter(function(r){return r.Customer_Location==='Inside_UAE';}).length;
   s.outside = list.filter(function(r){return r.Customer_Location==='Outside_UAE';}).length;
-  s.inUaeYes = list.filter(function(r){return r.Currently_In_UAE==='Yes';}).length;
-  s.inUaeNo = list.filter(function(r){return r.Currently_In_UAE==='No';}).length;
   s.consumer = list.filter(function(r){return r.Customer_Segment==='Consumer';}).length;
   s.enterprise = list.filter(function(r){return r.Customer_Segment==='Enterprise';}).length;
-  s.tdra = list.filter(function(r){return r.TDRA_Mentioned==='Yes';}).length;
-  s.manager = list.filter(function(r){return r.Manager_Callback==='Yes';}).length;
   s.dup = list.filter(function(r){return r.Duplicate_Flag==='Yes';}).length;
   s.uniqMsisdn = uniq(list.map(function(r){return r.MSISDN;})).length;
   s.repeatMsisdn = s.total - s.uniqMsisdn;
@@ -809,7 +859,7 @@ function getStats(list){
 
 /* ── render orchestrator ─────────────────────────────────── */
 function renderDashboard(){
-  var c = $('mainContent');
+  var c = $('bcrMainPanel');
   c.innerHTML = ''
     + '<div class="dashboard-section">'
     + '<div class="dash-head"><div><div class="section-title">Dashboard</div><div class="dash-sub">Barred account customer contacts — click any tile to filter</div></div>'
@@ -819,12 +869,10 @@ function renderDashboard(){
     + '</div></div>'
     + '<div id="insightRow" class="insight-row"></div>'
     + '<div id="filterBar"></div>'
-    + '<div id="kpiStrip" class="top-stats" style="grid-template-columns:repeat(6,1fr)"></div>'
+    + '<div id="kpiStrip" class="top-stats" style="grid-template-columns:repeat(4,1fr)"></div>'
     + '<div id="typePanel"></div>'
     + '<div id="compliancePanel"></div>'
-    + '<div class="panel"><div class="panel-head"><div class="panel-title">Agent Activity</div><div class="dash-sub">Click a row to drill down</div></div><div id="agentTable"></div><div id="agentDrill" style="display:none"></div></div>'
-    + '<div style="text-align:center;margin-bottom:1rem;"><button type="button" id="toggleChartsBtn" class="export-btn" style="padding:11px 22px;font-size:13px;">Show Analytics Charts</button></div>'
-    + '<div id="chartsSection" style="display:none"></div>'
+    + '<div id="chartsSection"></div>'
     + '<div class="table-section" id="printArea"><div class="table-header"><div class="table-title">Barring Management Tracker</div><div class="table-actions"><input type="text" class="search-box" id="gridSearch" placeholder="Search all columns..."><span class="dash-sub" id="recordCount"></span></div></div><div id="bcrGrid" class="ag-theme-alpine" style="height:560px;width:100%"></div></div>'
     + '</div>';
   applyFilters();
@@ -833,10 +881,9 @@ function renderDashboard(){
   renderKPIs();
   renderTypePanel();
   renderCompliancePanel();
-  renderAgentTable();
+  renderTrendChart();
   renderGrid();
   $('gridSearch').oninput = function(e){ if(BCR.gridApi) BCR.gridApi.setGridOption('quickFilterText', e.target.value); };
-  $('toggleChartsBtn').onclick = toggleCharts;
   $('exportPdfBtn').onclick = exportPDF;
   $('exportExcelBtn').onclick = exportExcel;
   updateRecordCount();
@@ -850,9 +897,8 @@ function refreshDashboard(){
   renderKPIs();
   renderTypePanel();
   renderCompliancePanel();
-  renderAgentTable();
+  renderTrendChart();
   if(BCR.gridApi) BCR.gridApi.setGridOption('rowData', BCR.filtered);
-  if(BCR.chartsVisible) renderCharts();
   updateRecordCount();
   bcrIcons();
 }
@@ -871,7 +917,6 @@ function renderInsights(){
   var byAg={}; t.forEach(function(r){ if(r.Agent_Name) byAg[r.Agent_Name]=(byAg[r.Agent_Name]||0)+1; });
   var topAg=Object.keys(byAg).sort(function(a,b){return byAg[b]-byAg[a];})[0];
   if(topAg) cards.push({ico:'user',color:'#d97706',title:topAg,sub:byAg[topAg]+' contacts logged'});
-  if(s.tdra>0) cards.push({ico:'alert-triangle',color:'#dc2626',title:s.tdra+' TDRA mentions',sub:'Customers threatening TDRA escalation'});
   if(s.repeatMsisdn>0) cards.push({ico:'repeat',color:'#8b5cf6',title:s.repeatMsisdn+' repeat contacts',sub:s.dup+' flagged as duplicate (7-day)'});
   cards.push({ico:'users',color:'#16a34a',title:s.emarati+' Emarati / '+s.nonEmarati+' Non-Emarati',sub:'Customer type split'});
   el.innerHTML = cards.slice(0,4).map(function(c){
@@ -888,8 +933,6 @@ function renderKPIs(){
     {k:null,label:'Total Contacts',val:s.total,color:'var(--acc)',sub:'In current filter'},
     {k:'emarati',label:'Emarati',val:s.emarati,color:'#16a34a',sub:pct(s.emarati,s.total)},
     {k:'nonEmarati',label:'Non Emarati',val:s.nonEmarati,color:'#0ea5e9',sub:pct(s.nonEmarati,s.total)},
-    {k:'tdra',label:'TDRA Mentioned',val:s.tdra,color:'#dc2626',sub:pct(s.tdra,s.total)},
-    {k:'manager',label:'Manager Callback',val:s.manager,color:'#d97706',sub:pct(s.manager,s.total)},
     {k:'dup',label:'Duplicate Contacts',val:s.dup,color:'#8b5cf6',sub:'Same MSISDN < 7 days'}
   ];
   el.innerHTML = tiles.map(function(t){
@@ -926,19 +969,17 @@ function bindPanelTiles(root){
 }
 function renderTypePanel(){
   var el=$('typePanel'); if(!el) return; var s=getStats();
-  el.innerHTML='<div class="panel"><div class="panel-head"><div class="panel-title">'+bcrIcon('map-pin',16)+' Location & Presence</div><div class="dash-sub">Click to filter</div></div>'
-    + '<div class="panel-grid" style="grid-template-columns:repeat(4,1fr)">'
+  el.innerHTML='<div class="panel"><div class="panel-head"><div class="panel-title">'+bcrIcon('map-pin',16)+' Location</div><div class="dash-sub">Click to filter</div></div>'
+    + '<div class="panel-grid" style="grid-template-columns:repeat(2,1fr)">'
     + miniTile('Inside_UAE','Inside UAE',s.inside,'#16a34a',pct(s.inside,s.total),'map-pin')
     + miniTile('Outside_UAE','Outside UAE',s.outside,'#0ea5e9',pct(s.outside,s.total),'globe')
-    + miniTile('In_UAE_Yes','Currently in UAE',s.inUaeYes,'#2563eb',pct(s.inUaeYes,s.total),'check-circle')
-    + miniTile('In_UAE_No','Not in UAE',s.inUaeNo,'#d97706',pct(s.inUaeNo,s.total),'plane')
     + '</div></div>';
   bindPanelTiles(el);
   bcrIcons();
 }
 function renderCompliancePanel(){
   var el=$('compliancePanel'); if(!el) return; var s=getStats();
-  el.innerHTML='<div class="panel"><div class="panel-head"><div class="panel-title">'+bcrIcon('layers',16)+' Segment & Escalation</div><div class="dash-sub">Click to filter</div></div>'
+  el.innerHTML='<div class="panel"><div class="panel-head"><div class="panel-title">'+bcrIcon('layers',16)+' Segment & MSISDN</div><div class="dash-sub">Click to filter</div></div>'
     + '<div class="panel-grid" style="grid-template-columns:repeat(4,1fr)">'
     + miniTile('Consumer','Consumer',s.consumer,'#2563eb',pct(s.consumer,s.total),'user')
     + miniTile('Enterprise','Enterprise',s.enterprise,'#8b5cf6',pct(s.enterprise,s.total),'building-2')
@@ -947,76 +988,6 @@ function renderCompliancePanel(){
     + '</div></div>';
   bindPanelTiles(el);
   bcrIcons();
-}
-
-/* ── agent leaderboard + drilldown ───────────────────────── */
-function buildAgentStats(list){
-  var map={};
-  list.forEach(function(r){
-    var n=r.Agent_Name||'—';
-    if(!map[n]) map[n]={name:n,total:0,emarati:0,nonEmarati:0,tdra:0,manager:0,dup:0,cats:{}};
-    var a=map[n]; a.total++;
-    if(r.Customer_Type==='Emarati') a.emarati++;
-    if(r.Customer_Type==='Non_Emarati') a.nonEmarati++;
-    if(r.TDRA_Mentioned==='Yes') a.tdra++;
-    if(r.Manager_Callback==='Yes') a.manager++;
-    if(r.Duplicate_Flag==='Yes') a.dup++;
-    if(r.Complaint_Summary) a.cats[r.Complaint_Summary]=(a.cats[r.Complaint_Summary]||0)+1;
-  });
-  return Object.keys(map).map(function(n){
-    var a=map[n]; a.topCat=Object.keys(a.cats).sort(function(x,y){return a.cats[y]-a.cats[x];})[0]||'—'; return a;
-  });
-}
-function renderAgentTable(){
-  var el=$('agentTable'); if(!el) return;
-  var stats=buildAgentStats(BCR.filtered).sort(function(a,b){return b.total-a.total;});
-  if(!stats.length){ el.innerHTML='<div class="dash-sub" style="padding:20px;text-align:center">No data.</div>'; renderAgentDrill(); return; }
-  var maxT=Math.max.apply(null,stats.map(function(s){return s.total;}).concat([1]));
-  var rows=stats.map(function(s,i){
-    var color=COLORS[i%COLORS.length];
-    var sel=BCR.drillAgent===s.name;
-    var safe=s.name.replace(/'/g,"\\'");
-    return '<tr data-agent="'+esc(s.name)+'" style="'+(sel?'background:var(--nab)':'')+'">'
-      + '<td><div style="display:flex;align-items:center;gap:8px"><div class="avatar-sm" style="background:'+color+'">'+initials(s.name)+'</div><div style="font-weight:700">'+esc(s.name)+'</div></div></td>'
-      + '<td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:6px;background:var(--bg-secondary);border-radius:4px;overflow:hidden;min-width:40px"><div style="height:100%;width:'+(s.total/maxT*100)+'%;background:'+color+'"></div></div><span style="font-weight:800;min-width:20px;text-align:right">'+s.total+'</span></div></td>'
-      + '<td style="text-align:center;font-weight:700;color:#16a34a">'+s.emarati+'</td>'
-      + '<td style="text-align:center;font-weight:700;color:#0ea5e9">'+s.nonEmarati+'</td>'
-      + '<td style="text-align:center;font-weight:800;color:'+(s.tdra?'#dc2626':'var(--t3)')+'">'+s.tdra+'</td>'
-      + '<td style="text-align:center;font-weight:800;color:'+(s.manager?'#d97706':'var(--t3)')+'">'+s.manager+'</td>'
-      + '<td style="color:var(--t2)">'+pretty(s.topCat)+'</td></tr>';
-  }).join('');
-  el.innerHTML='<div class="lead-table-wrap"><table class="lead-table"><thead><tr>'
-    + '<th>Agent</th><th>Contacts</th><th style="text-align:center">Emarati</th><th style="text-align:center">Non Em.</th><th style="text-align:center">TDRA</th><th style="text-align:center">Mgr CB</th><th>Top Complaint</th>'
-    + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
-  el.querySelectorAll('tr[data-agent]').forEach(function(tr){
-    tr.onclick=function(){
-      var n=tr.getAttribute('data-agent');
-      BCR.drillAgent = BCR.drillAgent===n ? null : n;
-      refreshDashboard();
-    };
-  });
-  renderAgentDrill();
-}
-function renderAgentDrill(){
-  var el=$('agentDrill'); if(!el) return;
-  if(!BCR.drillAgent){ el.style.display='none'; el.innerHTML=''; return; }
-  el.style.display='block';
-  var base=BCR.all.filter(function(r){return r.Agent_Name===BCR.drillAgent;});
-  var s=buildAgentStats(base)[0]; if(!s){ el.style.display='none'; return; }
-  var cats=Object.keys(s.cats).sort(function(a,b){return s.cats[b]-s.cats[a];}).slice(0,6);
-  el.innerHTML='<div style="background:var(--bg-card);border:1px solid var(--acc);border-radius:12px;padding:1rem;margin-top:.75rem">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem"><div style="font-weight:800">👤 '+esc(s.name)+' — full history</div><button type="button" class="btn-secondary" id="closeDrill">✕ Close</button></div>'
-    + '<div class="panel-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:1rem">'
-    + '<div class="mini-tile" style="cursor:default"><div class="mt-label">Total</div><div class="mt-val" style="color:var(--acc)">'+s.total+'</div></div>'
-    + '<div class="mini-tile" style="cursor:default"><div class="mt-label">Emarati</div><div class="mt-val" style="color:#16a34a">'+s.emarati+'</div></div>'
-    + '<div class="mini-tile" style="cursor:default"><div class="mt-label">Non Emarati</div><div class="mt-val" style="color:#0ea5e9">'+s.nonEmarati+'</div></div>'
-    + '<div class="mini-tile" style="cursor:default"><div class="mt-label">TDRA</div><div class="mt-val" style="color:#dc2626">'+s.tdra+'</div></div>'
-    + '<div class="mini-tile" style="cursor:default"><div class="mt-label">Duplicates</div><div class="mt-val" style="color:#8b5cf6">'+s.dup+'</div></div>'
-    + '</div>'
-    + '<div style="font-size:.78rem;font-weight:700;color:var(--t2);margin-bottom:.5rem">Complaint breakdown</div>'
-    + cats.map(function(c){ return '<div style="display:flex;justify-content:space-between;padding:6px 10px;background:var(--bg-secondary);border-radius:6px;margin-bottom:4px;font-size:12px"><span>'+pretty(c)+'</span><span style="font-weight:800">'+s.cats[c]+'</span></div>'; }).join('')
-    + '</div>';
-  $('closeDrill').onclick=function(){ BCR.drillAgent=null; refreshDashboard(); };
 }
 
 /* ===== PART 2 APPENDED BELOW (charts, grid, form, init) ===== */
@@ -1031,7 +1002,7 @@ function renderAgentDrill(){
 /* ── multi-select filter bar (semailbox-style) ───────────── */
 function renderFilterBar(){
   var el=$('filterBar'); if(!el) return;
-  var anyActive = FILTER_DIMS.some(function(d){ return BCR.filters[d.id].length; }) || BCR.activeKpi || BCR.activePanel || BCR.drillAgent;
+  var anyActive = FILTER_DIMS.some(function(d){ return BCR.filters[d.id].length; }) || BCR.activeKpi || BCR.activePanel;
   var html='<div class="filter-wrap">';
   FILTER_DIMS.forEach(function(d){
     var opts = uniq(BCR.all.map(function(r){ return r[d.id]; }).filter(function(v){ return v!==undefined && v!==''; }));
@@ -1074,7 +1045,7 @@ function renderFilterBar(){
   });
   $('clearFiltersBtn').onclick=function(){
     FILTER_DIMS.forEach(function(d){ BCR.filters[d.id]=[]; });
-    BCR.activeKpi=null; BCR.activePanel=null; BCR.drillAgent=null;
+    BCR.activeKpi=null; BCR.activePanel=null;
     refreshDashboard();
   };
 }
@@ -1160,43 +1131,6 @@ function fieldCounts(list, field){
     .sort(function(a,b){ return b.count - a.count; });
 }
 
-function toggleCharts(){
-  BCR.chartsVisible=!BCR.chartsVisible;
-  var sec=$('chartsSection'), btn=$('toggleChartsBtn');
-  if(BCR.chartsVisible){
-    sec.style.display='block';
-    btn.textContent='Hide Analytics Charts';
-    sec.innerHTML=''
-      /* 1 LINE trend */
-      +'<div class="chart-card"><div class="chart-title"><span>📈 Contact Volume Trend (Line)</span><div id="trendToggles" style="display:flex;gap:5px"></div></div><div style="position:relative;height:300px"><canvas id="chart-trend"></canvas></div></div>'
-      /* 2 DONUTS row */
-      +'<div class="chart-grid" style="grid-template-columns:1fr 1fr 1fr">'
-      +'<div class="chart-card"><div class="chart-title"><span>📞 Touch Point (Donut)</span></div><div style="position:relative;height:260px"><canvas id="chart-touch"></canvas></div></div>'
-      +'<div class="chart-card"><div class="chart-title"><span>🇦🇪 Customer Type (Donut)</span></div><div style="position:relative;height:260px"><canvas id="chart-type"></canvas></div></div>'
-      +'<div class="chart-card"><div class="chart-title"><span>🚦 Service Status (Donut)</span></div><div style="position:relative;height:260px"><canvas id="chart-status"></canvas></div></div>'
-      +'</div>'
-      /* 3 POLAR + PIE */
-      +'<div class="chart-grid" style="grid-template-columns:1fr 1fr">'
-      +'<div class="chart-card"><div class="chart-title"><span>🌍 Location (Pie)</span></div><div style="position:relative;height:260px"><canvas id="chart-location"></canvas></div></div>'
-      +'<div class="chart-card"><div class="chart-title"><span>🧩 Segment (Polar)</span></div><div style="position:relative;height:260px"><canvas id="chart-segment"></canvas></div></div>'
-      +'</div>'
-      /* 4 STACKED BAR workload */
-      +'<div class="chart-card"><div class="chart-title"><span>👤 Agent Workload (Stacked Bar)</span><div id="workloadToggles" style="display:flex;gap:5px;flex-wrap:wrap"></div></div><div style="position:relative;height:280px"><canvas id="chart-workload"></canvas></div></div>'
-      /* 5 HORIZONTAL BAR complaints */
-      +'<div class="chart-card"><div class="chart-title"><span>📋 Top Complaints (Horizontal Bar)</span></div><div style="position:relative;height:340px"><canvas id="chart-complaint"></canvas></div></div>'
-      /* 6 AREA + RADAR */
-      +'<div class="chart-grid" style="grid-template-columns:1.4fr 1fr">'
-      +'<div class="chart-card"><div class="chart-title"><span>⚡ Escalation Trend (Area Line)</span></div><div style="position:relative;height:280px"><canvas id="chart-escalation"></canvas></div></div>'
-      +'<div class="chart-card"><div class="chart-title"><span>🛠️ Action Taken (Radar)</span></div><div style="position:relative;height:280px"><canvas id="chart-action"></canvas></div></div>'
-      +'</div>';
-    renderCharts();
-  } else {
-    sec.style.display='none';
-    btn.textContent='Show Analytics Charts';
-    destroyCharts();
-  }
-}
-
 function bucketByPeriod(list, per){
   var map={};
   function keyLbl(d){
@@ -1206,123 +1140,73 @@ function bucketByPeriod(list, per){
   }
   list.forEach(function(r){
     var d=new Date(r.Contact_Date); if(isNaN(d)) return;
-    var kl=keyLbl(d); (map[kl[0]]=map[kl[0]]||{key:kl[0],label:kl[1],count:0,tdra:0,manager:0}); map[kl[0]].count++;
-    if(r.TDRA_Mentioned==='Yes') map[kl[0]].tdra++;
-    if(r.Manager_Callback==='Yes') map[kl[0]].manager++;
+    var kl=keyLbl(d); (map[kl[0]]=map[kl[0]]||{key:kl[0],label:kl[1],count:0}); map[kl[0]].count++;
   });
   return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return a.key<b.key?-1:1;});
 }
 
-function renderCharts(){
-  if(!BCR.chartsVisible) return;
-  var t=BCR.filtered;
+function renderTrendChart(){
+  var sec=$('chartsSection'); if(!sec) return;
+  sec.innerHTML='<div class="trend-chart-card">'
+    +'<div class="trend-chart-head"><div><div class="trend-chart-title">'+bcrIcon('trending-up',18)+' Contact Volume Trend</div><div class="trend-chart-sub">Barred account contacts over time</div></div>'
+    +'<div id="trendToggles" style="display:flex;gap:5px"></div></div>'
+    +'<div class="trend-chart-wrap"><canvas id="chart-trend"></canvas></div></div>';
   var tw=$('trendToggles');
   if(tw) tw.innerHTML=[['D','Daily'],['W','Weekly'],['M','Monthly']].map(function(p){
     return '<button type="button" class="mini-toggle'+(BCR.trendPeriod===p[0]?' active':'')+'" data-per="'+p[0]+'">'+p[1]+'</button>';
   }).join('');
-  if(tw) tw.querySelectorAll('button').forEach(function(b){ b.onclick=function(){ BCR.trendPeriod=b.getAttribute('data-per'); renderCharts(); }; });
-
-  var buckets=bucketByPeriod(t,BCR.trendPeriod);
-
-  /* LINE — contact volume + TDRA */
-  makeChart('trend',{ type:'line',
-    data:{ labels:buckets.map(function(b){return b.label;}), datasets:[
-      {label:'Contacts',data:buckets.map(function(b){return b.count;}),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.15)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#2563eb',tension:0.35,fill:true},
-      {label:'TDRA mentioned',data:buckets.map(function(b){return b.tdra;}),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,0.08)',borderWidth:2.5,pointRadius:3,borderDash:[5,4],tension:0.35,fill:false}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:CHART_LEG},scales:{x:Object.assign({},CHART_AX.x,{ticks:Object.assign({},CHART_AX.x.ticks,{maxRotation:45,maxTicksLimit:20})}),y:CHART_AX.y}}
+  if(tw) tw.querySelectorAll('button').forEach(function(b){
+    b.onclick=function(){ BCR.trendPeriod=b.getAttribute('data-per'); renderTrendChart(); };
   });
-
-  /* DONUT — Touch Point */
-  var touch = fieldCounts(t,'Touch_Point');
-  makeChart('touch',{ type:'doughnut',
-    data:{labels:touch.map(function(x){return x.label;}),datasets:[{data:touch.map(function(x){return x.count;}),backgroundColor:touch.map(function(_,i){return COLORS[i%COLORS.length];}),borderWidth:3,borderColor:'rgba(0,0,0,0)',hoverOffset:8}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:CHART_LEG}}
+  var buckets=bucketByPeriod(BCR.filtered,BCR.trendPeriod);
+  var cv=$('chart-trend');
+  if(!cv||typeof Chart==='undefined'){ bcrIcons(); return; }
+  if(BCR.charts.trend){ try{BCR.charts.trend.destroy();}catch(e){} }
+  var ctx=cv.getContext('2d');
+  var grad=ctx.createLinearGradient(0,0,0,340);
+  grad.addColorStop(0,'rgba(37,99,235,0.32)');
+  grad.addColorStop(1,'rgba(37,99,235,0)');
+  BCR.charts.trend=new Chart(cv,{
+    type:'line',
+    data:{
+      labels:buckets.map(function(b){return b.label;}),
+      datasets:[{
+        label:'Contacts',
+        data:buckets.map(function(b){return b.count;}),
+        borderColor:'#2563eb',
+        backgroundColor:grad,
+        borderWidth:3,
+        pointRadius:5,
+        pointHoverRadius:8,
+        pointBackgroundColor:'#fff',
+        pointBorderColor:'#2563eb',
+        pointBorderWidth:2,
+        tension:0.42,
+        fill:true
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'rgba(15,30,62,0.92)',
+          titleFont:{size:13,weight:'bold'},
+          bodyFont:{size:12},
+          padding:12,
+          cornerRadius:8,
+          displayColors:false
+        }
+      },
+      scales:{
+        x:{grid:{display:false},border:{display:false},ticks:{font:{size:11},color:'rgba(100,116,139,0.9)',maxRotation:45,maxTicksLimit:18}},
+        y:{beginAtZero:true,grid:{color:'rgba(37,99,235,0.08)'},border:{display:false},ticks:{font:{size:11},color:'rgba(100,116,139,0.9)',precision:0}}
+      },
+      animation:{duration:480,easing:'easeOutQuart'}
+    }
   });
-
-  /* DONUT — Customer Type */
-  var tEm=t.filter(function(r){return r.Customer_Type==='Emarati';}).length;
-  var tNon=t.filter(function(r){return r.Customer_Type==='Non_Emarati';}).length;
-  makeChart('type',{ type:'doughnut',
-    data:{labels:['Emarati','Non Emarati'],datasets:[{data:[tEm,tNon],backgroundColor:['#16a34a','#0ea5e9'],borderWidth:3,borderColor:'rgba(0,0,0,0)',hoverOffset:8}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:CHART_LEG}}
-  });
-
-  /* DONUT — Service Status */
-  var st = fieldCounts(t,'Service_Status');
-  makeChart('status',{ type:'doughnut',
-    data:{labels:st.map(function(x){return x.label;}),datasets:[{data:st.map(function(x){return x.count;}),backgroundColor:['#dc2626','#d97706','#2563eb','#64748b','#8b5cf6'].slice(0,st.length),borderWidth:3,borderColor:'rgba(0,0,0,0)',hoverOffset:8}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:CHART_LEG}}
-  });
-
-  /* PIE — Location */
-  var loc = fieldCounts(t,'Customer_Location');
-  makeChart('location',{ type:'pie',
-    data:{labels:loc.map(function(x){return x.label;}),datasets:[{data:loc.map(function(x){return x.count;}),backgroundColor:loc.map(function(_,i){return COLORS[i%COLORS.length];}),borderWidth:3,borderColor:'rgba(0,0,0,0)',hoverOffset:8}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:CHART_LEG}}
-  });
-
-  /* POLAR — Segment */
-  var seg = fieldCounts(t,'Customer_Segment');
-  makeChart('segment',{ type:'polarArea',
-    data:{labels:seg.map(function(x){return x.label;}),datasets:[{data:seg.map(function(x){return x.count;}),backgroundColor:['rgba(37,99,235,0.7)','rgba(139,92,246,0.7)','rgba(14,165,233,0.7)','rgba(22,163,74,0.7)'].slice(0,seg.length)}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:CHART_LEG},scales:{r:{ticks:{display:false},grid:{color:'rgba(140,150,180,0.2)'}}}}
-  });
-
-  /* STACKED BAR — Agent workload (Emarati / Non / TDRA overlay via stacks) */
-  var wt=$('workloadToggles');
-  if(wt) wt.innerHTML=[['total','Breakdown'],['tdra','TDRA only'],['manager','Mgr CB'],['dup','Dupes']].map(function(m){
-    return '<button type="button" class="mini-toggle'+(BCR.workloadMetric===m[0]?' active':'')+'" data-m="'+m[0]+'">'+m[1]+'</button>';
-  }).join('');
-  if(wt) wt.querySelectorAll('button').forEach(function(b){ b.onclick=function(){ BCR.workloadMetric=b.getAttribute('data-m'); renderCharts(); }; });
-  var ag=buildAgentStats(t).sort(function(a,b){return b.total-a.total;}).slice(0,12);
-  var wlDatasets;
-  if (BCR.workloadMetric === 'total') {
-    wlDatasets = [
-      {label:'Emarati',data:ag.map(function(a){return a.emarati;}),backgroundColor:'rgba(22,163,74,0.85)',borderRadius:3,borderSkipped:false,stack:'s'},
-      {label:'Non Emarati',data:ag.map(function(a){return a.nonEmarati;}),backgroundColor:'rgba(14,165,233,0.85)',borderRadius:3,borderSkipped:false,stack:'s'}
-    ];
-  } else {
-    var key = BCR.workloadMetric;
-    var color = key==='tdra'?'rgba(220,38,38,0.85)':key==='manager'?'rgba(217,119,6,0.85)':'rgba(139,92,246,0.85)';
-    var label = {tdra:'TDRA',manager:'Manager CB',dup:'Duplicates'}[key]||key;
-    wlDatasets = [{label:label,data:ag.map(function(a){return a[key];}),backgroundColor:color,borderRadius:4,borderSkipped:false}];
-  }
-  makeChart('workload',{ type:'bar',
-    data:{labels:ag.map(function(a){return a.name;}),datasets:wlDatasets},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:CHART_LEG},scales:{
-      x:{stacked:BCR.workloadMetric==='total',grid:{display:false},ticks:{font:{size:10},color:'rgba(140,150,180,0.85)',maxRotation:40}},
-      y:Object.assign({stacked:BCR.workloadMetric==='total'}, CHART_AX.y)
-    }}
-  });
-
-  /* HORIZONTAL BAR — Top complaints */
-  var comp={};
-  t.forEach(function(r){ if(!r.Complaint_Summary) return; if(!comp[r.Complaint_Summary]) comp[r.Complaint_Summary]={total:0,tdra:0}; comp[r.Complaint_Summary].total++; if(r.TDRA_Mentioned==='Yes') comp[r.Complaint_Summary].tdra++; });
-  var cs=Object.keys(comp).sort(function(a,b){return comp[b].total-comp[a].total;}).slice(0,10);
-  makeChart('complaint',{ type:'bar',
-    data:{labels:cs.map(pretty),datasets:[
-      {label:'Total',data:cs.map(function(c){return comp[c].total;}),backgroundColor:'rgba(37,99,235,0.75)',borderRadius:4,borderSkipped:false},
-      {label:'TDRA flagged',data:cs.map(function(c){return comp[c].tdra;}),backgroundColor:'rgba(220,38,38,0.85)',borderRadius:4,borderSkipped:false}
-    ]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:CHART_LEG},scales:{x:CHART_AX.y,y:{grid:{display:false},ticks:{font:{size:10},color:'rgba(140,150,180,0.85)'}}}}
-  });
-
-  /* AREA LINE — escalation over time */
-  makeChart('escalation',{ type:'line',
-    data:{ labels:buckets.map(function(b){return b.label;}), datasets:[
-      {label:'TDRA',data:buckets.map(function(b){return b.tdra;}),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,0.2)',borderWidth:2.5,pointRadius:3,tension:0.35,fill:true},
-      {label:'Manager CB',data:buckets.map(function(b){return b.manager;}),borderColor:'#d97706',backgroundColor:'rgba(217,119,6,0.18)',borderWidth:2.5,pointRadius:3,tension:0.35,fill:true}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:CHART_LEG},scales:{x:Object.assign({},CHART_AX.x,{ticks:Object.assign({},CHART_AX.x.ticks,{maxRotation:45,maxTicksLimit:16})}),y:CHART_AX.y}}
-  });
-
-  /* RADAR — Action Taken */
-  var act = fieldCounts(t,'Action_Taken');
-  makeChart('action',{ type:'radar',
-    data:{labels:act.map(function(x){return x.label;}),datasets:[{label:'Contacts',data:act.map(function(x){return x.count;}),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.25)',pointBackgroundColor:'#2563eb',borderWidth:2}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{angleLines:{color:'rgba(140,150,180,0.25)'},grid:{color:'rgba(140,150,180,0.2)'},pointLabels:{font:{size:10},color:'rgba(140,150,180,0.9)'},ticks:{display:false,backdropColor:'transparent'}}}}
-  });
+  bcrIcons();
 }
 
 /* ── AG Grid set filter (checkbox list, not "contains") ──── */
@@ -1377,8 +1261,6 @@ function renderGrid(){
     setCol({field:'Service_Status',headerName:'Service_Status',width:130}),
     setCol({field:'Complaint_Summary',headerName:'Complaint_Summary',width:170,valueFormatter:function(p){return pretty(p.value);}}),
     setCol({field:'Action_Taken',headerName:'Action_Taken',width:180,valueFormatter:function(p){return pretty(p.value);}}),
-    setCol({field:'TDRA_Mentioned',headerName:'TDRA',width:100,cellRenderer:ynR}),
-    setCol({field:'Manager_Callback',headerName:'Mgr_Callback',width:130,cellRenderer:ynR}),
     setCol({field:'Duplicate_Flag',headerName:'Duplicate',width:120,cellRenderer:dupR}),
     setCol({field:'Previous_Entry_ID',headerName:'Previous_Entry_ID',width:170}),
     setCol({field:'Internal_Notes',headerName:'Internal_Notes',width:180})
@@ -1434,7 +1316,7 @@ $('detailDrawer').onclick=function(e){ if(e.target.id==='detailDrawer') closeDet
 /* ── exports ─────────────────────────────────────────────── */
 function exportExcel(){
   applyFilters();
-  var keys=['Reference_ID','Contact_Date','Agent_Name','Touch_Point','Customer_Type','Customer_Location','Caller_Name','Customer_Name','MSISDN','Account_Number','Customer_Segment','Service_Status','Complaint_Summary','Action_Taken','TDRA_Mentioned','Manager_Callback','Duplicate_Flag','Previous_Entry_ID','Internal_Notes'];
+  var keys=['Reference_ID','Contact_Date','Agent_Name','Touch_Point','Customer_Type','Customer_Location','Caller_Name','Customer_Name','MSISDN','Account_Number','Customer_Segment','Service_Status','Complaint_Summary','Action_Taken','Duplicate_Flag','Previous_Entry_ID','Internal_Notes'];
   var lines=[keys.join(',')];
   BCR.filtered.forEach(function(r){ lines.push(keys.map(function(k){ return '"'+String(r[k]==null?'':r[k]).replace(/"/g,'""')+'"'; }).join(',')); });
   var blob=new Blob([lines.join('\n')],{type:'text/csv'});
@@ -1479,32 +1361,22 @@ function exportPDF(){
       ['Total Contacts',s.total,'Current filter'],
       ['Emarati',s.emarati,pct(s.emarati,s.total)],
       ['Non Emarati',s.nonEmarati,pct(s.nonEmarati,s.total)],
-      ['TDRA Mentioned',s.tdra,pct(s.tdra,s.total)],
-      ['Manager Callback',s.manager,pct(s.manager,s.total)],
       ['Duplicate Contacts',s.dup,'Same MSISDN < 7 days'],
       ['Unique Numbers',s.uniqMsisdn,'Distinct MSISDN']
     ],y,m,w);
-    var ag=buildAgentStats(BCR.filtered).sort(function(a,b){return b.total-a.total;}).slice(0,20);
-    y=pdfHead(pdf,'Agent Activity',y,m,12);
-    y=pdfTable(pdf,['Agent','Total','Emarati','Non Em.','TDRA','Mgr CB','Top Complaint'],
-      ag.map(function(a){ return [a.name,a.total,a.emarati,a.nonEmarati,a.tdra,a.manager,pretty(a.topCat)]; }),y,m,w);
     var byComp={}; BCR.filtered.forEach(function(r){ if(r.Complaint_Summary) byComp[r.Complaint_Summary]=(byComp[r.Complaint_Summary]||0)+1; });
     var cs=Object.keys(byComp).sort(function(a,b){return byComp[b]-byComp[a];});
     y=pdfHead(pdf,'Complaint Breakdown',y,m,12);
     y=pdfTable(pdf,['Complaint','Count','% of Total'],cs.map(function(c){return [pretty(c),byComp[c],pct(byComp[c],s.total)];}),y,m,w);
-    // charts (render if hidden)
-    var wasHidden=!BCR.chartsVisible;
     var finish=function(){
-      pdf.addPage(); var yy=m; yy=pdfHead(pdf,'Charts',yy,m,14);
-      yy=pdfChart(pdf,'trend','Contact Volume Trend',yy,m,w);
-      yy=pdfChart(pdf,'workload','Agent Workload',yy,m,w);
-      yy=pdfChart(pdf,'complaint','Top Complaints',yy,m,w);
+      pdf.addPage(); var yy=m; yy=pdfHead(pdf,'Contact Volume Trend',yy,m,14);
+      yy=pdfChart(pdf,'trend','Trend Chart',yy,m,w);
       pdf.save('BCR_Report_'+todayStr()+'.pdf');
-      if(wasHidden){ toggleCharts(); }
       toast('PDF report generated','success');
-      if(btn){ btn.disabled=false; btn.textContent='Export_PDF'; }
+      if(btn){ btn.disabled=false; btn.textContent='Export PDF'; }
     };
-    if(wasHidden){ toggleCharts(); setTimeout(finish,450); } else { finish(); }
+    if(!BCR.charts.trend){ renderTrendChart(); setTimeout(finish,500); }
+    else finish();
   }).catch(function(e){
     console.error(e); toast('PDF export failed','error');
     if(btn){ btn.disabled=false; btn.textContent='Export_PDF'; }
@@ -1512,6 +1384,37 @@ function exportPDF(){
 }
 
 /* ── FORM (new entry → review → confirm) ─────────────────── */
+function isValidEmail(v){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(String(v||'').trim());
+}
+function isValidMsisdn(v){
+  var s=String(v||'').replace(/[\s\-]/g,'');
+  if(!/^\d+$/.test(s)) return false;
+  if(/^05\d{8}$/.test(s)) return true;
+  if(/^9715\d{8}$/.test(s)) return true;
+  return s.length>=9&&s.length<=12;
+}
+function isDigitsOnly(v){ return /^\d+$/.test(String(v||'').trim()); }
+function markInvalid(key){ var el=$('fld_'+key); if(el) el.classList.add('invalid'); return el; }
+function fieldInputHtml(f){
+  if(f.key==='Email_Address') return '<input class="form-input" type="email" id="fld_'+f.key+'" placeholder="name@company.com" autocomplete="off">';
+  if(f.key==='MSISDN') return '<input class="form-input" type="tel" inputmode="numeric" id="fld_'+f.key+'" placeholder="05xxxxxxxx" maxlength="12" autocomplete="off">';
+  if(f.key==='Account_Number') return '<input class="form-input" type="tel" inputmode="numeric" id="fld_'+f.key+'" placeholder="Digits only" autocomplete="off">';
+  if(f.key==='Alternative_Contact') return '<input class="form-input" type="text" id="fld_'+f.key+'" placeholder="Phone or email (optional)" autocomplete="off">';
+  if(f.type==='date') return '<input class="form-input" type="date" id="fld_'+f.key+'">';
+  return '<input class="form-input" type="text" id="fld_'+f.key+'">';
+}
+function bindFormValidation(){
+  var ms=$('fld_MSISDN');
+  if(ms){
+    ms.addEventListener('input',function(){ this.value=this.value.replace(/\D/g,'').slice(0,12); });
+    ms.addEventListener('blur',function(){ updateDupBanner(ms.value.trim()); });
+  }
+  var acc=$('fld_Account_Number');
+  if(acc) acc.addEventListener('input',function(){ this.value=this.value.replace(/\D/g,''); });
+  var email=$('fld_Email_Address');
+  if(email) email.addEventListener('blur',function(){ if(this.value.trim()&&!isValidEmail(this.value)) this.classList.add('invalid'); else this.classList.remove('invalid'); });
+}
 function getFormDefaults(){
   var o={Contact_Date:todayStr()};
   FORM_FIELDS.forEach(function(f){ o[f.key]= f.type==='yn'?'No':''; });
@@ -1519,7 +1422,7 @@ function getFormDefaults(){
   return o;
 }
 function renderForm(){
-  var c=$('mainContent');
+  var c=$('bcrMainPanel');
   var sections={};
   FORM_FIELDS.forEach(function(f){ (sections[f.section]=sections[f.section]||[]).push(f); });
   var html='<div class="dashboard-section agent-form-wrap"><div class="form-card">'
@@ -1530,13 +1433,13 @@ function renderForm(){
     sections[sec].forEach(function(f){
       html+='<div class="form-group"><label class="form-label">'+f.key+(f.req?' <span class="req">*</span>':'')+'</label>';
       if(f.type==='select'){
-        html+='<select class="form-select" id="fld_'+f.key+'"><option value="">— Select —</option>'+(CHOICES[f.key]||[]).map(function(o){return '<option value="'+esc(o)+'">'+esc(pretty(o))+'</option>';}).join('')+'</select>';
+        html+='<select class="form-select" id="fld_'+f.key+'"><option value="">— Select —</option>'+getChoices(f.key).map(function(o){return '<option value="'+esc(o)+'">'+esc(pretty(o))+'</option>';}).join('')+'</select>';
       } else if(f.type==='yn'){
         html+='<select class="form-select" id="fld_'+f.key+'"><option value="No">No</option><option value="Yes">Yes</option></select>';
       } else if(f.type==='textarea'){
         html+='<textarea class="form-textarea" id="fld_'+f.key+'" placeholder="Required if Complaint_Summary = Other"></textarea>';
       } else {
-        html+='<input class="form-input" type="'+(f.type==='date'?'date':'text')+'" id="fld_'+f.key+'">';
+        html+=fieldInputHtml(f);
       }
       html+='</div>';
     });
@@ -1545,26 +1448,36 @@ function renderForm(){
   html+='<div class="form-actions"><button type="button" class="btn-secondary" id="formClearBtn">Clear</button><button type="button" class="btn-primary" id="formReviewBtn">Review_And_Confirm</button></div></div></div>';
   c.innerHTML=html;
   populateForm(Object.keys(BCR.pending).length?BCR.pending:getFormDefaults());
+  bindFormValidation();
   $('formClearBtn').onclick=function(){ BCR.pending={}; populateForm(getFormDefaults()); };
   $('formReviewBtn').onclick=function(){
     var data=collectForm();
     if(!validateForm(data)) return;
     BCR.pending=data; BCR.formMode='review'; renderMain();
   };
-  var ms=$('fld_MSISDN'); if(ms) ms.addEventListener('blur',function(){ updateDupBanner(ms.value.trim()); });
 }
 function collectForm(){
   var d={}; FORM_FIELDS.forEach(function(f){ var el=$('fld_'+f.key); if(el) d[f.key]=el.value.trim(); }); return d;
 }
 function validateForm(d){
-  var ok=true, firstBad=null;
+  var ok=true, firstBad=null, msg='';
   FORM_FIELDS.forEach(function(f){ var el=$('fld_'+f.key); if(el) el.classList.remove('invalid'); });
   for(var i=0;i<FORM_FIELDS.length;i++){
-    var f=FORM_FIELDS[i]; if(!f.req) continue;
-    if(!d[f.key]){ var el=$('fld_'+f.key); if(el) el.classList.add('invalid'); if(!firstBad) firstBad=el; ok=false; }
+    var f=FORM_FIELDS[i];
+    if(f.req && !d[f.key]){ firstBad=markInvalid(f.key)||firstBad; ok=false; if(!msg) msg='Please fill all required fields'; }
   }
-  if(d.Complaint_Summary==='Other' && !d.Complaint_Details){ var e2=$('fld_Complaint_Details'); if(e2) e2.classList.add('invalid'); if(!firstBad) firstBad=e2; ok=false; toast('Complaint_Details required when Complaint_Summary = Other','error'); }
-  if(!ok){ if(firstBad) firstBad.focus(); toast('Please fill all required fields','error'); }
+  if(d.Email_Address && !isValidEmail(d.Email_Address)){ firstBad=markInvalid('Email_Address')||firstBad; ok=false; msg='Enter a valid email address'; }
+  if(d.MSISDN && !isValidMsisdn(d.MSISDN)){ firstBad=markInvalid('MSISDN')||firstBad; ok=false; msg='MSISDN must be digits only (e.g. 05xxxxxxxx)'; }
+  if(d.Account_Number && !isDigitsOnly(d.Account_Number)){ firstBad=markInvalid('Account_Number')||firstBad; ok=false; msg='Account_Number must contain digits only'; }
+  if(d.Alternative_Contact && d.Alternative_Contact.trim()){
+    var alt=d.Alternative_Contact.trim();
+    if(!isValidEmail(alt) && !isValidMsisdn(alt) && !/^[\d\+\s\-]{7,15}$/.test(alt)){
+      firstBad=markInvalid('Alternative_Contact')||firstBad; ok=false; msg='Alternative_Contact must be a valid phone or email';
+    }
+  }
+  if(d.Contact_Date && d.Contact_Date>todayStr()){ firstBad=markInvalid('Contact_Date')||firstBad; ok=false; msg='Contact_Date cannot be in the future'; }
+  if(d.Complaint_Summary==='Other' && !d.Complaint_Details){ firstBad=markInvalid('Complaint_Details')||firstBad; ok=false; msg='Complaint_Details required when Complaint_Summary = Other'; }
+  if(!ok){ if(firstBad) firstBad.focus(); toast(msg||'Please fix the highlighted fields','error'); }
   return ok;
 }
 function populateForm(d){
@@ -1578,7 +1491,7 @@ function updateDupBanner(msisdn){
   else { box.style.display='none'; box.innerHTML=''; }
 }
 function renderReview(){
-  var c=$('mainContent'); var d=BCR.pending;
+  var c=$('bcrMainPanel'); var d=BCR.pending;
   var html='<div class="dashboard-section agent-form-wrap"><div class="form-card">'
     +'<div class="review-banner">Review all details, then Confirm. Click Edit to make changes.</div>'
     +'<div class="table-header"><div class="table-title">Review Entry</div></div>';
@@ -1592,6 +1505,7 @@ function renderReview(){
 }
 function submitRecord(){
   var d=Object.assign({},BCR.pending);
+  if(!validateForm(d)){ BCR.formMode='entry'; renderMain(); populateForm(d); bindFormValidation(); return; }
   var dup=checkDuplicate(d.MSISDN);
   var rec=makeRecord(Object.assign(d,{
     Reference_ID:nextRefId(), Serial_Number:BCR.all.length+1, Entry_Month:monthStr(d.Contact_Date),
@@ -1636,8 +1550,23 @@ function closeScript(){ $('scriptPanel').classList.remove('open'); }
 $('scriptPanel').onclick=function(e){ if(e.target.id==='scriptPanel') closeScript(); };
 
 /* ── nav + main render ───────────────────────────────────── */
+function applyShellLayout(){
+  var shell=$('dashboardContent');
+  if(!shell) return;
+  if(isAdmin()){
+    shell.classList.remove('agent-mode');
+    shell.classList.add('admin-mode');
+    if(!BCR.view || (BCR.view!=='dashboard' && BCR.view!=='form')) BCR.view='dashboard';
+  } else {
+    shell.classList.add('agent-mode');
+    shell.classList.remove('admin-mode');
+    BCR.view='form';
+    BCR.formMode=BCR.formMode||'entry';
+  }
+}
 function renderNav(){
-  var nav=$('navItems'); nav.innerHTML='';
+  var nav=$('bcrNavItems'); if(!nav) return;
+  nav.innerHTML='';
   if(!isAdmin()) return;
   nav.innerHTML='<div class="nav-section-label">BCR</div>';
   var items=[
@@ -1654,19 +1583,17 @@ function renderNav(){
   bcrIcons();
 }
 function renderMain(){
+  applyShellLayout();
   renderNav();
-  $('headerUser').textContent=USER.name+' · '+USER.role;
+  $('headerUser').textContent=USER.role;
   $('headerDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   var showScript = (!isAdmin()) || BCR.view==='form';
   $('headerScriptBtn').style.display = showScript ? 'inline-flex' : 'none';
   $('headerScriptBtn').onclick=openScript;
-  var shell=$('dashboardContent');
   if(!isAdmin()){
-    shell.classList.add('agent-mode');
     if(BCR.formMode==='review') renderReview(); else renderForm();
     return;
   }
-  shell.classList.remove('agent-mode');
   if(BCR.view==='form'){ if(BCR.formMode==='review') renderReview(); else renderForm(); }
   else renderDashboard();
 }
@@ -1685,7 +1612,7 @@ var LANDING_FEATURES = {
   ]
 };
 function setupLanding(user){
-  USER.name=user.Title; USER.email=user.User_Email; USER.role=user.Role;
+  USER.name=user.Title; USER.email=user.User_Email; USER.role=normalizeRole(user.Role);
   $('lAvatar').textContent=initials(USER.name);
   $('lName').textContent=USER.name; $('lEmail').textContent=USER.email; $('lRole').textContent=USER.role;
   var feats=LANDING_FEATURES[USER.role]||LANDING_FEATURES.Agent;
@@ -1703,7 +1630,10 @@ function setupLanding(user){
 }
 function launchPortal(){
   showDashboard();
-  BCR.view=isAdmin()?'dashboard':'form'; BCR.formMode='entry'; BCR.pending={};
+  BCR.view=isAdmin()?'dashboard':'form';
+  BCR.formMode='entry';
+  BCR.pending={};
+  applyShellLayout();
   $('loadingOverlay').style.display='flex';
   $('loadingStep').textContent='Loading records...';
   function done(){
@@ -1713,7 +1643,7 @@ function launchPortal(){
     window.scrollTo(0,0);
   }
   if(USE_DUMMY){ loadRecords(done); return; }
-  ensureListFields(function(){ loadRecords(done); });
+  ensureListMetadata(function(){ loadRecords(done); });
 }
 
 /* ── theme ───────────────────────────────────────────────── */
@@ -1722,8 +1652,8 @@ function applyTheme(){
   var dark=localStorage.getItem('bcr_dark')==='true';
   var theme = dark ? (scheme==='magenta'?'magenta-dark':'dark') : scheme;
   document.body.setAttribute('data-theme',theme);
-  var sel=$('colorSchemeSelector'); if(sel) sel.value=scheme;
-  if(BCR.chartsVisible) renderCharts();
+  var sel=$('colorSchemeSelector');   if(sel) sel.value=scheme;
+  if(BCR.view==='dashboard'&&$('chartsSection')) renderTrendChart();
 }
 function initTheme(){
   applyTheme();
@@ -1743,8 +1673,8 @@ function initDev(){
 
 /* ── sidebar / exit ──────────────────────────────────────── */
 function initShellControls(){
-  $('sidebarToggle').onclick=function(){ $('sidebar').classList.toggle('collapsed'); };
-  $('logoutBtn').onclick=function(){ showLandingPage(); $('landingPage').style.display='flex'; };
+  $('bcrSidebarToggle').onclick=function(){ var sb=$('bcrSidebar'); if(sb) sb.classList.toggle('collapsed'); };
+  $('logoutBtn').onclick=function(){ showLandingPage(); };
 }
 
 /* ── init ────────────────────────────────────────────────── */
@@ -1752,16 +1682,19 @@ function init(){
   initTheme();
   initShellControls();
   $('dashboardContent').style.display='none';
+  $('dashboardContent').classList.remove('bcr-show');
   loadLucide(function(){
     if(USE_DUMMY){
       initDev();
       loadRecords(function(){
-        $('landingPage').style.display='flex';
+        $('landingPage').classList.add('bcr-show');
+        $('landingPage').style.cssText='display:flex!important;flex-direction:row!important;width:100%;';
         hideLoading();
         bcrIcons();
       });
     } else {
-      $('landingPage').style.display='flex';
+      $('landingPage').classList.add('bcr-show');
+      $('landingPage').style.cssText='display:flex!important;flex-direction:row!important;width:100%;';
       initAccess();
     }
   });
@@ -1770,8 +1703,10 @@ window.addEventListener('load', init);
 
 window.BCR = BCR;
 window.bcrGetFields = function(){
-  ensureListFields(function(){
-    console.table(Object.keys(SP_FIELD_TYPES).sort().map(function(k){ return {Field:k,Type:SP_FIELD_TYPES[k]}; }));
+  ensureListMetadata(function(){
+    console.table(Object.keys(SP_FIELD_TYPES).sort().map(function(k){
+      return {Field:k,Type:SP_FIELD_TYPES[k],Choices:(CHOICES[k]||[]).join(', ')};
+    }));
   });
 };
 })();
