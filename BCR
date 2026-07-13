@@ -17,7 +17,7 @@ body[data-theme="magenta-dark"]{--bg-body:linear-gradient(145deg,#120820,#1e0d33
 html{scroll-behavior:smooth}
 body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:var(--bg-body);color:var(--t1);min-height:100vh;line-height:1.5;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
 select,input,textarea,button{font-family:inherit}
-.portal-shell{max-width:1800px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.portal-shell{max-width:1800px;margin:0 auto;width:100%;flex-direction:column}
 .header{background:var(--bg-header);border-bottom:1px solid var(--border);backdrop-filter:blur(16px);padding:0 1.25rem;height:56px;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:200}
 .logo-section{display:flex;align-items:center;gap:.65rem}
 .logo{width:36px;height:36px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px var(--glow)}
@@ -235,13 +235,16 @@ select,input,textarea,button{font-family:inherit}
 #bcr-root .landing-page{min-height:auto!important;height:auto!important;padding:1.5rem 1rem}
 #bcr-root .landing-left,#bcr-root .landing-right{align-items:flex-start!important;padding:1rem 1.25rem}
 #bcr-root .landing-right .landing-container{margin-top:0}
+#bcr-root #landingPage{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;min-height:0!important;margin:0!important;padding:0!important;pointer-events:none!important}
+#bcr-root #landingPage.bcr-active{display:flex!important;visibility:visible!important;height:auto!important;overflow:visible!important;min-height:520px!important;margin:0!important;padding:1.5rem 1rem!important;pointer-events:auto!important;flex-wrap:wrap;width:100%}
+#bcr-root #portalShell{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important;min-height:0!important;margin:0!important;padding:0!important;border:none!important;pointer-events:none!important}
+#bcr-root #portalShell.bcr-active{display:flex!important;visibility:visible!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:100vh!important;margin:0 auto!important;padding:0!important;pointer-events:auto!important;flex-direction:column!important}
 #bcr-root [data-lucide]{stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
 .insight-ico{display:flex;align-items:center;justify-content:center}
 .nav-item .nav-icon{display:flex;align-items:center;flex-shrink:0;width:17px;height:17px}
-.portal-shell{display:flex!important;flex-direction:column!important;position:relative;z-index:1}
-.header{flex-shrink:0;order:1}
-.main-container{flex:1;order:2;min-height:0;display:flex}
-.dev-console{display:none}
+.header{flex-shrink:0}
+.main-container{flex:1;min-height:0;display:flex}
+.dev-console{display:none!important}
 </style>
 </head>
 <body data-theme="blue">
@@ -255,7 +258,7 @@ select,input,textarea,button{font-family:inherit}
   <div class="loading-step" id="loadingStep">Initializing...</div>
 </div>
 
-<div id="landingPage" class="landing-page" style="display:none;">
+<div id="landingPage" class="landing-page">
   <div class="landing-left animate-fade-in">
     <div class="landing-branding">
       <div style="margin-bottom:.85rem"><div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div></div>
@@ -289,7 +292,7 @@ select,input,textarea,button{font-family:inherit}
   </div>
 </div>
 
-<div class="portal-shell" id="portalShell" style="display:none;">
+<div class="portal-shell" id="portalShell">
   <div class="header">
     <div class="logo-section">
       <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
@@ -339,14 +342,13 @@ var STORAGE_KEY = 'bcr_records_v2';
 /* ════════════════════════════════════════════════════════════
    DATA MODE SWITCH
    USE_DUMMY = true  → localStorage + seed data (current)
-   USE_DUMMY = false → SharePoint lists BCR_Records / BCR_Access
-   Fill SP_CONFIG.siteUrl, then set USE_DUMMY = false.
+   USE_DUMMY = false → SharePoint lists on SM site
    ════════════════════════════════════════════════════════════ */
 var USE_DUMMY = false; // true = local test data | false = SharePoint lists
 var SP_CONFIG = {
-  listsSiteUrl: 'http://sharedspaces:8095/BO_Portal/billingsupport', // where BCR_Access + BCR_Records live
-  siteUrl: '',              // optional override; else listsSiteUrl, else page site
-  recordsList: 'BCR_Records',
+  listsSiteUrl: 'http://sharedspaces:8086/sites/SM',
+  siteUrl: '',
+  recordsList: 'Barring Management Tracker',
   accessList: 'BCR_Access'
 };
 var RECORD_SP_FIELDS = [
@@ -475,13 +477,35 @@ function toast(msg, type){
 }
 function showLoading(step){ $('loadingOverlay').style.display='flex'; if(step) $('loadingStep').textContent=step; }
 function hideLoading(){ $('loadingOverlay').style.display='none'; }
+function showLanding(){
+  var land=$('landingPage'), portal=$('portalShell');
+  if(portal){ portal.classList.remove('bcr-active'); portal.style.display='none'; }
+  if(land){ land.classList.add('bcr-active'); land.style.display='flex'; }
+}
+function showPortal(){
+  var land=$('landingPage'), portal=$('portalShell');
+  if(land){ land.classList.remove('bcr-active'); land.style.display='none'; }
+  if(portal){ portal.classList.add('bcr-active'); portal.style.display='flex'; portal.style.flexDirection='column'; }
+}
 
 function getSpSite(){
   if(SP_CONFIG.listsSiteUrl) return SP_CONFIG.listsSiteUrl.replace(/\/$/,'');
   if(SP_CONFIG.siteUrl) return SP_CONFIG.siteUrl.replace(/\/$/,'');
   if(typeof _spPageContextInfo!=='undefined'&&_spPageContextInfo&&_spPageContextInfo.webAbsoluteUrl)
     return _spPageContextInfo.webAbsoluteUrl;
-  return 'http://sharedspaces:8095/BO_Portal/billingsupport';
+  return 'http://sharedspaces:8086/sites/SM';
+}
+function spListPath(listTitle,suffix){
+  return "/_api/web/lists/getbytitle('"+String(listTitle).replace(/'/g,"''")+"')"+(suffix||'');
+}
+var _listItemTypes={};
+function getListItemType(listTitle,cb){
+  if(_listItemTypes[listTitle]){ cb(_listItemTypes[listTitle]); return; }
+  spGet(getSpSite()+spListPath(listTitle,'?$select=ListItemEntityTypeFullName'),function(err,data){
+    var t=(!err&&data.d&&data.d.ListItemEntityTypeFullName)?data.d.ListItemEntityTypeFullName:null;
+    if(t) _listItemTypes[listTitle]=t;
+    cb(t);
+  });
 }
 function spGet(url,cb){
   var xhr=new XMLHttpRequest();xhr.open('GET',url,true);
@@ -533,24 +557,28 @@ function spMapItem(item){
 }
 function loadRecordsFromSharePoint(cb){
   var site=getSpSite(), sel=RECORD_SP_FIELDS.join(',');
-  var url=site+"/_api/web/lists/getbytitle('"+SP_CONFIG.recordsList+"')/items?$select="+encodeURIComponent(sel)+"&$top=5000&$orderby=Contact_Date desc";
+  var url=site+spListPath(SP_CONFIG.recordsList,"/items?$select="+encodeURIComponent(sel)+"&$top=5000&$orderby=Contact_Date desc");
   spGet(url,function(err,data){
-    if(err){ toast('Failed to load BCR_Records — '+err.message,'error'); BCR.all=[]; if(cb)cb(); return; }
+    if(err){ toast('Failed to load '+SP_CONFIG.recordsList+' — '+err.message,'error'); BCR.all=[]; if(cb)cb(); return; }
     BCR.all=(data.d&&data.d.results?data.d.results:[]).map(spMapItem);
     BCR.all.sort(function(a,b){return String(b.Contact_Date).localeCompare(String(a.Contact_Date));});
     if(cb)cb();
   });
 }
 function saveRecordToSharePoint(rec,cb){
-  var site=getSpSite(), body={__metadata:{type:'SP.Data.'+SP_CONFIG.recordsList+'ListItem'}};
-  RECORD_SP_FIELDS.forEach(function(f){
-    if(f==='Id')return;
-    if(rec[f]!=null&&rec[f]!=='') body[f]=rec[f];
-  });
-  spPost(site+"/_api/web/lists/getbytitle('"+SP_CONFIG.recordsList+"')/items",body,function(err,data){
-    if(err){ toast('Save failed — '+err.message,'error'); if(cb)cb(err); return; }
-    if(data&&data.d) rec.Id=data.d.Id;
-    if(cb)cb(null,rec);
+  var site=getSpSite();
+  getListItemType(SP_CONFIG.recordsList,function(listType){
+    if(!listType){ toast('Cannot resolve list type for '+SP_CONFIG.recordsList,'error'); if(cb)cb(new Error('no list type')); return; }
+    var body={__metadata:{type:listType}};
+    RECORD_SP_FIELDS.forEach(function(f){
+      if(f==='Id')return;
+      if(rec[f]!=null&&rec[f]!=='') body[f]=rec[f];
+    });
+    spPost(site+spListPath(SP_CONFIG.recordsList,'/items'),body,function(err,data){
+      if(err){ toast('Save failed — '+err.message,'error'); if(cb)cb(err); return; }
+      if(data&&data.d) rec.Id=data.d.Id;
+      if(cb)cb(null,rec);
+    });
   });
 }
 function bcrIcons(){ if(typeof lucide!=='undefined') try{ lucide.createIcons(); }catch(e){} }
@@ -573,6 +601,7 @@ function loadLucide(cb){
   tryNext();
 }
 function showDenied(msg){
+  showLanding();
   $('lName').textContent='Access Denied'; $('lEmail').textContent=msg; $('lRole').textContent='No Access';
   $('launchBtn').disabled=true;
   $('accessNote').innerHTML=bcrIcon('shield-x',14)+'<span style="color:var(--red);margin-left:6px">'+esc(msg)+'</span>';
@@ -584,21 +613,22 @@ function initAccess(){
   spGet(site+'/_api/web/currentuser?$select=Title,Email',function(err,data){
     if(err){ hideLoading(); showDenied('Cannot reach SharePoint at '+site); return; }
     USER.email=data.d.Email; USER.name=data.d.Title;
-    spGet(site+"/_api/web/lists/getbytitle('"+SP_CONFIG.accessList+"')/items?$select=Title,User_Email,Role&$top=500",function(err2,data2){
+    spGet(site+spListPath(SP_CONFIG.accessList,"/items?$select=Title,User_Email,Role&$top=500"),function(err2,data2){
       hideLoading();
       if(err2){
         var msg=String(err2.message||err2);
-        if(msg.indexOf('404')>=0) showDenied('BCR_Access list not found on '+site+' — check listsSiteUrl');
+        if(msg.indexOf('404')>=0) showDenied('BCR_Access not found on '+site);
         else showDenied('Cannot read BCR_Access — '+msg);
         return;
       }
       var rows=data2.d&&data2.d.results?data2.d.results:[];
       var row=findAccessInList(rows,USER.email);
       if(!row){
-        showDenied('No BCR_Access row for '+USER.email+' — add this email on billingsupport (current list has '+rows.length+' row(s))');
+        showDenied('No BCR_Access row for '+USER.email+' — add this email on SM site (list has '+rows.length+' row(s))');
         return;
       }
       setupLanding({Title:row.Title||USER.name,User_Email:row.User_Email||USER.email,Role:row.Role||'Agent'});
+      showLanding();
       bcrIcons();
     });
   });
@@ -758,7 +788,7 @@ function renderDashboard(){
     + '<div class="panel"><div class="panel-head"><div class="panel-title">Agent Activity</div><div class="dash-sub">Click a row to drill down</div></div><div id="agentTable"></div><div id="agentDrill" style="display:none"></div></div>'
     + '<div style="text-align:center;margin-bottom:1rem;"><button type="button" id="toggleChartsBtn" class="export-btn" style="padding:11px 22px;font-size:13px;">Show Analytics Charts</button></div>'
     + '<div id="chartsSection" style="display:none"></div>'
-    + '<div class="table-section" id="printArea"><div class="table-header"><div class="table-title">BCR_Records</div><div class="table-actions"><input type="text" class="search-box" id="gridSearch" placeholder="Search all columns..."><span class="dash-sub" id="recordCount"></span></div></div><div id="bcrGrid" class="ag-theme-alpine" style="height:560px;width:100%"></div></div>'
+    + '<div class="table-section" id="printArea"><div class="table-header"><div class="table-title">Barring Management Tracker</div><div class="table-actions"><input type="text" class="search-box" id="gridSearch" placeholder="Search all columns..."><span class="dash-sub" id="recordCount"></span></div></div><div id="bcrGrid" class="ag-theme-alpine" style="height:560px;width:100%"></div></div>'
     + '</div>';
   applyFilters();
   renderFilterBar();
@@ -1548,7 +1578,7 @@ function submitRecord(){
     hideLoading();
     if(err) return;
     BCR.all.unshift(rec);
-    toast('Entry saved to BCR_Records','success');
+    toast('Entry saved to Barring Management Tracker','success');
     done();
   });
 }
@@ -1637,12 +1667,10 @@ function setupLanding(user){
   bcrIcons();
 }
 function launchPortal(){
-  $('landingPage').style.cssText='display:none!important';
-  $('portalShell').style.display='flex';
-  $('portalShell').style.flexDirection='column';
+  showPortal();
   BCR.view=isAdmin()?'dashboard':'form'; BCR.formMode='entry'; BCR.pending={};
   if(USE_DUMMY){ hideLoading(); renderMain(); return; }
-  showLoading('Loading BCR_Records...');
+  showLoading('Loading records...');
   loadRecords(function(){ hideLoading(); renderMain(); });
 }
 
@@ -1665,7 +1693,7 @@ function initTheme(){
 function initDev(){
   var sel=$('devUserSelect');
   sel.innerHTML=BCR_ACCESS.map(function(a){ return '<option value="'+esc(a.User_Email)+'">'+esc(a.Title)+' ('+esc(a.Role)+')</option>'; }).join('');
-  $('devLoginBtn').onclick=function(){ var acc=findAccess(sel.value); if(acc){ setupLanding(acc); $('landingPage').style.display='flex'; bcrIcons(); } };
+  $('devLoginBtn').onclick=function(){ var acc=findAccess(sel.value); if(acc){ setupLanding(acc); showLanding(); bcrIcons(); } };
   document.addEventListener('keydown',function(e){ if(e.ctrlKey&&e.shiftKey&&(e.key==='D'||e.key==='d')){ var dc=$('devConsole'); dc.style.display=dc.style.display==='none'?'flex':'none'; } });
   setupLanding(BCR_ACCESS[0]);
   bcrIcons();
@@ -1674,7 +1702,7 @@ function initDev(){
 /* ── sidebar / exit ──────────────────────────────────────── */
 function initShellControls(){
   $('sidebarToggle').onclick=function(){ $('sidebar').classList.toggle('collapsed'); };
-  $('logoutBtn').onclick=function(){ $('portalShell').style.display='none'; $('landingPage').style.display='flex'; };
+  $('logoutBtn').onclick=function(){ showLanding(); };
 }
 
 /* ── init ────────────────────────────────────────────────── */
@@ -1685,12 +1713,11 @@ function init(){
     if(USE_DUMMY){
       initDev();
       loadRecords(function(){
-        $('landingPage').style.display='flex';
+        showLanding();
         hideLoading();
         bcrIcons();
       });
     } else {
-      $('landingPage').style.display='flex';
       initAccess();
     }
   });
