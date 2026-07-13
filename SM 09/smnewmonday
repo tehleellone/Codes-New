@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SEMAILBOX.JS — SE Mailbox Intelligence v6.5
+   SEMAILBOX.JS — SE Mailbox Intelligence v6.6
    BA-grade: SLA · Agent drilldown · Forecasting · Insights
    Rules: Unassigned = no Agent/Citrix · Assigned = Agent/Citrix
           Completed = Flag date · Age based on received date
@@ -9,7 +9,7 @@
 /* Early global stub — prevents "initSEMailbox is not defined" if script fails mid-load */
 (function(w) {
     if (!w) return;
-    w.__SEMAILBOX_VERSION = '6.5';
+    w.__SEMAILBOX_VERSION = '6.6';
     w.initSEMailbox = function() {
         if (w.SEMailbox && typeof w.SEMailbox.init === 'function') return w.SEMailbox.init();
         console.error('[SEMailbox] Script did not finish loading. Re-upload semailbox.js to SharePoint Shared Documents and hard-refresh (Ctrl+F5).');
@@ -81,6 +81,7 @@ let MB = {
     trendPeriod:     'W',
     drillAgent:      null,
     activeSourceFilter: null,  // sender type key (lowercase) or 'repeat'
+    showRepeatThreads: false,
 
     dataLoaded:   false,
     lastFileName: mbSafeStorageGet('semailbox_last_file_name'),
@@ -1001,18 +1002,24 @@ function mbRenderSourcePanel() {
             <h3 class="table-title"><i data-lucide="mail" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Sender Type &amp; Thread Analysis</h3>
             <div style="font-size:12px;color:var(--t3);">From Excel Sender Type column · click to filter${sf?` · <button type="button" class="reset-btn" onclick="mbToggleSourceFilter(null)" style="padding:2px 8px;font-size:11px;">✕ Clear</button>`:''}</div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:.75rem;margin-bottom:1rem;">
+        <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:.75rem;margin-bottom:.75rem;">
             ${typeTiles}
             ${tile('repeat','🔁','Repeat Threads',s.repeat,s.repeatPct,'#e67e22',MB_METRIC_TIPS.repeat)}
         </div>
         ${s.topList.length ? `
-        <div style="font-size:.75rem;font-weight:700;color:var(--t2);margin-bottom:.5rem;">Top repeated subject threads (${s.repeatThreads} unique threads)</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${MB.showRepeatThreads?'.5rem':'0'};">
+            <button type="button" class="export-btn" onclick="MB.showRepeatThreads=!MB.showRepeatThreads;mbRenderSourcePanel();" style="padding:6px 12px;font-size:11px;">
+                <i data-lucide="${MB.showRepeatThreads?'chevron-up':'list'}" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-right:5px;"></i>
+                ${MB.showRepeatThreads?'Hide':'Show'} Top Repeated Threads (${s.repeatThreads} threads)
+            </button>
+        </div>
+        ${MB.showRepeatThreads ? `
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;">
             ${s.topList.map(r=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--bg-secondary);border-radius:8px;font-size:11px;">
                 <span style="color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${String(r.label).replace(/"/g,'&quot;')}">${r.label}</span>
                 <span style="color:#e67e22;font-weight:800;white-space:nowrap;">${r.count} emails</span>
             </div>`).join('')}
-        </div>` : '<div style="font-size:12px;color:var(--t3);">No repeated subject threads in current filter.</div>'}
+        </div>` : ''}` : ''}
     </div>`;
     if (typeof lucide!=='undefined') lucide.createIcons();
 }
@@ -1086,14 +1093,19 @@ const MB_AX = {
 };
 const MB_LEG = { position:'bottom', labels:{font:{size:10},padding:8,boxWidth:9,boxHeight:9,color:'rgba(160,160,180,0.9)'} };
 
-/* Always-visible chart value labels */
+/* Chart value labels — only on selected charts (never trend/forecast lines) */
 const MB_DATA_LABEL_PLUGIN = {
     id: 'mbDataLabels',
     afterDatasetsDraw(chart) {
         const { ctx, chartArea } = chart;
-        if (!chartArea) return;
+        if (!chartArea || chart.config.mbSkipLabels) return;
         const isHorizontal = chart.config.options?.indexAxis === 'y';
         const isDoughnut = chart.config.type === 'doughnut' || chart.config.type === 'pie';
+        const isLine = chart.config.type === 'line' || chart.data.datasets.some(d => d.type === 'line');
+        if (isLine) return;
+        const labelCount = chart.data.datasets.reduce((n, ds) => n + (ds.data || []).filter(v => v != null && v !== 0).length, 0);
+        if (labelCount > 40) return;
+
         chart.data.datasets.forEach((dataset, di) => {
             const meta = chart.getDatasetMeta(di);
             if (meta.hidden) return;
@@ -1102,22 +1114,34 @@ const MB_DATA_LABEL_PLUGIN = {
                 if (val == null || val === 0) return;
                 const pos = element.tooltipPosition ? element.tooltipPosition() : { x: element.x, y: element.y };
                 ctx.save();
-                ctx.font = 'bold 10px Inter, system-ui, sans-serif';
-                ctx.fillStyle = isDoughnut ? '#fff' : (isHorizontal ? '#fff' : '#333');
+                ctx.font = 'bold 9px Inter, system-ui, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
+
                 if (isHorizontal) {
-                    const w = element.width || 0;
-                    if (w < 18) { ctx.restore(); return; }
-                    ctx.fillText(String(val), pos.x - w / 2 + 4, pos.y);
+                    const w = Math.abs(element.width || 0);
+                    if (w < 14) {
+                        ctx.fillStyle = '#333';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(String(val), element.x + 4, element.y);
+                    } else {
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(String(val), element.x - w / 2, element.y);
+                    }
                 } else if (isDoughnut) {
                     const total = dataset.data.reduce((a, b) => a + (b || 0), 0);
-                    if (total && val / total < 0.08) { ctx.restore(); return; }
+                    if (total && val / total < 0.06) { ctx.restore(); return; }
+                    ctx.fillStyle = '#fff';
                     ctx.fillText(String(val), pos.x, pos.y);
                 } else {
-                    const h = element.height || 0;
-                    const y = chart.config.type === 'line' ? pos.y - 10 : pos.y - Math.max(h / 2, 8);
-                    ctx.fillText(String(val), pos.x, y);
+                    const h = Math.abs(element.height || 0);
+                    if (h < 14) {
+                        ctx.fillStyle = '#333';
+                        ctx.fillText(String(val), pos.x, element.y - 6);
+                    } else {
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(String(val), pos.x, element.y - h / 2);
+                    }
                 }
                 ctx.restore();
             });
@@ -1150,8 +1174,18 @@ function mbMakeChart(key, config) {
     if (!config.options.plugins) config.options.plugins={};
     config.options.plugins.datalabels = { display: false };
     config.options.animation = { duration: 0 };
-    if (!config.plugins) config.plugins = [];
-    if (!config.plugins.some(p => p && p.id === 'mbDataLabels')) config.plugins.push(MB_DATA_LABEL_PLUGIN);
+
+    const showLabels = !!config.mbShowLabels;
+    const skipLabels = !!config.mbSkipLabels || key === 'trend' || key === 'forecast';
+    config.mbSkipLabels = skipLabels;
+
+    if (showLabels && !skipLabels) {
+        if (!config.options.layout) config.options.layout = {};
+        config.options.layout.padding = Object.assign({ top: 22, right: 12, left: 4, bottom: 4 }, config.options.layout.padding || {});
+        if (!config.plugins) config.plugins = [];
+        if (!config.plugins.some(p => p && p.id === 'mbDataLabels')) config.plugins.push(MB_DATA_LABEL_PLUGIN);
+    }
+
     MB.charts[key] = new Chart(canvas, config);
 }
 
@@ -1171,6 +1205,7 @@ function mbRenderAgeChart() {
     });
     const names = Object.keys(smMap).sort((a,b)=>(smMap[b].b024+smMap[b].b2448+smMap[b].b48p)-(smMap[a].b024+smMap[a].b2448+smMap[a].b48p)).slice(0,15);
     mbMakeChart('age',{
+        mbShowLabels: true,
         type:'bar',
         data:{ labels:names, datasets:[
             {label:'0–24 Hours',data:names.map(n=>smMap[n].b024),backgroundColor:'rgba(39,174,96,0.8)',borderRadius:3,borderSkipped:false},
@@ -1202,6 +1237,7 @@ function mbRenderTrend() {
     let running=0; const backlog = buckets.map(b=>{ running += b.recv - b.done; return running; });
 
     mbMakeChart('trend',{
+        mbSkipLabels: true,
         type:'bar',
         data:{ labels, datasets:[
             {type:'bar', label:'Received', data:recv, backgroundColor:'rgba(76,111,255,0.75)', borderRadius:4, order:2},
@@ -1279,6 +1315,7 @@ function mbRenderForecast() {
     if (typeof lucide!=='undefined') lucide.createIcons();
 
     mbMakeChart('forecast',{
+        mbSkipLabels: true,
         type:'line',
         data:{ labels, datasets:[
             {label:'Actual received', data:histData, borderColor:'#4c6fff', backgroundColor:'rgba(76,111,255,0.12)', borderWidth:2.5, pointRadius:3, tension:0.3, fill:true},
@@ -1424,14 +1461,14 @@ function mbRenderCategories() {
     const u=t.filter(x=>x.status==='Unassigned').length;
     const i=t.filter(x=>x.status==='In Progress').length;
     const c=t.filter(x=>x.status==='Completed'||x.status==='Closed').length;
-    mbMakeChart('status',{ type:'doughnut',
+    mbMakeChart('status',{ mbShowLabels: true, type:'doughnut',
         data:{labels:['Unassigned','Assigned (Open)','Completed'],datasets:[{data:[u,i,c],backgroundColor:['#e74c3c','#f39c12','#27ae60'],borderWidth:3,borderColor:'var(--bg-card)',hoverOffset:8}]},
         options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:MB_LEG}} });
 
     // Location donut
     const locMap={}; t.forEach(x=>{ const l=x.location||'Unknown'; locMap[l]=(locMap[l]||0)+1; });
     const locNames=Object.keys(locMap);
-    mbMakeChart('location',{ type:'doughnut',
+    mbMakeChart('location',{ mbShowLabels: true, type:'doughnut',
         data:{labels:locNames,datasets:[{data:locNames.map(l=>locMap[l]),backgroundColor:locNames.map((_,idx)=>MB_CLR.smColors[idx%MB_CLR.smColors.length]),borderWidth:3,borderColor:'var(--bg-card)',hoverOffset:8}]},
         options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:MB_LEG}} });
 
@@ -1439,7 +1476,7 @@ function mbRenderCategories() {
     const catMap={};
     t.forEach(x=>{ if(!x.category) return; if(!catMap[x.category]) catMap[x.category]={total:0,outside:0}; catMap[x.category].total++; if(mbIsOpen(x)&&mbIsOutside(x)) catMap[x.category].outside++; });
     const sorted=Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total).slice(0,10);
-    mbMakeChart('categories',{ type:'bar',
+    mbMakeChart('categories',{ mbShowLabels: true, type:'bar',
         data:{labels:sorted.map(e=>e[0]),datasets:[
             {label:'Total',data:sorted.map(e=>e[1].total),backgroundColor:'rgba(76,111,255,0.75)',borderRadius:4,borderSkipped:false},
             {label:'Outside SLA',data:sorted.map(e=>e[1].outside),backgroundColor:'rgba(231,76,60,0.85)',borderRadius:4,borderSkipped:false},
@@ -1474,12 +1511,12 @@ function mbRenderWorkloadChart() {
         const color = ws==='completed'?'rgba(39,174,96,0.85)':ws==='outside'?'rgba(231,76,60,0.85)':'rgba(243,156,18,0.85)';
         datasets=[{label:ws==='completed'?'Completed':ws==='outside'?'Outside SLA':'Open',data:sorted.map(s=>s[key]),backgroundColor:color,borderRadius:4,borderSkipped:false}];
     }
-    mbMakeChart('workload',{ type:'bar',
+    mbMakeChart('workload',{ mbShowLabels: true, type:'bar',
         data:{labels:sorted.map(s=>s.name),datasets},
         options:{responsive:true,maintainAspectRatio:false,
             plugins:{legend:{display:ws==='all',...MB_LEG}},
             scales:{x:{...(ws==='all'?{stacked:true}:{}),grid:{display:false},ticks:{font:{size:10},color:'rgba(160,160,180,0.8)',maxRotation:40}},
-                    y:{...(ws==='all'?{stacked:true}:{}),...MB_AX.y}}} });
+                    y:{...(ws==='all'?{stacked:true}:{}),...MB_AX.y, grace:'12%'}}} });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1681,32 +1718,155 @@ function mbShowToast(msg,type) {
 /* ══════════════════════════════════════════════════════════════
    PDF EXPORT
    ══════════════════════════════════════════════════════════════ */
-function mbLoadPdfLibs() {
+/* ══════════════════════════════════════════════════════════════
+   PDF EXPORT — structured report (not a screenshot)
+   ══════════════════════════════════════════════════════════════ */
+function mbLoadPdfLib() {
     return new Promise((resolve, reject) => {
-        if (window.html2canvas && window.jspdf) { resolve(); return; }
-        const urls = [
-            'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-        ];
-        let n = 0;
-        urls.forEach(url => {
-            const s = document.createElement('script');
-            s.src = url;
-            s.onload = () => { if (++n === urls.length) resolve(); };
-            s.onerror = () => reject(new Error('Failed to load ' + url));
-            document.head.appendChild(s);
-        });
+        if (window.jspdf) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load jsPDF'));
+        document.head.appendChild(s);
     });
 }
 
-window.mbExportPDF = async function() {
-    const root = document.getElementById('semailbox-root');
-    if (!root || !MB.dataLoaded) { mbShowToast('No data to export', 'warning'); return; }
-    const btn = document.getElementById('mb-export-pdf-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
+function mbPdfEnsureSpace(pdf, y, need, margin) {
+    const pageH = pdf.internal.pageSize.getHeight();
+    if (y + need > pageH - margin) {
+        pdf.addPage();
+        return margin;
+    }
+    return y;
+}
+
+function mbPdfHeading(pdf, text, y, margin, size) {
+    y = mbPdfEnsureSpace(pdf, y, size * 0.6 + 6, margin);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(size);
+    pdf.setTextColor(30, 30, 30);
+    pdf.text(text, margin, y);
+    return y + size * 0.45 + 4;
+}
+
+function mbPdfLine(pdf, text, y, margin, contentW, size) {
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(size || 10);
+    pdf.setTextColor(60, 60, 60);
+    const lines = pdf.splitTextToSize(String(text), contentW);
+    lines.forEach(line => {
+        y = mbPdfEnsureSpace(pdf, y, 5, margin);
+        pdf.text(line, margin, y);
+        y += 4.5;
+    });
+    return y + 2;
+}
+
+function mbPdfTable(pdf, headers, rows, y, margin, contentW) {
+    const colW = contentW / headers.length;
+    y = mbPdfEnsureSpace(pdf, y, 8, margin);
+    pdf.setFillColor(76, 111, 255);
+    pdf.rect(margin, y - 4, contentW, 6, 'F');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    pdf.setTextColor(255, 255, 255);
+    headers.forEach((h, i) => pdf.text(h, margin + i * colW + 1, y));
+    y += 6;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(50, 50, 50);
+    rows.forEach((row, ri) => {
+        y = mbPdfEnsureSpace(pdf, y, 5, margin);
+        if (ri % 2 === 0) { pdf.setFillColor(245, 245, 250); pdf.rect(margin, y - 3.5, contentW, 5, 'F'); }
+        row.forEach((cell, i) => pdf.text(String(cell ?? '—').substring(0, 28), margin + i * colW + 1, y));
+        y += 5;
+    });
+    return y + 4;
+}
+
+function mbPdfAddChart(pdf, chartKey, title, y, margin, contentW) {
+    const chart = MB.charts[chartKey];
+    if (!chart || !chart.canvas) return y;
     try {
-        mbShowToast('Preparing PDF…', 'info');
-        await mbLoadPdfLibs();
+        const img = chart.canvas.toDataURL('image/png', 1.0);
+        const imgH = 45;
+        y = mbPdfHeading(pdf, title, y, margin, 11);
+        y = mbPdfEnsureSpace(pdf, y, imgH + 4, margin);
+        pdf.addImage(img, 'PNG', margin, y, contentW, imgH);
+        return y + imgH + 6;
+    } catch (e) { return y; }
+}
+
+window.mbExportPDF = async function() {
+    if (!MB.dataLoaded) { mbShowToast('No data to export', 'warning'); return; }
+    const btn = document.getElementById('mb-export-pdf-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating PDF…'; }
+    try {
+        mbShowToast('Building PDF report…', 'info');
+        await mbLoadPdfLib();
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const margin = 14;
+        const pageW = pdf.internal.pageSize.getWidth();
+        const contentW = pageW - margin * 2;
+        let y = margin;
+
+        const k = mbGetKPIs();
+        const src = mbGetSourceStats();
+        const agents = mbBuildAgentStats(MB.filteredTickets).sort((a, b) => b.open - a.open).slice(0, 20);
+        const dateStr = new Date().toLocaleString('en-GB');
+
+        y = mbPdfHeading(pdf, 'SE Mailbox Intelligence Report', y, margin, 16);
+        y = mbPdfLine(pdf, 'Generated: ' + dateStr, y, margin, contentW, 10);
+        y = mbPdfLine(pdf, 'Showing ' + MB.filteredTickets.length + ' of ' + MB.allTickets.length + ' emails', y, margin, contentW, 10);
+
+        y = mbPdfHeading(pdf, 'Key Metrics', y, margin, 12);
+        y = mbPdfTable(pdf,
+            ['Metric', 'Value', 'Detail'],
+            [
+                ['Total Emails', k.total, 'All in current filter'],
+                ['Unassigned', k.unassigned, 'No agent assigned'],
+                ['Assigned (Open)', k.inprogress, 'In progress'],
+                ['Completed', k.completed, 'Flag completed'],
+                ['Avg Age', k.avgAge != null ? k.avgAge.toFixed(1) + ' days' : '—', 'Open emails'],
+            ],
+            y, margin, contentW);
+
+        y = mbPdfHeading(pdf, 'SLA Performance (Open Emails)', y, margin, 12);
+        y = mbPdfTable(pdf,
+            ['Metric', 'Count', '%'],
+            [
+                ['Within SLA', k.slaWithin, (k.slaWithinPct != null ? k.slaWithinPct + '%' : '—')],
+                ['Outside SLA', k.slaOutside, (k.slaOutsidePct != null ? k.slaOutsidePct + '%' : '—')],
+                ['Compliance', (k.slaCompliance != null ? k.slaCompliance + '%' : '—'), 'Within / (Within+Outside)'],
+                ['Due in 24h', k.dueSoon, ''],
+            ],
+            y, margin, contentW);
+
+        y = mbPdfHeading(pdf, 'Sender Type Breakdown', y, margin, 12);
+        y = mbPdfTable(pdf,
+            ['Sender Type', 'Count', '% of Total'],
+            src.types.map(t => [t.label, t.count, t.pct + '%']).concat([['Repeat Threads', src.repeat, src.repeatPct + '%']]),
+            y, margin, contentW);
+
+        if (src.topList.length) {
+            y = mbPdfHeading(pdf, 'Top Repeated Subject Threads', y, margin, 12);
+            y = mbPdfTable(pdf,
+                ['Subject', 'Emails'],
+                src.topList.map(r => [r.label, r.count]),
+                y, margin, contentW);
+        }
+
+        y = mbPdfHeading(pdf, 'Agent Leaderboard (Top 20)', y, margin, 12);
+        y = mbPdfTable(pdf,
+            ['Agent', 'Open', 'Done', 'Outside', 'SLA %', 'Avg Age'],
+            agents.map(a => [
+                a.name, a.open, a.completed, a.outside,
+                a.slaPct != null ? a.slaPct + '%' : '—',
+                a.avgAge != null ? a.avgAge.toFixed(1) + 'd' : '—',
+            ]),
+            y, margin, contentW);
+
         const wasHidden = !MB.chartsVisible;
         if (wasHidden) {
             MB.chartsVisible = true;
@@ -1716,34 +1876,25 @@ window.mbExportPDF = async function() {
             mbRenderTrend();
             mbRenderForecast();
             mbRenderCategories();
-            await new Promise(r => setTimeout(r, 600));
+            await new Promise(r => setTimeout(r, 400));
         }
-        const canvas = await window.html2canvas(root, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' });
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const imgW = pageW;
-        const imgH = (canvas.height * imgW) / canvas.width;
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        let heightLeft = imgH;
-        let position = 0;
-        pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-        heightLeft -= pageH;
-        while (heightLeft > 0) {
-            position = heightLeft - imgH;
-            pdf.addPage();
-            pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-            heightLeft -= pageH;
-        }
+
+        pdf.addPage();
+        y = margin;
+        y = mbPdfHeading(pdf, 'Charts', y, margin, 14);
+        y = mbPdfAddChart(pdf, 'workload', 'Agent Workload', y, margin, contentW);
+        y = mbPdfAddChart(pdf, 'status', 'Status Split', y, margin, contentW * 0.55);
+        y = mbPdfAddChart(pdf, 'categories', 'Top Issue Categories', y, margin, contentW);
+
         pdf.save('SE_Mailbox_Report_' + new Date().toISOString().slice(0, 10) + '.pdf');
+
         if (wasHidden) {
             MB.chartsVisible = false;
             const section = document.getElementById('mb-charts-section');
             if (section) section.style.display = 'none';
             mbDestroyCharts();
         }
-        mbShowToast('✅ PDF exported', 'success');
+        mbShowToast('✅ PDF report generated', 'success');
     } catch (e) {
         console.error('[SEMailbox] PDF export failed:', e);
         mbShowToast('❌ PDF export failed — check console', 'error');
@@ -1755,6 +1906,14 @@ window.mbExportPDF = async function() {
         }
     }
 };
+
+function mbHideMailboxRefreshBtn() {
+    const section = document.getElementById('seMailboxView');
+    if (!section) return;
+    section.querySelectorAll('.tab-refresh-btn, button[onclick*="refreshTabData(\'seMailboxView\')"]').forEach(btn => {
+        btn.style.display = 'none';
+    });
+}
 
 /* ══════════════════════════════════════════════════════════════
    HTML SHELL
@@ -1882,6 +2041,7 @@ const SEMailbox = {
                 return;
             }
             mbInjectShell();
+            mbHideMailboxRefreshBtn();
 
             const search = document.getElementById('mb-ag-search');
             if (search) search.oninput = e => mbSearch(e.target.value);
