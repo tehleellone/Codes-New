@@ -1,0 +1,3858 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle Service Request Portal</title>
+    <script src="http://sharedspaces:8086/sites/OP/Shared%20Documents/lucide.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        h1.ms-core-pageTitle,
+        .ms-core-pageTitle {
+            display: none !important;
+        }
+
+        :root {
+            --bg-primary: linear-gradient(135deg, #1a0a27 0%, #2a1a3a 50%, #1d0f19 100%);
+            --bg-card: rgba(26, 10, 39, 0.75);
+            --bg-header: rgba(26, 10, 39, 0.92);
+            --bg-sidebar: linear-gradient(180deg, rgba(40, 16, 65, 0.98), rgba(32, 12, 55, 0.98));
+            --bg-content: radial-gradient(circle at top, rgba(32, 10, 52, 0.96), rgba(12, 10, 25, 0.98));
+            --bg-input: rgba(22, 8, 36, 0.6);
+            --border-color: rgba(146, 72, 185, 0.25);
+            --border-hover: rgba(146, 72, 185, 0.6);
+            --text-primary: #FFFDFE;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --accent: linear-gradient(135deg, #9248B9, #C724B1);
+            --accent-solid: #C724B1;
+            --accent-glow: rgba(199, 36, 177, 0.55);
+            --nav-active-bg: rgba(199, 36, 177, 0.12);
+            --nav-active-border: rgba(199, 36, 177, 0.35);
+            --nav-hover-bg: rgba(199, 36, 177, 0.06);
+            --shell-bg: radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 55%), rgba(15, 23, 42, 0.65);
+            --shell-shadow: 0 22px 40px rgba(15, 23, 42, 0.65);
+        }
+
+        body.light-theme {
+            --bg-primary: linear-gradient(135deg, #fdf0fc 0%, #f5e6ff 50%, #fef8ff 100%);
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-header: rgba(255, 255, 255, 0.98);
+            --bg-sidebar: linear-gradient(180deg, rgba(250, 235, 255, 0.98), rgba(245, 230, 255, 0.98));
+            --bg-content: radial-gradient(circle at top, rgba(253, 244, 255, 0.98), rgba(255, 255, 255, 0.99));
+            --bg-input: rgba(250, 245, 255, 0.9);
+            --border-color: rgba(146, 72, 185, 0.18);
+            --border-hover: rgba(146, 72, 185, 0.4);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --nav-active-bg: rgba(146, 72, 185, 0.08);
+            --nav-active-border: rgba(146, 72, 185, 0.25);
+            --nav-hover-bg: rgba(146, 72, 185, 0.04);
+            --shell-bg: radial-gradient(circle at top left, rgba(248, 244, 255, 0.95), rgba(253, 242, 255, 0.98));
+            --shell-shadow: 0 18px 32px rgba(148, 163, 184, 0.45);
+        }
+
+        body.cyan-theme {
+            --bg-primary: linear-gradient(135deg, #0a1a27 0%, #1a2a3a 50%, #0f1d19 100%);
+            --bg-card: rgba(10, 26, 39, 0.78);
+            --bg-header: rgba(10, 26, 39, 0.95);
+            --bg-sidebar: linear-gradient(180deg, rgba(12, 30, 48, 0.98), rgba(10, 25, 40, 0.98));
+            --bg-content: radial-gradient(circle at top, rgba(10, 28, 45, 0.96), rgba(8, 18, 28, 0.98));
+            --bg-input: rgba(10, 22, 35, 0.6);
+            --border-color: rgba(19, 157, 203, 0.25);
+            --border-hover: rgba(19, 157, 203, 0.6);
+            --text-primary: #f0f9ff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #7cb9d4;
+            --accent: linear-gradient(135deg, #139DCB, #2193C9);
+            --accent-solid: #139DCB;
+            --accent-glow: rgba(19, 157, 203, 0.5);
+            --nav-active-bg: rgba(19, 157, 203, 0.12);
+            --nav-active-border: rgba(19, 157, 203, 0.35);
+            --nav-hover-bg: rgba(19, 157, 203, 0.06);
+            --shell-bg: radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), transparent 55%), rgba(8, 18, 30, 0.7);
+            --shell-shadow: 0 22px 40px rgba(8, 18, 30, 0.7);
+        }
+
+        body.cyan-theme.light-theme {
+            --bg-primary: linear-gradient(135deg, #f0f9ff 0%, #e6f4ff 50%, #f8fcff 100%);
+            --bg-card: rgba(255, 255, 255, 0.96);
+            --bg-header: rgba(255, 255, 255, 0.98);
+            --bg-sidebar: linear-gradient(180deg, rgba(227, 245, 255, 0.98), rgba(235, 248, 255, 0.98));
+            --bg-content: radial-gradient(circle at top, rgba(240, 249, 255, 0.98), rgba(255, 255, 255, 0.99));
+            --bg-input: rgba(240, 249, 255, 0.9);
+            --border-color: rgba(19, 157, 203, 0.18);
+            --border-hover: rgba(19, 157, 203, 0.4);
+            --text-primary: #0f172a;
+            --text-secondary: #1f2937;
+            --text-muted: #6b7280;
+            --nav-active-bg: rgba(19, 157, 203, 0.08);
+            --nav-active-border: rgba(19, 157, 203, 0.25);
+            --nav-hover-bg: rgba(19, 157, 203, 0.04);
+            --shell-bg: radial-gradient(circle at top left, rgba(227, 245, 255, 0.95), rgba(240, 249, 255, 0.98));
+            --shell-shadow: 0 18px 32px rgba(148, 163, 184, 0.45);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .portal-shell {
+            max-width: 1440px;
+            margin: 12px auto 24px;
+            padding: 10px 14px 18px;
+            border-radius: 22px;
+            background: var(--shell-bg);
+            box-shadow: var(--shell-shadow);
+        }
+
+        /* HEADER */
+        .header {
+            background: var(--bg-header);
+            backdrop-filter: blur(10px);
+            border-radius: 16px 16px 0 0;
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            padding: 0.9rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo-section { 
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px var(--accent-glow);
+            color: #fff;
+        }
+
+        .header-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #C724B1, #9248B9, #139DCB);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .color-scheme-selector {
+            padding: 0.45rem 0.9rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .theme-toggle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        /* LAYOUT */
+        .main-container {
+            display: flex;
+            border-radius: 0 0 16px 16px;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 240px;
+            min-width: 240px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            padding: 1.5rem 0;
+            transition: width 0.25s, min-width 0.25s, padding 0.25s, opacity 0.25s;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            padding: 1.5rem 0;
+            opacity: 0;
+            border-right: none;
+        }
+
+        .nav-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            padding: 0 0.9rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            padding: 0.7rem 0.9rem;
+            border-radius: 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: var(--nav-hover-bg);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--nav-active-bg);
+            border-color: var(--nav-active-border);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .nav-section-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            padding: 1.2rem 0.9rem 0.4rem;
+        }
+
+        .content {
+            flex: 1;
+            padding: 1.3rem 1.4rem;
+            overflow-y: auto;
+            background: var(--bg-content);
+            min-height: 600px;
+        }
+
+        /* SECTIONS */
+        .section {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .section-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #C724B1, #9248B9, #139DCB);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* WELCOME */
+        .welcome-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+        }
+
+        .welcome-title {
+            font-size: 1.9rem;
+            font-weight: 700;
+            margin-bottom: 1.2rem;
+            background: linear-gradient(135deg, #C724B1, #9248B9, #139DCB);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-text {
+            color: var(--text-secondary);
+            line-height: 1.75;
+            margin-bottom: 0.9rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 1rem;
+            margin-top: 1.8rem;
+        }
+
+        .feature-box {
+            background: rgba(146, 72, 185, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.4rem;
+        }
+
+        .feature-icon {
+            width: 38px;
+            height: 38px;
+            background: var(--accent);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.9rem;
+            color: #fff;
+        }
+
+        .feature-title {
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            color: var(--text-primary);
+        }
+
+        .feature-desc {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 1rem 1.1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .card-title {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.06em;
+            margin-bottom: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* FORMS */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.9rem;
+        }
+
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.9rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .form-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .required-mark {
+            color: #ef4444;
+        }
+
+        .inp {
+            width: 100%;
+            padding: 0.62rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .inp:focus {
+            outline: none;
+            border-color: var(--border-hover);
+            box-shadow: 0 0 0 3px rgba(146, 72, 185, 0.12);
+        }
+
+        .inp::placeholder {
+            color: var(--text-muted);
+        }
+
+        select.inp {
+            appearance: auto;
+        }
+
+        textarea.inp {
+            min-height: 72px;
+            resize: vertical;
+        }
+
+        /* BUTTONS */
+        .btn {
+            padding: 0.58rem 1.2rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            border-color: var(--border-hover);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            box-shadow: 0 3px 10px rgba(146, 72, 185, 0.35);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 5px 16px rgba(146, 72, 185, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-sm {
+            padding: 0.32rem 0.7rem;
+            font-size: 0.8rem;
+            border-radius: 6px;
+        }
+
+        /* ALERTS */
+        .alert {
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            border: 1px solid;
+            font-size: 0.9rem;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        .spinner {
+            width: 15px;
+            height: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        /* EMAIL CHECK */
+        .email-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .email-row .inp {
+            flex: 1;
+        }
+
+        .email-status {
+            margin-top: 0.4rem;
+            font-size: 0.8rem;
+            min-height: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.8rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        /* EDIT BANNER */
+        .edit-banner {
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #60a5fa;
+            font-size: 0.88rem;
+        }
+
+        .edit-banner-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* ═══════════════════════════════════════════
+   DATAGRID
+   ═══════════════════════════════════════════ */
+        .dg-wrap {
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            background: var(--bg-card);
+        }
+
+        /* Toolbar row: universal search + count + clear */
+        .dg-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-header);
+        }
+
+        .dg-search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 180px;
+            max-width: 380px;
+        }
+
+        .dg-search {
+            width: 100%;
+            padding: 0.36rem 0.7rem 0.36rem 2.1rem;
+            border-radius: 7px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 0.84rem;
+            font-family: inherit;
+        }
+
+        .dg-search:focus {
+            outline: none;
+            border-color: var(--border-hover);
+        }
+
+        .dg-search::placeholder {
+            color: var(--text-muted);
+        }
+
+        .dg-search-icon {
+            position: absolute;
+            left: 0.55rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            width: 15px;
+            height: 15px;
+        }
+
+        .dg-count {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        .dg-clear-btn {
+            font-size: 0.78rem;
+            color: var(--accent-solid);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .dg-clear-btn:hover {
+            background: rgba(146, 72, 185, 0.08);
+        }
+
+        .dg-clear-btn.visible {
+            display: inline-block;
+        }
+
+        /* Scrollable table area */
+        .dg-scroll {
+            overflow-x: auto;
+        }
+
+        .dg-body-scroll {
+            max-height: 440px;
+            overflow-y: auto;
+        }
+
+        .dg-table {
+            border-collapse: collapse;
+            table-layout: fixed;
+            min-width: 100%;
+        }
+
+        /* Header */
+        .dg-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .dg-table thead th {
+            background: var(--bg-header);
+            color: var(--text-muted);
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.55rem 0.6rem;
+            text-align: left;
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
+            user-select: none;
+            position: relative;
+            vertical-align: middle;
+        }
+
+        .dg-table thead th.dg-action {
+            width: 76px;
+            min-width: 76px;
+            max-width: 76px;
+            text-align: center;
+            cursor: default;
+            border-bottom-width: 2px;
+        }
+
+        .dg-table thead th:not(.dg-action) {
+            cursor: pointer;
+        }
+
+        .dg-table thead th:not(.dg-action):hover {
+            color: var(--text-primary);
+            background: rgba(146, 72, 185, 0.06);
+        }
+
+        /* sort arrow */
+        .dg-sort {
+            display: inline-block;
+            margin-left: 4px;
+            opacity: 0.35;
+            font-size: 0.68rem;
+        }
+
+        .dg-table thead th.dg-sorted .dg-sort {
+            opacity: 1;
+            color: var(--accent-solid);
+        }
+
+        /* active column filter indicator: small colored dot */
+        .dg-table thead th.dg-has-filter {
+            color: var(--accent-solid) !important;
+        }
+
+        .dg-filter-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-solid);
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        .dg-filter-arrow {
+            display: inline-block;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-left: 3px;
+            vertical-align: middle;
+            cursor: pointer;
+            padding: 0 2px;
+            border-radius: 3px;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        .dg-filter-arrow:hover {
+            color: var(--accent-solid);
+            background: rgba(146, 72, 185, 0.1);
+        }
+
+        /* Column resize handle */
+        .dg-resize {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: col-resize;
+            z-index: 5;
+        }
+
+        .dg-resize:hover {
+            background: var(--accent-solid);
+        }
+
+        /* ── Column filter popup (AG Grid style) ── */
+        .dg-col-filter {
+            position: absolute;
+            top: calc(100% + 3px);
+            left: 0;
+            z-index: 200;
+            width: 185px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+            padding: 0.55rem;
+        }
+
+        .dg-col-filter select {
+            width: 100%;
+            padding: 0.3rem 0.45rem;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            font-family: inherit;
+            margin-bottom: 0.35rem;
+            appearance: auto;
+        }
+
+        .dg-col-filter input[type=text] {
+            width: 100%;
+            padding: 0.3rem 0.45rem;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            font-family: inherit;
+        }
+
+        .dg-col-filter input[type=text]:focus,
+        .dg-col-filter select:focus {
+            outline: none;
+            border-color: var(--border-hover);
+        }
+
+        .dg-col-filter input[type=text]::placeholder {
+            color: var(--text-muted);
+        }
+
+        .dg-col-filter-btns {
+            display: flex;
+            gap: 0.3rem;
+            margin-top: 0.4rem;
+            justify-content: flex-end;
+        }
+
+        .dg-col-filter-btns button {
+            padding: 0.2rem 0.52rem;
+            border-radius: 5px;
+            font-size: 0.76rem;
+            font-family: inherit;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .dg-col-filter-btns button.apply {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+        }
+
+        .dg-col-filter-btns button:hover {
+            opacity: 0.82;
+        }
+
+        /* Body */
+        .dg-table tbody tr {
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.12s;
+        }
+
+        .dg-table tbody tr:nth-child(even) {
+            background: rgba(146, 72, 185, 0.025);
+        }
+
+        .dg-table tbody tr:hover {
+            background: rgba(146, 72, 185, 0.07);
+        }
+
+        .dg-table tbody td {
+            padding: 0.5rem 0.6rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+
+        .dg-table tbody td.dg-action {
+            text-align: center;
+            overflow: visible;
+        }
+
+        /* View button */
+        .btn-view {
+            padding: 0.28rem 0.65rem;
+            border-radius: 5px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            font-size: 0.76rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .btn-view:hover {
+            opacity: 0.82;
+        }
+
+        /* Pinned action column */
+        .dg-action {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: var(--bg-header) !important;
+            border-right: 2px solid var(--border-color);
+        }
+
+        .dg-table tbody tr:nth-child(even) .dg-action {
+            background: rgba(26, 10, 39, 0.82) !important;
+        }
+
+        .dg-table tbody tr:hover .dg-action {
+            background: rgba(146, 72, 185, 0.1) !important;
+        }
+
+        body.light-theme .dg-table tbody tr:nth-child(even) .dg-action {
+            background: rgba(255, 255, 255, 0.96) !important;
+        }
+
+        body.light-theme .dg-table tbody tr:hover .dg-action {
+            background: rgba(146, 72, 185, 0.06) !important;
+        }
+
+        /* Status bar */
+        .dg-statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.7rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-header);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .dg-pager {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .dg-pager button {
+            padding: 0.22rem 0.55rem;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+
+        .dg-pager button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .dg-pager button.active {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+        }
+
+        .dg-pager select {
+            padding: 0.2rem 0.4rem;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 0.78rem;
+        }
+
+        /* Empty / loading */
+        .dg-empty {
+            padding: 2.5rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.92rem;
+        }
+
+        /* Progress bar */
+        .progress-wrap {
+            background: var(--bg-input);
+            border-radius: 8px;
+            height: 20px;
+            overflow: hidden;
+            margin-top: 0.6rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 8px;
+            transition: width 0.25s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            white-space: nowrap;
+            min-width: 30px;
+        }
+
+        @media(max-width:900px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media(max-width:600px) {
+
+            .form-grid,
+            .form-grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                width: 200px;
+                min-width: 200px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="portal-shell">
+
+        <!-- HEADER -->
+        <div class="header">
+            <div class="logo-section">
+                <div class="logo"><i data-lucide="radio"></i></div>
+                <div class="header-title">Oracle Service Request Portal</div>
+            </div>
+            <div class="header-actions">
+                <select class="color-scheme-selector" id="colorSchemeSelector" onchange="switchColorScheme()">
+                    <option value="magenta">Magenta Theme</option>
+                    <option value="cyan">Cyan Theme</option>
+                </select>
+                <div class="theme-toggle" onclick="toggleSidebar()" id="sidebarToggleBtn" style="margin-right:0.5rem;"><i data-lucide="panel-left" id="sidebarIcon"></i></div>
+                <div class="theme-toggle" onclick="toggleTheme()"><i data-lucide="moon" id="themeIcon"></i></div>
+            </div>
+        </div>
+
+        <!-- SIDEBAR + CONTENT -->
+        <div class="main-container">
+            <div class="sidebar">
+                <div class="nav-items">
+                    <div class="nav-item active" data-section="welcome" onclick="nav('welcome')"><i data-lucide="home"></i><span>Welcome</span></div>
+                    <div class="nav-section-label">Data Entry</div>
+                    <div class="nav-item" data-section="masterForm" onclick="nav('masterForm')"><i data-lucide="database"></i><span>Master Data Entry</span></div>
+                    <div class="nav-item" data-section="oracleForm" onclick="nav('oracleForm')"><i data-lucide="file-plus"></i><span>Oracle Activation</span></div>
+                    <div class="nav-section-label">View & Edit</div>
+                    <div class="nav-item" data-section="masterGrid" onclick="nav('masterGrid')"><i data-lucide="table"></i><span>Master Data List</span></div>
+                    <div class="nav-item" data-section="oracleGrid" onclick="nav('oracleGrid')"><i data-lucide="list"></i><span>Oracle Activation List</span></div>
+                    <div class="nav-section-label">Bulk</div>
+                    <div class="nav-item" data-section="bulkUpload" onclick="nav('bulkUpload')"><i data-lucide="upload"></i><span>Bulk Upload / Update</span></div>
+                </div>
+            </div>
+
+            <div class="content">
+
+                <!-- WELCOME -->
+                <div id="welcome" class="section active">
+                    <div class="welcome-card">
+                        <h1 class="welcome-title">Welcome to Oracle Service Request Portal</h1>
+                        <p class="welcome-text">Streamlined interface for managing Oracle telecom service requests and master data entries stored in SharePoint.</p>
+                        <div class="feature-grid">
+                            <div class="feature-box">
+                                <div class="feature-icon"><i data-lucide="database"></i></div>
+                                <div class="feature-title">Master Data</div>
+                                <div class="feature-desc">Create and maintain customer master records with entity, contact, subscription details.</div>
+                            </div>
+                            <div class="feature-box">
+                                <div class="feature-icon"><i data-lucide="file-plus"></i></div>
+                                <div class="feature-title">Oracle Activation</div>
+                                <div class="feature-desc">Full activation requests. Auto-creates Master Data if email is new.</div>
+                            </div>
+                            <div class="feature-box">
+                                <div class="feature-icon"><i data-lucide="search"></i></div>
+                                <div class="feature-title">Search & Edit</div>
+                                <div class="feature-desc">Universal search across all columns. Per-column filters. Resizable, sortable columns. View any row to edit.</div>
+                            </div>
+                            <div class="feature-box">
+                                <div class="feature-icon"><i data-lucide="upload"></i></div>
+                                <div class="feature-title">Bulk Upload / Update</div>
+                                <div class="feature-desc">CSV upload to create or update records. Update matches by Email. Download examples to get started.</div>
+                            </div>
+                        </div>
+                        <p class="welcome-text" style="margin-top:1.5rem;">Required fields marked <span class="required-mark">*</span>. Request IDs auto-generated.</p>
+                    </div>
+                </div>
+
+                <!-- MASTER DATA FORM -->
+                <div id="masterForm" class="section">
+                    <h2 class="section-title">Master Data Entry</h2>
+                    <div id="masterAlert"></div>
+                    <div id="masterEditBanner" style="display:none;" class="edit-banner">
+                        <span><i data-lucide="edit" style="width:16px;height:16px;"></i> Editing existing record — Save will UPDATE SharePoint</span>
+                        <div class="edit-banner-actions">
+                            <button type="button" class="btn" onclick="cancelMasterEdit()"><i data-lucide="x"></i> Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="updateMasterData()"><i data-lucide="save"></i> Update</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="user"></i> All Fields</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label class="form-label">Entity</label><input type="text" id="md_entity" class="inp" placeholder="Entity"></div>
+                            <div class="form-group"><label class="form-label">Subscriber</label><input type="text" id="md_subscriber" class="inp" placeholder="Subscriber"></div>
+                            <div class="form-group"><label class="form-label">Sub Level</label><input type="text" id="md_sublevel" class="inp" placeholder="Sub level"></div>
+                            <div class="form-group"><label class="form-label">L20 AC</label><input type="text" id="md_l20ac" class="inp" placeholder="L20 AC"></div>
+                            <div class="form-group"><label class="form-label">End User First Name</label><input type="text" id="md_firstname" class="inp" placeholder="First name"></div>
+                            <div class="form-group"><label class="form-label">End User Last Name</label><input type="text" id="md_lastname" class="inp" placeholder="Last name"></div>
+                            <div class="form-group"><label class="form-label">End User Email <span class="required-mark">*</span></label><input type="email" id="md_email" class="inp" placeholder="Email"></div>
+                            <div class="form-group"><label class="form-label">MSISDN</label><input type="text" id="md_msisdn" class="inp" placeholder="MSISDN"></div>
+                            <div class="form-group"><label class="form-label">Tariff (Rate Plan)</label><input type="text" id="md_tariff" class="inp" placeholder="Tariff"></div>
+                            <div class="form-group"><label class="form-label">Current Status <span class="required-mark">*</span></label><select id="md_status" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Device Model</label><input type="text" id="md_devicemodel" class="inp" placeholder="Device model"></div>
+                            <div class="form-group"><label class="form-label">Device Offer</label><input type="text" id="md_deviceoffer" class="inp" placeholder="Device offer"></div>
+                            <div class="form-group"><label class="form-label">Expiry Date</label><input type="date" id="md_expiry" class="inp"></div>
+                            <div class="form-group"><label class="form-label">SIM Serial (ICCID)</label><input type="text" id="md_simserial" class="inp" placeholder="SIM Serial"></div>
+                            <div class="form-group"><label class="form-label">Activation Date – SIM</label><input type="date" id="md_actsim" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Contract Start Date – SIM</label><input type="date" id="md_contractstartsim" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Contract End Date – SIM</label><input type="date" id="md_contractendsim" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Contract Start Date – Handset</label><input type="date" id="md_contractstarthandset" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Contract End Date – Handset</label><input type="date" id="md_contractendhandset" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Deactivation Date – SIM</label><input type="date" id="md_deactsim" class="inp"></div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn" onclick="resetMasterForm()"><i data-lucide="x"></i> Clear</button>
+                        <button type="button" class="btn btn-primary" id="submitMasterBtn" onclick="submitMasterData()"><i data-lucide="check"></i> Submit</button>
+                    </div>
+                    <input type="hidden" id="md_editId" value="">
+                </div>
+
+                <!-- ORACLE ACTIVATION FORM -->
+                <div id="oracleForm" class="section">
+                    <h2 class="section-title">Oracle Activation Entry</h2>
+                    <div id="oracleAlert"></div>
+                    <div id="oracleEditBanner" style="display:none;" class="edit-banner">
+                        <span><i data-lucide="edit" style="width:16px;height:16px;"></i> Editing existing record — Save will UPDATE SharePoint</span>
+                        <div class="edit-banner-actions">
+                            <button type="button" class="btn" onclick="cancelOracleEdit()"><i data-lucide="x"></i> Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="updateOracleActivation()"><i data-lucide="save"></i> Update</button>
+                        </div>
+                    </div>
+                    <div class="card" id="oa_requestIdCard" style="display:none;">
+                        <div class="card-title"><i data-lucide="hash"></i> Request ID</div>
+                        <div class="form-grid">
+                            <div class="form-group" style="grid-column:span 3;">
+                                <label class="form-label">Request ID</label>
+                                <input type="text" id="oa_requestid" class="inp" readonly style="opacity:0.85;cursor:default;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="user"></i> User Information</div>
+                        <div class="form-grid">
+                            <div class="form-group" style="grid-column:span 3;">
+                                <label class="form-label">End User Email <span class="required-mark">*</span></label>
+                                <div class="email-row">
+                                    <input type="email" id="oa_email" class="inp" placeholder="Enter email — press Check to pull Master Data" onkeydown="if(event.key==='Enter'){event.preventDefault();checkMasterEmail();}">
+                                    <button type="button" class="btn btn-primary" id="checkEmailBtn" onclick="checkMasterEmail()" style="white-space:nowrap;"><i data-lucide="search"></i> Check</button>
+                                </div>
+                                <div class="email-status" id="emailCheckStatus"></div>
+                            </div>
+                            <div class="form-group"><label class="form-label">End User First Name</label><input type="text" id="oa_firstname" class="inp" placeholder="Auto-filled"></div>
+                            <div class="form-group"><label class="form-label">End User Last Name</label><input type="text" id="oa_lastname" class="inp" placeholder="Auto-filled"></div>
+                            <div class="form-group"><label class="form-label">Entity</label><input type="text" id="oa_entity" class="inp" placeholder="Auto-filled"></div>
+                            <div class="form-group"><label class="form-label">Subscriber</label><input type="text" id="oa_subscriber" class="inp" placeholder="Auto-filled"></div>
+                            <div class="form-group"><label class="form-label">Sub Level (Account Code)</label><input type="text" id="oa_sublevel" class="inp" placeholder="Auto-filled"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="file-text"></i> Transaction Details</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label class="form-label">Transaction Type <span class="required-mark">*</span></label><select id="oa_transtype" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">PO No</label><input type="text" id="oa_pono" class="inp" placeholder="PO number"></div>
+                            <div class="form-group"><label class="form-label">PO Date</label><input type="date" id="oa_podate" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Activity Ref. No</label><input type="text" id="oa_activityref" class="inp" placeholder="Activity ref"></div>
+                            <div class="form-group"><label class="form-label">Activity Date</label><input type="date" id="oa_activitydate" class="inp"></div>
+                            <div class="form-group"><label class="form-label">SR Date</label><input type="date" id="oa_srdate" class="inp"></div>
+                            <div class="form-group"><label class="form-label">SO No</label><input type="text" id="oa_sono" class="inp" placeholder="SO number"></div>
+                            <div class="form-group"><label class="form-label">SO Creation Date</label><input type="date" id="oa_socreation" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Ship To</label><input type="text" id="oa_shipto" class="inp" placeholder="Address"></div>
+                            <div class="form-group" style="display:none;" aria-hidden="true"><label class="form-label">Update Order</label><select id="oa_updateorder" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="copy"></i> Activity / SO – Set 2</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label class="form-label">Activity Ref. No (2)</label><input type="text" id="oa_activityref2" class="inp" placeholder="Ref #2"></div>
+                            <div class="form-group"><label class="form-label">Activity Date (2)</label><input type="date" id="oa_activitydate2" class="inp"></div>
+                            <div class="form-group"><label class="form-label">SO No (2)</label><input type="text" id="oa_sono2" class="inp" placeholder="SO #2"></div>
+                            <div class="form-group"><label class="form-label">SO Creation Date (2)</label><input type="date" id="oa_socreation2" class="inp"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="credit-card"></i> SIM & Service Details</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label class="form-label">MSISDN</label><input type="text" id="oa_msisdn" class="inp" placeholder="MSISDN"></div>
+                            <div class="form-group"><label class="form-label">SIM Serial (ICCID)</label><input type="text" id="oa_simserial" class="inp" placeholder="SIM serial"></div>
+                            <div class="form-group"><label class="form-label">SIM Type</label><select id="oa_simtype" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Tariff (Rate Plan)</label><input type="text" id="oa_tariff" class="inp" placeholder="Auto-filled"></div>
+                            <div class="form-group"><label class="form-label">Add-ons</label><select id="oa_addons" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Activation Date – SIM</label><input type="date" id="oa_actsim" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Contract Start Date – SIM</label><input type="date" id="oa_contractstartsim" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Contract End Date – SIM</label><input type="date" id="oa_contractendsim" class="inp"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="smartphone"></i> Device Details</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label class="form-label">Device (Brand)</label><select id="oa_devicebrand" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Device Subcategory</label><select id="oa_devicesub" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Capacity</label><select id="oa_capacity" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">IMEI</label><input type="text" id="oa_imei" class="inp" placeholder="IMEI"></div>
+                            <div class="form-group"><label class="form-label">Quantity</label><input type="number" id="oa_quantity" class="inp" placeholder="Qty" min="0"></div>
+                            <div class="form-group"><label class="form-label">Activation Date – Handset</label><input type="date" id="oa_acthandset" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Contract Start Date – Handset</label><input type="date" id="oa_contractstarthandset" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Contract End Date – Handset</label><input type="date" id="oa_contractendhandset" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Future Termination Date</label><input type="date" id="oa_futuretermdate" class="inp"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="activity"></i> Status & Tracking</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label class="form-label">Status <span class="required-mark">*</span></label><select id="oa_status" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Reason</label><select id="oa_reason" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+<div class="form-group"><label class="form-label">Pending With</label><select id="oa_pendingwith" class="inp">
+                                    <option value="">-- Select --</option>
+                                </select></div>
+                            <div class="form-group" style="display:none;" aria-hidden="true"><label class="form-label">Email Received</label><input type="datetime-local" id="oa_emailreceived" class="inp"></div>
+                            <div class="form-group" style="display:none;" aria-hidden="true"><label class="form-label">Logged in SP</label><input type="datetime-local" id="oa_loggedinsp" class="inp"></div>
+                            <div class="form-group"><label class="form-label">Completed Date</label><input type="datetime-local" id="oa_completeddate" class="inp"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="message-square"></i> Additional Information</div>
+                        <div class="form-group"><label class="form-label">Remarks</label><textarea id="oa_remarks" class="inp"></textarea></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn" onclick="resetOracleForm()"><i data-lucide="x"></i> Clear</button>
+                        <button type="button" class="btn btn-primary" id="submitOracleBtn" onclick="submitOracleActivation()"><i data-lucide="check"></i> Submit</button>
+                    </div>
+                    <input type="hidden" id="oa_editId" value="">
+                </div>
+
+                <!-- MASTER DATA GRID -->
+                <div id="masterGrid" class="section">
+                    <h2 class="section-title">Master Data List</h2>
+                    <div class="card" style="padding:0;">
+                        <div id="masterGridContainer">
+                            <div class="dg-empty"><span class="spinner"></span> Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ORACLE ACTIVATION GRID -->
+                <div id="oracleGrid" class="section">
+                    <h2 class="section-title">Oracle Activation List</h2>
+                    <div class="card" style="padding:0;">
+                        <div id="oracleGridContainer">
+                            <div class="dg-empty"><span class="spinner"></span> Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BULK UPLOAD / UPDATE -->
+                <div id="bulkUpload" class="section">
+                    <h2 class="section-title">Bulk Upload / Update</h2>
+                    <div id="bulkAlert"></div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="download"></i> Download Example CSV Files</div>
+                        <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:0.8rem;">Download → fill your data → upload below. Keep the header row exactly as-is.</p>
+                        <div style="display:flex;gap:0.7rem;flex-wrap:wrap;">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="downloadMasterCSV()"><i data-lucide="download"></i> Master Data Example</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="downloadOracleCSV()"><i data-lucide="download"></i> Oracle Activation Example</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i data-lucide="upload"></i> Upload CSV</div>
+                        <div class="form-group" style="margin-bottom:0.8rem;">
+                            <label class="form-label">Target List</label>
+                            <select id="bulkTarget" class="inp" onchange="onBulkTargetChange()">
+                                <option value="master">Master Data</option>
+                                <option value="oracle">Oracle Activation</option>
+                            </select>
+                        </div>
+                        <p style="color:var(--text-secondary);font-size:0.84rem;margin-bottom:0.8rem;line-height:1.6;">
+                            Select a list, upload your CSV, then review the split view below before submitting.
+                        </p>
+                        <div class="form-group"><label class="form-label">CSV File</label><input type="file" id="bulkFileInput" accept=".csv" onchange="previewCSV()" style="color:var(--text-secondary);font-size:0.88rem;padding:0.4rem 0;"></div>
+                    </div>
+                    <div id="bulkPreview" style="display:none;">
+                        <div class="card">
+                            <div class="card-title"><i data-lucide="eye"></i> Step 2 — Review &amp; Edit</div>
+                            <p style="color:var(--text-secondary);font-size:0.86rem;line-height:1.65;margin-bottom:0.75rem;">
+                                Your file is split into <strong>New Records</strong> and <strong>Updated Records</strong>.
+                                Edit any cell before submit. Yellow cells on updates show fields that will change in SharePoint.
+                            </p>
+                            <ul style="color:var(--text-muted);font-size:0.82rem;line-height:1.7;margin:0 0 0.75rem 1.1rem;padding:0;">
+                                <li><strong>Master Data</strong> — matched by End User Email</li>
+                                <li><strong>Oracle Activation</strong> — matched by Request ID (auto-assigned for new rows)</li>
+                                <li><strong>Remove</strong> on new rows skips creation · <strong>Delete</strong> on updates removes from SharePoint</li>
+                            </ul>
+                            <div id="bulkSummary"></div>
+                            <div class="bulk-legend">
+                                <span class="lg-create"><i></i> New</span>
+                                <span class="lg-update"><i></i> Update</span>
+                                <span class="lg-changed"><i></i> Changed field</span>
+                                <span class="lg-delete"><i></i> Marked delete</span>
+                            </div>
+                        </div>
+                        <div class="card bulk-review-block" id="bulkNewSection">
+                            <div class="card-title"><i data-lucide="plus-circle"></i> New Records (<span id="bulkNewCount">0</span>)</div>
+                            <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:0.6rem;">These rows will be <strong>inserted</strong> as new SharePoint items.</p>
+                            <div class="bulk-table-wrap">
+                                <table id="bulkNewTable" class="bulk-review-table"></table>
+                            </div>
+                            <p id="bulkNewEmpty" class="bulk-empty-msg" style="display:none;">No new records in this file.</p>
+                        </div>
+                        <div class="card bulk-review-block" id="bulkUpdateSection">
+                            <div class="card-title"><i data-lucide="refresh-cw"></i> Updated Records (<span id="bulkUpdateCount">0</span>)</div>
+                            <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:0.6rem;">These rows will <strong>update</strong> existing SharePoint items. Yellow = value differs from current data.</p>
+                            <div class="bulk-table-wrap">
+                                <table id="bulkUpdateTable" class="bulk-review-table"></table>
+                            </div>
+                            <p id="bulkUpdateEmpty" class="bulk-empty-msg" style="display:none;">No updates in this file — all rows are new records.</p>
+                        </div>
+                        <div class="card" style="margin-top:0;">
+                            <div style="margin-top:0.5rem;color:var(--text-muted);font-size:0.82rem;" id="bulkRowCount"></div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn" onclick="clearBulk()"><i data-lucide="x"></i> Clear</button>
+                            <button type="button" class="btn btn-primary" id="bulkSubmitBtn" onclick="executeBulkUpload()"><i data-lucide="check"></i> Submit</button>
+                        </div>
+                        <div id="bulkProgress" style="display:none;margin-top:0.8rem;">
+                            <div class="progress-wrap">
+                                <div class="progress-bar" id="progressBar" style="width:0%">0%</div>
+                            </div>
+                            <p style="color:var(--text-muted);font-size:0.82rem;margin-top:0.4rem;" id="progressText"></p>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-top:0.8rem;">
+                        <div class="card-title"><i data-lucide="info"></i> Column Reference</div>
+                        <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.7;">Use the exact column headers from the example CSV files. Master matches by <strong>End User Email</strong>. Oracle matches by <strong>Request ID</strong> (leave blank on new rows).</p>
+                    </div>
+                </div>
+
+            </div><!-- /content -->
+        </div><!-- /main-container -->
+    </div><!-- /portal-shell -->
+
+    <style>
+        .bulk-review-table thead th {
+            background: var(--bg-header);
+            color: var(--text-muted);
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.5rem 0.65rem;
+            text-align: left;
+            font-weight: 700;
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .bulk-table-wrap {
+            overflow-x: auto;
+            max-height: 360px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .bulk-review-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .bulk-review-block {
+            margin-top: 0.75rem;
+        }
+
+        .bulk-empty-msg {
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            padding: 0.75rem 0;
+        }
+
+        .bulk-review-table tbody tr {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .bulk-review-table tbody tr:nth-child(even) {
+            background: rgba(146, 72, 185, 0.03);
+        }
+
+        .bulk-review-table tbody tr.bulk-row-deleted {
+            opacity: 0.45;
+            background: rgba(239, 68, 68, 0.08) !important;
+        }
+
+        .bulk-review-table tbody tr.bulk-row-deleted td.bulk-editable input {
+            text-decoration: line-through;
+            pointer-events: none;
+        }
+
+        .bulk-review-table tbody td.bulk-changed {
+            background: rgba(245, 158, 11, 0.22) !important;
+            box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.55);
+        }
+
+        .bulk-review-table tbody td.bulk-new-row {
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .bulk-review-table tbody td.bulk-delete-col {
+            white-space: nowrap;
+            padding: 0.42rem 0.65rem;
+            font-size: 0.78rem;
+        }
+
+        .bulk-review-table tbody td.bulk-delete-col label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .bulk-review-table tbody td.bulk-editable {
+            padding: 0;
+        }
+
+        .bulk-review-table tbody td.bulk-editable input {
+            width: 100%;
+            min-width: 90px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.84rem;
+            padding: 0.42rem 0.65rem;
+            font-family: inherit;
+        }
+
+        .bulk-review-table tbody td.bulk-editable input:focus {
+            outline: 2px solid var(--accent-solid);
+            background: rgba(199, 36, 177, 0.08);
+            color: var(--text-primary);
+        }
+
+        .bulk-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-bottom: 0.65rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .bulk-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .bulk-legend i {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .bulk-legend .lg-create i {
+            background: rgba(34, 197, 94, 0.45);
+        }
+
+        .bulk-legend .lg-update i {
+            background: rgba(59, 130, 246, 0.45);
+        }
+
+        .bulk-legend .lg-changed i {
+            background: rgba(245, 158, 11, 0.55);
+        }
+
+        .bulk-legend .lg-delete i {
+            background: rgba(239, 68, 68, 0.45);
+        }
+
+        #bulkSummary {
+            margin-top: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.84rem;
+        }
+    </style>
+
+    <script>
+        // ═══════════════════════════════════════
+        // GLOBALS
+        // ═══════════════════════════════════════
+        var masterData = [],
+            oracleData = [];
+        var dropdownChoices = {}; // Store dropdown choices
+        var masterLoaded = false,
+            oracleLoaded = false;
+        var activePopup = null; // track open filter popup
+
+        function getSite() {
+            return (typeof _spPageContextInfo !== "undefined" && _spPageContextInfo.webAbsoluteUrl) || location.origin;
+        }
+
+        function getDigest() {
+            var el = document.getElementById("__REQUESTDIGEST");
+            return el ? el.value : "";
+        }
+
+        // ═══ THEME / NAV ═══
+        function toggleTheme() {
+            document.body.classList.toggle("light-theme");
+            document.getElementById("themeIcon").setAttribute("data-lucide", document.body.classList.contains("light-theme") ? "sun" : "moon");
+            if (typeof lucide !== "undefined") lucide.createIcons();
+        }
+
+        function switchColorScheme() {
+            document.body.classList.toggle("cyan-theme", document.getElementById("colorSchemeSelector").value === "cyan");
+            if (typeof lucide !== "undefined") lucide.createIcons();
+        }
+
+        function nav(id) {
+            document.querySelectorAll(".section").forEach(function(s) {
+                s.classList.remove("active");
+            });
+            document.querySelectorAll(".nav-item").forEach(function(n) {
+                n.classList.remove("active");
+            });
+            document.getElementById(id).classList.add("active");
+            var btn = document.querySelector('[data-section="' + id + '"]');
+            if (btn) btn.classList.add("active");
+            if (typeof lucide !== "undefined") lucide.createIcons();
+            closePopup();
+            if (id === "masterGrid" && !masterLoaded) {
+                masterLoaded = true;
+                loadAndRenderMaster();
+            }
+            if (id === "oracleGrid" && !oracleLoaded) {
+                oracleLoaded = true;
+                loadAndRenderOracle();
+            }
+        }
+
+        // ═══ ALERTS ═══
+        function alert_(cid, type, msg, sticky) {
+            var icons = {
+                success: "check-circle",
+                error: "alert-circle",
+                info: "info"
+            };
+            document.getElementById(cid).innerHTML = '<div class="alert alert-' + type + '"><i data-lucide="' + icons[type] + '"></i><span>' + msg + '</span></div>';
+            if (typeof lucide !== "undefined") lucide.createIcons();
+            if (!sticky) {
+                setTimeout(function() {
+                    var el = document.getElementById(cid);
+                    if (el) el.innerHTML = "";
+                }, 6000);
+            }
+        }
+
+        // ═══ HELPERS ═══
+        function parseRequestIdNum(id) {
+            if (!id) return null;
+            var s = String(id).trim();
+            var m = s.match(/^ORC-SIM-(\d{4})-(\d{2})-(\d+)$/i);
+            if (m) {
+                return {
+                    year: parseInt(m[1], 10),
+                    month: parseInt(m[2], 10),
+                    num: parseInt(m[3], 10)
+                };
+            }
+            m = s.match(/^ORC-SIM-(\d{4})-(\d+)$/i);
+            if (!m) return null;
+            return {
+                year: parseInt(m[1], 10),
+                month: null,
+                num: parseInt(m[2], 10)
+            };
+        }
+
+        function formatRequestId(year, month, num) {
+            var mo = month != null ? month : (new Date().getMonth() + 1);
+            return "ORC-SIM-" + year + "-" + String(mo).padStart(2, "0") + "-" + String(num).padStart(5, "0");
+        }
+
+        function applyOracleRequestIdToPayload(payload, requestId) {
+            if (!requestId) return;
+            payload.Request_ID = requestId;
+        }
+
+        function fetchNextRequestIdBase(cb) {
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = now.getMonth() + 1;
+            var prefix = "ORC-SIM-" + year + "-" + String(month).padStart(2, "0") + "-";
+            var url = getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items?$select=Request_ID&$filter=startswith(Request_ID,'" + prefix + "')&$top=5000";
+            fetchAllItems(url, [], function(items) {
+                var max = 0;
+                items.forEach(function(i) {
+                    var p = parseRequestIdNum(i.Request_ID);
+                    if (p && p.year === year && p.month === month && p.num > max) max = p.num;
+                });
+                cb({
+                    year: year,
+                    month: month,
+                    next: max + 1
+                });
+            });
+        }
+
+        function reserveRequestIds(count, cb) {
+            fetchNextRequestIdBase(function(base) {
+                var ids = [];
+                for (var i = 0; i < count; i++) {
+                    ids.push(formatRequestId(base.year, base.month, base.next + i));
+                }
+                cb(ids, base.next + count);
+            });
+        }
+
+        function sortListNewestFirst(items) {
+            return items.slice().sort(function(a, b) {
+                var da = new Date(a.Modified || a.Created || 0).getTime();
+                var db = new Date(b.Modified || b.Created || 0).getTime();
+                return db - da;
+            });
+        }
+
+        function refreshListData(which) {
+            masterLoaded = false;
+            oracleLoaded = false;
+            if (which === "master" || which === "both") loadAndRenderMaster();
+            if (which === "oracle" || which === "both") loadAndRenderOracle();
+        }
+
+        function showSubmitSuccess(alertId, msg, resetFn, refreshWhich) {
+            if (resetFn) resetFn();
+            refreshListData(refreshWhich);
+            alert_(alertId, "success", msg);
+        }
+
+        function generateRequestId(cb) {
+            reserveRequestIds(1, function(ids) {
+                cb(ids[0]);
+            });
+        }
+
+        var BULK_COL_LABELS = {
+            RequestID: "Request ID",
+            Email: "End User Email",
+            FirstName: "End User First Name",
+            LastName: "End User Last Name",
+            Entity: "Entity",
+            Subscriber: "Subscriber",
+            SubLevel: "Sub Level",
+            L20AC: "L20 AC",
+            MSISDN: "MSISDN",
+            Tariff: "Tariff (Rate Plan)",
+            Status: "Current Status",
+            DeviceModel: "Device Model",
+            DeviceOffer: "Device Offer",
+            ExpiryDate: "Expiry Date",
+            SIMSerial: "SIM Serial (ICCID)",
+            ActivationDateSIM: "Activation Date – SIM",
+            ContractStartSIM: "Contract Start Date – SIM",
+            ContractEndSIM: "Contract End Date – SIM",
+            ContractStartHandset: "Contract Start Date – Handset",
+            ContractEndHandset: "Contract End Date – Handset",
+            DeactivationDateSIM: "Deactivation Date – SIM",
+            TransactionType: "Transaction Type",
+            PONo: "PO No",
+            PODate: "PO Date",
+            ActivityRefNo: "Activity Ref. No",
+            ActivityDate: "Activity Date",
+            SRDate: "SR Date",
+            SONo: "SO No",
+            SOCreationDate: "SO Creation Date",
+            ShipTo: "Ship To",
+            UpdateOrder: "Update Order",
+            ActivityRefNo2: "Activity Ref. No 2",
+            ActivityDate2: "Activity Date 2",
+            SONo2: "SO No 2",
+            SOCreationDate2: "SO Creation Date 2",
+            SIMType: "SIM Type",
+            Addons: "Add-ons",
+            DeviceBrand: "Device (Brand)",
+            DeviceSubcat: "Device Subcategory",
+            Capacity: "Capacity",
+            IMEI: "IMEI",
+            Quantity: "Quantity",
+            ActivationDateHandset: "Activation Date – Handset",
+            FutureTermDate: "Future Termination Date",
+            Reason: "Reason",
+            PendingWith: "Pending With",
+            EmailReceived: "Email Received",
+            LoggedInSP: "Logged in SP",
+            CompletedDate: "Completed Date",
+            Remarks: "Remarks"
+        };
+
+        function bulkHeaderToKey(h) {
+            var t = bulkNorm(h);
+            for (var key in BULK_COL_LABELS) {
+                if (key === t || BULK_COL_LABELS[key].toLowerCase() === t.toLowerCase()) return key;
+            }
+            if (t === "RequestId" || t === "Request ID") return "RequestID";
+            return t;
+        }
+
+        function bulkColLabel(key) {
+            return BULK_COL_LABELS[key] || key;
+        }
+
+        function formatDateForInput(dateStr) {
+            if (!dateStr) return "";
+            try {
+                var d = new Date(dateStr);
+                if (isNaN(d.getTime())) return "";
+                var year = d.getFullYear();
+                var month = String(d.getMonth() + 1).padStart(2, '0');
+                var day = String(d.getDate()).padStart(2, '0');
+                return year + '-' + month + '-' + day;
+            } catch (e) {
+                return "";
+            }
+        }
+
+        function formatDateForCompare(dateStr) {
+            if (!dateStr) return "";
+            var s = String(dateStr).trim();
+            var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso && s.length <= 10) return iso[1] + "-" + iso[2] + "-" + iso[3];
+            try {
+                var d = new Date(s);
+                if (isNaN(d.getTime())) return s;
+                return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+            } catch (e) {
+                return s;
+            }
+        }
+
+        function isBulkDateKey(csvKey) {
+            return csvKey.indexOf("Date") > -1;
+        }
+
+        function normalizeBulkCompareValue(csvKey, val) {
+            var v = bulkNorm(val);
+            if (!v) return "";
+            if (isBulkDateKey(csvKey)) {
+                if (csvKey === "EmailReceived" || csvKey === "LoggedInSP" || csvKey === "CompletedDate") {
+                    var dt = formatDateTimeForInput(v);
+                    return dt || formatDateForCompare(v);
+                }
+                return formatDateForCompare(v);
+            }
+            return v;
+        }
+
+        function formatDateTimeForInput(dateStr) {
+            if (!dateStr) return "";
+            try {
+                var d = new Date(dateStr);
+                if (isNaN(d.getTime())) return "";
+                var year = d.getFullYear();
+                var month = String(d.getMonth() + 1).padStart(2, '0');
+                var day = String(d.getDate()).padStart(2, '0');
+                var hours = String(d.getHours()).padStart(2, '0');
+                var minutes = String(d.getMinutes()).padStart(2, '0');
+                return year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
+            } catch (e) {
+                return "";
+            }
+        }
+
+        function formatDateForDisplay(dateStr) {
+            if (!dateStr) return "";
+            try {
+                var d = new Date(dateStr);
+                if (isNaN(d.getTime())) return "";
+                var year = d.getFullYear();
+                var month = String(d.getMonth() + 1).padStart(2, '0');
+                var day = String(d.getDate()).padStart(2, '0');
+                return day + '/' + month + '/' + year;
+            } catch (e) {
+                return String(dateStr);
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        function parseSharePointError(responseText, status) {
+            if (responseText) {
+                try {
+                    var data = JSON.parse(responseText);
+                    if (data.error && data.error.message && data.error.message.value) {
+                        return data.error.message.value;
+                    }
+                } catch (e) {}
+            }
+            return status ? ("Error " + status) : "Request failed";
+        }
+
+        function fetchAllItems(url, allItems, callback) {
+            var x = new XMLHttpRequest();
+            x.open("GET", url, true);
+            x.setRequestHeader("Accept", "application/json;odata=verbose");
+            x.onreadystatechange = function() {
+                if (x.readyState === 4) {
+                    if (x.status >= 200 && x.status < 300) {
+                        try {
+                            var j = JSON.parse(x.responseText);
+                            var items = j.d && j.d.results ? j.d.results : (j.value || []);
+                            allItems = allItems.concat(items);
+
+                            // Check for next page
+                            var nextUrl = j.d && j.d.__next ? j.d.__next : null;
+                            if (nextUrl) {
+                                fetchAllItems(nextUrl, allItems, callback);
+                            } else {
+                                callback(allItems, null);
+                            }
+                        } catch (e) {
+                            callback(allItems, e);
+                        }
+                    } else {
+                        callback(allItems, {
+                            status: x.status,
+                            text: x.responseText.substring(0, 200)
+                        });
+                    }
+                }
+            };
+            x.send();
+        }
+        // close any open column-filter popup
+        function closePopup() {
+            if (activePopup) {
+                activePopup.remove();
+                activePopup = null;
+            }
+        }
+        // close popup on outside click
+        document.addEventListener("mousedown", function(e) {
+            if (activePopup && !activePopup.contains(e.target) && !e.target.closest("th")) closePopup();
+        });
+
+        // ═══════════════════════════════════════
+        // DATAGRID ENGINE
+        // Each grid: { containerId, columns, rows, sortCol, sortAsc, colFilters:{col:{op,val}}, globalSearch, page, pageSize }
+        // ═══════════════════════════════════════
+        var grids = {};
+
+        function createGrid(containerId, columns, rows) {
+            var g = {
+                containerId: containerId,
+                columns: columns,
+                rows: rows,
+                sortCol: null,
+                sortAsc: true,
+                colFilters: {},
+                globalSearch: "",
+                page: 0,
+                pageSize: 25
+            };
+            grids[containerId] = g;
+            renderGrid(g);
+            return g;
+        }
+
+        function getFilteredSorted(g) {
+            var out = g.rows.filter(function(r) {
+                // global search: match any column
+                if (g.globalSearch.trim()) {
+                    var gs = g.globalSearch.trim().toLowerCase();
+                    var found = false;
+                    g.columns.forEach(function(c) {
+                        if (String(r[c.key] || "").toLowerCase().includes(gs)) found = true;
+                    });
+                    if (!found) return false;
+                }
+                // per-column filters
+                for (var k in g.colFilters) {
+                    if (!g.colFilters.hasOwnProperty(k)) continue;
+                    var f = g.colFilters[k];
+                    if (!f.val || !f.val.trim()) continue;
+                    var cellVal = String(r[k] || "").toLowerCase();
+                    var fv = f.val.trim().toLowerCase();
+                    if (f.op === "contains" && !cellVal.includes(fv)) return false;
+                    if (f.op === "startsWith" && !cellVal.startsWith(fv)) return false;
+                    if (f.op === "endsWith" && !cellVal.endsWith(fv)) return false;
+                    if (f.op === "equals" && cellVal !== fv) return false;
+                    if (f.op === "notEquals" && cellVal === fv) return false;
+                }
+                return true;
+            });
+            if (g.sortCol) {
+                out.sort(function(a, b) {
+                    var av = String(a[g.sortCol] || "").toLowerCase(),
+                        bv = String(b[g.sortCol] || "").toLowerCase();
+                    return g.sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+                });
+            }
+            return out;
+        }
+
+        function hasActiveColFilters(g) {
+            for (var k in g.colFilters) {
+                if (g.colFilters.hasOwnProperty(k) && g.colFilters[k].val && g.colFilters[k].val.trim()) return true;
+            }
+            return false;
+        }
+
+        function renderGrid(g) {
+            closePopup();
+            var filtered = getFilteredSorted(g);
+            var total = filtered.length;
+            var pages = Math.max(1, Math.ceil(total / g.pageSize));
+            if (g.page >= pages) g.page = 0;
+            var start = g.page * g.pageSize;
+            var pageRows = filtered.slice(start, start + g.pageSize);
+            var gridType = g.containerId === "masterGridContainer" ? "master" : "oracle";
+
+            var html = '<div class="dg-wrap">';
+
+            // ── Toolbar: universal search + count ──
+            var showClear = (g.globalSearch.trim() || hasActiveColFilters(g)) ? 'visible' : '';
+            html += '<div class="dg-toolbar">';
+            html += '<div class="dg-search-wrap">';
+            html += '<svg class="dg-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+            html += '<input class="dg-search" type="text" placeholder="Search all columns..." value="' + escapeHtml(g.globalSearch) + '" oninput="gridGlobalSearch(\'' + g.containerId + '\',this.value)">';
+            html += '</div>';
+            html += '<button class="dg-clear-btn ' + showClear + '" onclick="gridClearAll(\'' + g.containerId + '\')">\u2715 Clear filters</button>';
+            html += '<span class="dg-count">' + total + ' records</span>';
+            html += '</div>';
+
+            // ── Scrollable table ──
+            html += '<div class="dg-scroll"><div class="dg-body-scroll">';
+            html += '<table class="dg-table"><thead><tr>';
+            // pinned action col
+            html += '<th class="dg-action"></th>';
+            // data columns
+            g.columns.forEach(function(c) {
+                var sortIcon = '<span class="dg-sort">' + (g.sortCol === c.key ? (g.sortAsc ? '▲' : '▼') : '▼') + '</span>';
+                var sortedCls = g.sortCol === c.key ? ' dg-sorted' : '';
+                var filterCls = g.colFilters[c.key] && g.colFilters[c.key].val && g.colFilters[c.key].val.trim() ? ' dg-has-filter' : '';
+                var filterDot = filterCls ? '<span class="dg-filter-dot"></span>' : '';
+                html += '<th class="' + sortedCls + filterCls + '" style="width:' + c.width + 'px;" data-col="' + c.key + '" onclick="gridHeaderClick(event,\'' + g.containerId + '\',\'' + c.key + '\')">';
+                html += c.label + sortIcon + filterDot + '<span class="dg-filter-arrow" onclick="event.stopPropagation();openColFilterPopup(\'' + g.containerId + '\',\'' + c.key + '\',event)">\u25BE</span>';
+                html += '<div class="dg-resize" onmousedown="gridResizeStart(event,\'' + g.containerId + '\',\'' + c.key + '\')"></div>';
+                html += '</th>';
+            });
+            html += '</tr></thead>';
+
+            // ── Body ──
+            html += '<tbody>';
+            if (pageRows.length === 0) {
+                html += '<tr><td colspan="' + (g.columns.length + 1) + '" class="dg-empty">No records found</td></tr>';
+            } else {
+                pageRows.forEach(function(r) {
+                    html += '<tr>';
+                    html += '<td class="dg-action"><button type="button" class="btn-view" onclick="event.preventDefault();event.stopPropagation();openEdit(\'' + gridType + '\',' + r.Id + ')"><i data-lucide="eye" style="width:13px;height:13px;"></i> View</button></td>';
+                    g.columns.forEach(function(c) {
+                        var val = r[c.key];
+                        if (c.key === "End_x0020_User_x0020_Email" && (!val || val === "")) val = r.Title || "";
+                        if (val != null && val !== "") {
+                            // Format dates and datetimes for display
+                            if (c.key.indexOf("Date") > -1 || c.key.indexOf("_x0020_Date") > -1 || c.key === "Created" || c.key === "Modified" ||
+                                c.key === "Email_x0020_Received" || c.key === "Logged_x0020_in_x0020_SP" || c.key === "Completed_x0020_Date") {
+                                val = formatDateForDisplay(val);
+                            }
+                            html += '<td style="width:' + c.width + 'px;">' + String(val) + '</td>';
+                        } else {
+                            html += '<td style="width:' + c.width + 'px;"></td>';
+                        }
+                    });
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table>';
+            html += '</div></div>';
+
+            // ── Status bar + pagination ──
+            var showing = pageRows.length > 0 ? (start + 1) + "-" + (start + pageRows.length) + " of " + total : "0";
+            html += '<div class="dg-statusbar">';
+            html += '<span>Showing ' + showing + '</span>';
+            html += '<div class="dg-pager">';
+            html += '<select onchange="gridPageSize(\'' + g.containerId + '\',+this.value)"><option value="15"' + (g.pageSize === 15 ? ' selected' : '') + '>15/page</option><option value="25"' + (g.pageSize === 25 ? ' selected' : '') + '>25/page</option><option value="50"' + (g.pageSize === 50 ? ' selected' : '') + '>50/page</option><option value="100"' + (g.pageSize === 100 ? ' selected' : '') + '>100/page</option></select>';
+            html += '<button ' + (g.page === 0 ? 'disabled' : '') + ' onclick="gridPage(\'' + g.containerId + '\',' + (g.page - 1) + ')">‹</button>';
+            var s = Math.max(0, g.page - 2),
+                e = Math.min(pages, g.page + 3);
+            for (var i = s; i < e; i++) html += '<button class="' + (i === g.page ? 'active' : '') + '" onclick="gridPage(\'' + g.containerId + '\',' + i + ')">' + (i + 1) + '</button>';
+            html += '<button ' + (g.page >= pages - 1 ? 'disabled' : '') + ' onclick="gridPage(\'' + g.containerId + '\',' + (g.page + 1) + ')">›</button>';
+            html += '</div></div>';
+            html += '</div>';
+
+            document.getElementById(g.containerId).innerHTML = html;
+            if (typeof lucide !== "undefined") lucide.createIcons();
+        }
+
+        // ─── Header click: first click = sort, second click on already-sorted col = open filter popup ───
+        // Actually simpler UX: click sorts. Right-click or shift+click opens filter. OR: we do single click = sort, and add a tiny filter icon that opens the popup.
+        // Best UX matching AG Grid: single click on header sorts. The filter popup opens via a small filter icon on the right side of the header.
+        // Let's do: click on the label area = sort. Click on the filter-dot or right portion = open popup. Simplest: always sort on click, but if column already has filter, clicking the filter-dot opens popup.
+        // Actually cleanest matching AG Grid exactly: click = sort. Filter popup opens when you click the column header again while it's already sorted (toggle). No — that's confusing.
+        // Match the screenshot exactly: the filter popup appears BELOW the column header. In real AG Grid, you click the small dropdown arrow. Let's add a tiny ▾ icon on each header that opens the popup.
+
+        function gridHeaderClick(e, cid, col) {
+            // If the click target is the resize handle, ignore
+            if (e.target.classList.contains("dg-resize")) return;
+            // If click is on the filter dot, open popup
+            if (e.target.classList.contains("dg-filter-dot")) {
+                openColFilterPopup(cid, col, e);
+                return;
+            }
+            // Otherwise sort
+            gridSort(cid, col);
+        }
+
+        function gridSort(cid, col) {
+            var g = grids[cid];
+            if (!g) return;
+            if (g.sortCol === col) g.sortAsc = !g.sortAsc;
+            else {
+                g.sortCol = col;
+                g.sortAsc = true;
+            }
+            g.page = 0;
+            renderGrid(g);
+        }
+
+        function gridGlobalSearch(cid, val) {
+            var g = grids[cid];
+            if (!g) return;
+            g.globalSearch = val;
+            g.page = 0;
+            var container = document.getElementById(cid);
+            var searchInput = container.querySelector('.dg-search');
+            var cursorPos = searchInput ? searchInput.selectionStart : 0;
+            renderGrid(g);
+            // Restore focus and cursor position
+            setTimeout(function() {
+                var newInput = document.getElementById(cid).querySelector('.dg-search');
+                if (newInput) {
+                    newInput.focus();
+                    newInput.setSelectionRange(cursorPos, cursorPos);
+                }
+            }, 0);
+        }
+
+        function gridClearAll(cid) {
+            var g = grids[cid];
+            if (!g) return;
+            g.globalSearch = "";
+            g.colFilters = {};
+            g.page = 0;
+            renderGrid(g);
+        }
+
+        function gridPage(cid, p) {
+            var g = grids[cid];
+            if (!g) return;
+            g.page = p;
+            renderGrid(g);
+        }
+
+        function gridPageSize(cid, size) {
+            var g = grids[cid];
+            if (!g) return;
+            g.pageSize = size;
+            g.page = 0;
+            renderGrid(g);
+        }
+
+        // ─── Column filter popup ───
+        function openColFilterPopup(cid, col, e) {
+            e.stopPropagation();
+            closePopup();
+            var g = grids[cid];
+            if (!g) return;
+            var currentFilter = g.colFilters[col] || {
+                op: "contains",
+                val: ""
+            };
+
+            var popup = document.createElement("div");
+            popup.className = "dg-col-filter";
+            popup.innerHTML =
+                '<select id="cfOp"><option value="contains"' + (currentFilter.op === "contains" ? " selected" : "") + '>Contains</option>' +
+                '<option value="startsWith"' + (currentFilter.op === "startsWith" ? " selected" : "") + '>Starts With</option>' +
+                '<option value="endsWith"' + (currentFilter.op === "endsWith" ? " selected" : "") + '>Ends With</option>' +
+                '<option value="equals"' + (currentFilter.op === "equals" ? " selected" : "") + '>Equals</option>' +
+                '<option value="notEquals"' + (currentFilter.op === "notEquals" ? " selected" : "") + '>Not Equals</option>' +
+                '</select>' +
+                '<input type="text" id="cfVal" placeholder="Filter..." value="' + (currentFilter.val || "") + '" onkeydown="if(event.key===\'Enter\')applyColFilter(\'' + cid + '\',\'' + col + '\')">' +
+                '<div class="dg-col-filter-btns">' +
+                '<button onclick="clearColFilter(\'' + cid + '\',\'' + col + '\')">Clear</button>' +
+                '<button class="apply" onclick="applyColFilter(\'' + cid + '\',\'' + col + '\')">Apply</button>' +
+                '</div>';
+
+            // position popup below the th
+            var th = document.querySelector('#' + cid + ' th[data-col="' + col + '"]');
+            if (!th) {
+                // fallback: find by iterating
+                var ths = document.getElementById(cid).querySelectorAll("thead th");
+                for (var i = 0; i < ths.length; i++) {
+                    if (ths[i].getAttribute("data-col") === col) {
+                        th = ths[i];
+                        break;
+                    }
+                }
+            }
+            if (th) {
+                th.style.position = "relative";
+                th.appendChild(popup);
+            }
+            activePopup = popup;
+            setTimeout(function() {
+                var inp = popup.querySelector("#cfVal");
+                if (inp) inp.focus();
+            }, 30);
+        }
+
+        function applyColFilter(cid, col) {
+            var g = grids[cid];
+            if (!g) return;
+            var op = document.getElementById("cfOp").value;
+            var val = document.getElementById("cfVal").value;
+            if (val.trim()) {
+                g.colFilters[col] = {
+                    op: op,
+                    val: val
+                };
+            } else {
+                delete g.colFilters[col];
+            }
+            g.page = 0;
+            closePopup();
+            renderGrid(g);
+        }
+
+        function clearColFilter(cid, col) {
+            var g = grids[cid];
+            if (!g) return;
+            delete g.colFilters[col];
+            g.page = 0;
+            closePopup();
+            renderGrid(g);
+        }
+
+        // ─── Column resize via drag ───
+        var _resizing = null;
+
+        function gridResizeStart(e, cid, col) {
+            e.preventDefault();
+            e.stopPropagation();
+            var g = grids[cid];
+            if (!g) return;
+            var c = g.columns.find(function(x) {
+                return x.key === col;
+            });
+            if (!c) return;
+            _resizing = {
+                g: g,
+                col: c,
+                startX: e.clientX,
+                startW: c.width
+            };
+            document.addEventListener("mousemove", gridResizeMove);
+            document.addEventListener("mouseup", gridResizeEnd);
+        }
+
+        function gridResizeMove(e) {
+            if (!_resizing) return;
+            var diff = e.clientX - _resizing.startX;
+            _resizing.col.width = Math.max(60, _resizing.startW + diff);
+            var g = _resizing.g;
+            var idx = g.columns.indexOf(_resizing.col);
+            var container = document.getElementById(g.containerId);
+            if (!container) return;
+            var ths = container.querySelectorAll("thead th");
+            if (ths[idx + 1]) ths[idx + 1].style.width = _resizing.col.width + "px";
+            var tds = container.querySelectorAll("tbody td");
+            var colCount = g.columns.length + 1;
+            for (var i = idx + 1; i < tds.length; i += colCount) tds[i].style.width = _resizing.col.width + "px";
+        }
+
+        function gridResizeEnd() {
+            _resizing = null;
+            document.removeEventListener("mousemove", gridResizeMove);
+            document.removeEventListener("mouseup", gridResizeEnd);
+        }
+
+        // ═══════════════════════════════════════
+        // LOAD GRIDS
+        // ═══════════════════════════════════════
+        var MASTER_COLS = [{
+                key: "Title",
+                label: "Entity",
+                width: 160
+            },
+            {
+                key: "End_x0020_User_x0020_Email",
+                label: "Email",
+                width: 200
+            },
+            {
+                key: "End_x0020_User_x0020_First_x0020",
+                label: "First Name",
+                width: 120
+            },
+            {
+                key: "End_x0020_User_x0020_First_x00200",
+                label: "Last Name",
+                width: 120
+            },
+            {
+                key: "Subscriber",
+                label: "Subscriber",
+                width: 140
+            },
+            {
+                key: "Sub_x0020_Level",
+                label: "Sub Level",
+                width: 170
+            },
+            {
+                key: "L20_x0020_AC",
+                label: "L20 AC",
+                width: 110
+            },
+            {
+                key: "MSISDN",
+                label: "MSISDN",
+                width: 140
+            },
+            {
+                key: "Tariff_x0020__x0028_Rate_x0020_P",
+                label: "Tariff",
+                width: 180
+            },
+            {
+                key: "Current_Status",
+                label: "Status",
+                width: 100
+            },
+            {
+                key: "Device_x0020_Model",
+                label: "Device Model",
+                width: 150
+            },
+            {
+                key: "Device_x0020_Offer",
+                label: "Device Offer",
+                width: 150
+            },
+            {
+                key: "Expiry_x0020_Date",
+                label: "Expiry Date",
+                width: 130
+            },
+            {
+                key: "SIM_x0020_Serial_x0020__x0028_IC",
+                label: "SIM Serial (ICCID)",
+                width: 160
+            },
+            {
+                key: "Activation_x0020_Date_x0020__x20",
+                label: "Activation Date – SIM",
+                width: 160
+            },
+            {
+                key: "Contract_x0020_Start_x0020_Date_",
+                label: "Contract Start – SIM",
+                width: 160
+            },
+            {
+                key: "Contract_x0020_End_x0020_Date_x0",
+                label: "Contract End – SIM",
+                width: 155
+            },
+            {
+                key: "Contract_x0020_Start_x0020_Date_0",
+                label: "Contract Start – Handset",
+                width: 175
+            },
+            {
+                key: "Contract_x0020_End_x0020_Date_x00",
+                label: "Contract End – Handset",
+                width: 170
+            },
+            {
+                key: "DeactivationDate_x0020_Sim",
+                label: "Deactivation Date – SIM",
+                width: 170
+            }
+        ];
+        var ORACLE_COLS = [{
+                key: "Request_ID",
+                label: "Request ID",
+                width: 150
+            },
+            {
+                key: "End_x0020_User_x0020_Email",
+                label: "Email",
+                width: 200
+            },
+            {
+                key: "End_x0020_User_x0020_First_x0020",
+                label: "First Name",
+                width: 120
+            },
+            {
+                key: "End_x0020_User_x0020_Last_x0020_",
+                label: "Last Name",
+                width: 120
+            },
+            {
+                key: "Entity",
+                label: "Entity",
+                width: 160
+            },
+            {
+                key: "Subscriber",
+                label: "Subscriber",
+                width: 140
+            },
+            {
+                key: "Account_x0020_Code",
+                label: "Sub Level",
+                width: 170
+            },
+            {
+                key: "Transaction_x0020_Type",
+                label: "Trans. Type",
+                width: 130
+            },
+            {
+                key: "PO_x0020_No",
+                label: "PO No",
+                width: 120
+            },
+            {
+                key: "PO_x0020_Date",
+                label: "PO Date",
+                width: 120
+            },
+            {
+                key: "Activity_x0020_Ref_x002e__x0020_",
+                label: "Activity Ref. No",
+                width: 140
+            },
+            {
+                key: "Activity_x0020_Date",
+                label: "Activity Date",
+                width: 130
+            },
+            {
+                key: "SR_x0020_Date",
+                label: "SR Date",
+                width: 120
+            },
+            {
+                key: "SO_x0020_No",
+                label: "SO No",
+                width: 110
+            },
+            {
+                key: "SO_x0020_Creation_x0020_Date",
+                label: "SO Creation Date",
+                width: 145
+            },
+            {
+                key: "Ship_x0020_To",
+                label: "Ship To",
+                width: 150
+            },
+            {
+                key: "Update_x0020_Order",
+                label: "Update Order",
+                width: 130
+            },
+            {
+                key: "MSISDN",
+                label: "MSISDN",
+                width: 140
+            },
+            {
+                key: "SIM_x0020_Serial_x0020__x0028_IC",
+                label: "SIM Serial (ICCID)",
+                width: 160
+            },
+            {
+                key: "SIM_x0020_Type",
+                label: "SIM Type",
+                width: 100
+            },
+            {
+                key: "Tariff_x0020__x0028_Rate_x0020_P",
+                label: "Tariff",
+                width: 180
+            },
+            {
+                key: "Add_x002d_ons",
+                label: "Add-ons",
+                width: 130
+            },
+            {
+                key: "Activation_x0020_Date_x0020__x20",
+                label: "Activation Date – SIM",
+                width: 160
+            },
+            {
+                key: "Contract_x0020_Start_x0020_Date_",
+                label: "Contract Start – SIM",
+                width: 160
+            },
+            {
+                key: "Contract_x0020_End_x0020_Date_x0",
+                label: "Contract End – SIM",
+                width: 155
+            },
+            {
+                key: "Device_x0020__x0028_Brand_x0029_",
+                label: "Device Brand",
+                width: 120
+            },
+            {
+                key: "Device_x0020_Subcategory",
+                label: "Subcategory",
+                width: 130
+            },
+            {
+                key: "Capacity",
+                label: "Capacity",
+                width: 100
+            },
+            {
+                key: "IMEI",
+                label: "IMEI",
+                width: 150
+            },
+            {
+                key: "Quantity",
+                label: "Qty",
+                width: 70
+            },
+            {
+                key: "Activation_x0020_Date_x0020__x200",
+                label: "Activation Date – Handset",
+                width: 175
+            },
+            {
+                key: "Contract_x0020_End_x0020_Date_x00",
+                label: "Contract End – Handset",
+                width: 170
+            },
+            {
+                key: "Future_x0020_Termination_x0020_D",
+                label: "Future Termination Date",
+                width: 175
+            },
+            {
+                key: "Status",
+                label: "Status",
+                width: 130
+            },
+            {
+                key: "Reason",
+                label: "Reason",
+                width: 130
+            },
+            {
+                key: "Pending_x0020_With",
+                label: "Pending With",
+                width: 120
+            },
+            {
+                key: "Email_x0020_Received",
+                label: "Email Received",
+                width: 155
+            },
+            {
+                key: "Logged_x0020_in_x0020_SP",
+                label: "Logged in SP",
+                width: 155
+            },
+            {
+                key: "Completed_x0020_Date",
+                label: "Completed Date",
+                width: 155
+            },
+            {
+                key: "Remarks",
+                label: "Remarks",
+                width: 200
+            }
+        ];
+
+        function loadAndRenderMaster() {
+            document.getElementById("masterGridContainer").innerHTML = '<div class="dg-empty"><span class="spinner"></span> Loading all Master Data...</div>';
+            var url = getSite() + "/_api/web/lists/getbytitle('Master Data')/items?$select=Id,Title,End_x0020_User_x0020_Email,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_First_x00200,MSISDN,Sub_x0020_Level,Subscriber,Tariff_x0020__x0028_Rate_x0020_P,Current_Status,Device_x0020_Model,L20_x0020_AC,Device_x0020_Offer,Expiry_x0020_Date,SIM_x0020_Serial_x0020__x0028_IC,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Contract_x0020_Start_x0020_Date_0,Contract_x0020_End_x0020_Date_x00,DeactivationDate_x0020_Sim,EmailLower,Created,Modified&$orderby=Modified desc";
+            fetchAllItems(url, [], function(items, err) {
+                if (err) {
+                    document.getElementById("masterGridContainer").innerHTML = '<div class="dg-empty" style="color:#ef4444;">Error: ' + (err.text || JSON.stringify(err)) + '</div>';
+                    return;
+                }
+                masterData = sortListNewestFirst(items);
+                createGrid("masterGridContainer", MASTER_COLS, masterData);
+            });
+        }
+
+        function loadAndRenderOracle() {
+            document.getElementById("oracleGridContainer").innerHTML = '<div class="dg-empty"><span class="spinner"></span> Loading all Oracle Activation records...</div>';
+            var url = getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items?$select=Id,Title,End_x0020_User_x0020_Email,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_Last_x0020_,Transaction_x0020_Type,Status,MSISDN,SIM_x0020_Serial_x0020__x0028_IC,SIM_x0020_Type,Tariff_x0020__x0028_Rate_x0020_P,Add_x002d_ons,Device_x0020__x0028_Brand_x0029_,Device_x0020_Subcategory,Capacity,IMEI,Quantity,Request_ID,Remarks,Entity,Subscriber,Account_x0020_Code,PO_x0020_No,PO_x0020_Date,Activity_x0020_Ref_x002e__x0020_,Activity_x0020_Date,SR_x0020_Date,SO_x0020_No,SO_x0020_Creation_x0020_Date,Ship_x0020_To,Update_x0020_Order,Activity_x0020_Ref_x002e__x0020_0,Activity_x0020_Date_x0020_2,SO_x0020_No_x0020_2,SO_x0020_Creation_x0020_Date_x00,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Activation_x0020_Date_x0020__x200,Contract_x0020_End_x0020_Date_x00,Future_x0020_Termination_x0020_D,Reason,Pending_x0020_With,Email_x0020_Received,Logged_x0020_in_x0020_SP,Completed_x0020_Date,Created,Modified&$orderby=Modified desc";
+            fetchAllItems(url, [], function(items, err) {
+                if (err) {
+                    document.getElementById("oracleGridContainer").innerHTML = '<div class="dg-empty" style="color:#ef4444;">Error: ' + (err.text || JSON.stringify(err)) + '</div>';
+                    return;
+                }
+                oracleData = sortListNewestFirst(items);
+                createGrid("oracleGridContainer", ORACLE_COLS, oracleData);
+            });
+        }
+        // ═══════════════════════════════════════
+        // OPEN EDIT
+        // ═══════════════════════════════════════
+        function openEdit(type, id) {
+            var rows = type === "master" ? masterData : oracleData;
+            var row = null;
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i].Id === id) {
+                    row = rows[i];
+                    break;
+                }
+            }
+            if (!row) return;
+            if (type === "master") {
+                document.getElementById("md_entity").value = row.Title || "";
+                document.getElementById("md_subscriber").value = row.Subscriber || "";
+                document.getElementById("md_sublevel").value = row.Sub_x0020_Level || "";
+                document.getElementById("md_l20ac").value = row.L20_x0020_AC || "";
+                document.getElementById("md_firstname").value = row.End_x0020_User_x0020_First_x0020 || "";
+                document.getElementById("md_lastname").value = row.End_x0020_User_x0020_First_x00200 || "";
+                document.getElementById("md_email").value = row.End_x0020_User_x0020_Email || "";
+                document.getElementById("md_msisdn").value = row.MSISDN || "";
+                document.getElementById("md_tariff").value = row.Tariff_x0020__x0028_Rate_x0020_P || "";
+                document.getElementById("md_status").value = row.Current_Status || "";
+                document.getElementById("md_devicemodel").value = row.Device_x0020_Model || "";
+                document.getElementById("md_deviceoffer").value = row.Device_x0020_Offer || "";
+                document.getElementById("md_expiry").value = formatDateForInput(row.Expiry_x0020_Date);
+                document.getElementById("md_simserial").value = row.SIM_x0020_Serial_x0020__x0028_IC || "";
+                document.getElementById("md_actsim").value = formatDateForInput(row.Activation_x0020_Date_x0020__x20);
+                document.getElementById("md_contractstartsim").value = formatDateForInput(row.Contract_x0020_Start_x0020_Date_);
+                document.getElementById("md_contractendsim").value = formatDateForInput(row.Contract_x0020_End_x0020_Date_x0);
+                document.getElementById("md_contractstarthandset").value = formatDateForInput(row.Contract_x0020_Start_x0020_Date_0);
+                document.getElementById("md_contractendhandset").value = formatDateForInput(row.Contract_x0020_End_x0020_Date_x00);
+                document.getElementById("md_deactsim").value = formatDateForInput(row.DeactivationDate_x0020_Sim);
+                document.getElementById("md_editId").value = id;
+                document.getElementById("masterEditBanner").style.display = "flex";
+                document.getElementById("submitMasterBtn").style.display = "none";
+                document.querySelectorAll(".section").forEach(function(s) {
+                    s.classList.remove("active");
+                });
+                document.querySelectorAll(".nav-item").forEach(function(n) {
+                    n.classList.remove("active");
+                });
+                document.getElementById("masterForm").classList.add("active");
+                var nb = document.querySelector('[data-section="masterForm"]');
+                if (nb) nb.classList.add("active");
+                if (typeof lucide !== "undefined") lucide.createIcons();
+            } else {
+                document.getElementById("oa_requestid").value = row.Request_ID || "";
+                document.getElementById("oa_requestIdCard").style.display = row.Request_ID ? "block" : "none";
+                document.getElementById("oa_email").value = row.End_x0020_User_x0020_Email || row.Title || "";
+                document.getElementById("oa_firstname").value = row.End_x0020_User_x0020_First_x0020 || "";
+                document.getElementById("oa_lastname").value = row.End_x0020_User_x0020_Last_x0020_ || "";
+                document.getElementById("oa_entity").value = row.Entity || "";
+                document.getElementById("oa_subscriber").value = row.Subscriber || "";
+                document.getElementById("oa_sublevel").value = row.Account_x0020_Code || "";
+                document.getElementById("oa_transtype").value = row.Transaction_x0020_Type || "";
+                document.getElementById("oa_pono").value = row.PO_x0020_No || "";
+                document.getElementById("oa_podate").value = formatDateForInput(row.PO_x0020_Date);
+                document.getElementById("oa_activityref").value = row.Activity_x0020_Ref_x002e__x0020_ || "";
+                document.getElementById("oa_activitydate").value = formatDateForInput(row.Activity_x0020_Date);
+                document.getElementById("oa_srdate").value = formatDateForInput(row.SR_x0020_Date);
+                document.getElementById("oa_sono").value = row.SO_x0020_No || "";
+                document.getElementById("oa_socreation").value = formatDateForInput(row.SO_x0020_Creation_x0020_Date);
+                document.getElementById("oa_shipto").value = row.Ship_x0020_To || "";
+                document.getElementById("oa_updateorder").value = row.Update_x0020_Order || "";
+                document.getElementById("oa_activityref2").value = row.Activity_x0020_Ref_x002e__x0020_0 || "";
+                document.getElementById("oa_activitydate2").value = formatDateForInput(row.Activity_x0020_Date_x0020_2);
+                document.getElementById("oa_sono2").value = row.SO_x0020_No_x0020_2 || "";
+                document.getElementById("oa_socreation2").value = formatDateForInput(row.SO_x0020_Creation_x0020_Date_x00);
+                document.getElementById("oa_actsim").value = formatDateForInput(row.Activation_x0020_Date_x0020__x20);
+                document.getElementById("oa_contractstartsim").value = formatDateForInput(row.Contract_x0020_Start_x0020_Date_);
+                document.getElementById("oa_contractendsim").value = formatDateForInput(row.Contract_x0020_End_x0020_Date_x0);
+                document.getElementById("oa_acthandset").value = formatDateForInput(row.Activation_x0020_Date_x0020__x200);
+                document.getElementById("oa_contractstarthandset").value = "";
+                document.getElementById("oa_contractendhandset").value = formatDateForInput(row.Contract_x0020_End_x0020_Date_x00);
+                document.getElementById("oa_futuretermdate").value = formatDateForInput(row.Future_x0020_Termination_x0020_D);
+                document.getElementById("oa_status").value = row.Status || "";
+                document.getElementById("oa_reason").value = row.Reason || "";
+                document.getElementById("oa_pendingwith").value = row.Pending_x0020_With || "";
+                document.getElementById("oa_emailreceived").value = formatDateTimeForInput(row.Email_x0020_Received);
+                document.getElementById("oa_loggedinsp").value = formatDateTimeForInput(row.Logged_x0020_in_x0020_SP);
+                document.getElementById("oa_completeddate").value = formatDateTimeForInput(row.Completed_x0020_Date);
+                document.getElementById("oa_remarks").value = row.Remarks || "";
+                document.getElementById("oa_msisdn").value = row.MSISDN || "";
+                document.getElementById("oa_simserial").value = row.SIM_x0020_Serial_x0020__x0028_IC || "";
+                document.getElementById("oa_simtype").value = row.SIM_x0020_Type || "";
+                document.getElementById("oa_tariff").value = row.Tariff_x0020__x0028_Rate_x0020_P || "";
+                document.getElementById("oa_addons").value = row.Add_x002d_ons || "";
+                document.getElementById("oa_devicebrand").value = row.Device_x0020__x0028_Brand_x0029_ || "";
+                document.getElementById("oa_devicesub").value = row.Device_x0020_Subcategory || "";
+                document.getElementById("oa_capacity").value = row.Capacity || "";
+                document.getElementById("oa_imei").value = row.IMEI || "";
+                document.getElementById("oa_quantity").value = row.Quantity || "";
+                document.getElementById("oa_editId").value = id;
+                document.getElementById("oracleEditBanner").style.display = "flex";
+                document.getElementById("submitOracleBtn").style.display = "none";
+                document.querySelectorAll(".section").forEach(function(s) {
+                    s.classList.remove("active");
+                });
+                document.querySelectorAll(".nav-item").forEach(function(n) {
+                    n.classList.remove("active");
+                });
+                document.getElementById("oracleForm").classList.add("active");
+                var nb = document.querySelector('[data-section="oracleForm"]');
+                if (nb) nb.classList.add("active");
+                if (typeof lucide !== "undefined") lucide.createIcons();
+
+            }
+        }
+
+        // ═══════════════════════════════════════
+        // MASTER FORM
+        // ═══════════════════════════════════════
+        function resetMasterForm() {
+            ["md_entity", "md_subscriber", "md_sublevel", "md_l20ac", "md_firstname", "md_lastname", "md_email", "md_msisdn", "md_tariff", "md_devicemodel", "md_deviceoffer", "md_simserial"].forEach(function(id) {
+                document.getElementById(id).value = "";
+            });
+            document.getElementById("md_status").value = "";
+            document.getElementById("md_expiry").value = "";
+            document.getElementById("md_actsim").value = "";
+            document.getElementById("md_contractstartsim").value = "";
+            document.getElementById("md_contractendsim").value = "";
+            document.getElementById("md_contractstarthandset").value = "";
+            document.getElementById("md_contractendhandset").value = "";
+            document.getElementById("md_deactsim").value = "";
+            document.getElementById("md_editId").value = "";
+            document.getElementById("masterEditBanner").style.display = "none";
+            document.getElementById("submitMasterBtn").style.display = "inline-flex";
+            document.getElementById("masterAlert").innerHTML = "";
+        }
+
+        function cancelMasterEdit() {
+            resetMasterForm();
+        }
+
+        function getMasterPayload() {
+            var email = document.getElementById("md_email").value.trim();
+            return {
+                Title: document.getElementById("md_entity").value || null,
+                MSISDN: document.getElementById("md_msisdn").value || null,
+                L20_x0020_AC: document.getElementById("md_l20ac").value || null,
+                Sub_x0020_Level: document.getElementById("md_sublevel").value || null,
+                Subscriber: document.getElementById("md_subscriber").value || null,
+                Tariff_x0020__x0028_Rate_x0020_P: document.getElementById("md_tariff").value || null,
+                End_x0020_User_x0020_First_x0020: document.getElementById("md_firstname").value || null,
+                End_x0020_User_x0020_First_x00200: document.getElementById("md_lastname").value || null,
+                End_x0020_User_x0020_Email: email,
+                Device_x0020_Model: document.getElementById("md_devicemodel").value || null,
+                Device_x0020_Offer: document.getElementById("md_deviceoffer").value || null,
+                Expiry_x0020_Date: document.getElementById("md_expiry").value || null,
+                Current_Status: document.getElementById("md_status").value || null,
+                SIM_x0020_Serial_x0020__x0028_IC: document.getElementById("md_simserial").value || null,
+                Activation_x0020_Date_x0020__x20: document.getElementById("md_actsim").value || null,
+                Contract_x0020_Start_x0020_Date_: document.getElementById("md_contractstartsim").value || null,
+                Contract_x0020_End_x0020_Date_x0: document.getElementById("md_contractendsim").value || null,
+                Contract_x0020_Start_x0020_Date_0: document.getElementById("md_contractstarthandset").value || null,
+                Contract_x0020_End_x0020_Date_x00: document.getElementById("md_contractendhandset").value || null,
+                DeactivationDate_x0020_Sim: document.getElementById("md_deactsim").value || null,
+                EmailLower: email.toLowerCase()
+            };
+        }
+
+        function submitMasterData() {
+            var email = document.getElementById("md_email").value.trim(),
+                status = document.getElementById("md_status").value;
+            if (!email || !status) {
+                alert_("masterAlert", "error", "Fill required: Email & Status");
+                return;
+            }
+            var btn = document.getElementById("submitMasterBtn");
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Submitting...';
+            var payload = getMasterPayload();
+            payload.__metadata = {
+                type: "SP.Data.Master_x0020_DataListItem"
+            };
+            var x = new XMLHttpRequest();
+            x.open("POST", getSite() + "/_api/web/lists/getbytitle('Master Data')/items", true);
+            x.setRequestHeader("Accept", "application/json;odata=verbose");
+            x.setRequestHeader("Content-Type", "application/json;odata=verbose");
+            x.setRequestHeader("X-RequestDigest", getDigest());
+            x.onreadystatechange = function() {
+                if (x.readyState === 4) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-lucide="check"></i> Submit';
+                    if (typeof lucide !== "undefined") lucide.createIcons();
+                    if (x.status >= 200 && x.status < 300) {
+                        showSubmitSuccess("masterAlert", "Master record created successfully.", resetMasterForm, "master");
+                    } else alert_("masterAlert", "error", "Error " + x.status);
+                }
+            };
+            x.send(JSON.stringify(payload));
+        }
+
+        function updateMasterData() {
+            var id = document.getElementById("md_editId").value;
+            if (!id) return;
+            alert_("masterAlert", "info", "Updating...");
+            var btn = document.getElementById("submitMasterBtn");
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span> Updating...';
+            }
+            // Step 1: fetch ETag
+            var x1 = new XMLHttpRequest();
+            x1.open("GET", getSite() + "/_api/web/lists/getbytitle('Master Data')/items(" + id + ")", true);
+            x1.setRequestHeader("Accept", "application/json;odata=verbose");
+            x1.onreadystatechange = function() {
+                if (x1.readyState === 4) {
+                    if (x1.status >= 200 && x1.status < 300) {
+                        var etag = x1.getResponseHeader("ETag");
+                        var payload = getMasterPayload();
+                        payload.__metadata = {
+                            type: "SP.Data.Master_x0020_DataListItem"
+                        };
+                        // Step 2: PATCH with ETag
+                        var x2 = new XMLHttpRequest();
+                        x2.open("PATCH", getSite() + "/_api/web/lists/getbytitle('Master Data')/items(" + id + ")", true);
+                        x2.setRequestHeader("Accept", "application/json;odata=verbose");
+                        x2.setRequestHeader("Content-Type", "application/json;odata=verbose");
+                        x2.setRequestHeader("X-RequestDigest", getDigest());
+                        x2.setRequestHeader("If-Match", etag);
+                        x2.onreadystatechange = function() {
+                            if (x2.readyState === 4) {
+                                if (btn) {
+                                    btn.disabled = false;
+                                    btn.innerHTML = '<i data-lucide="check"></i> Submit';
+                                    if (typeof lucide !== "undefined") lucide.createIcons();
+                                }
+                                if (x2.status >= 200 && x2.status < 300) {
+                                    showSubmitSuccess("masterAlert", "Master record updated successfully.", resetMasterForm, "master");
+                                } else {
+                                    alert_("masterAlert", "error", "Update failed — Error " + x2.status);
+                                }
+                            }
+                        };
+                        x2.send(JSON.stringify(payload));
+                    } else {
+                        alert_("masterAlert", "error", "✗ Update Failed — Cannot fetch item (Error " + x1.status + ")");
+                    }
+                }
+            };
+            x1.send();
+        }
+        // ═══════════════════════════════════════
+        // ORACLE FORM
+        // ═══════════════════════════════════════
+        var OA_IDS = ["oa_email", "oa_firstname", "oa_lastname", "oa_entity", "oa_subscriber", "oa_sublevel", "oa_transtype", "oa_pono", "oa_podate", "oa_activityref", "oa_activitydate", "oa_srdate", "oa_sono", "oa_socreation", "oa_shipto", "oa_updateorder", "oa_activityref2", "oa_activitydate2", "oa_sono2", "oa_socreation2", "oa_msisdn", "oa_simserial", "oa_simtype", "oa_tariff", "oa_addons", "oa_actsim", "oa_contractstartsim", "oa_contractendsim", "oa_devicebrand", "oa_devicesub", "oa_capacity", "oa_imei", "oa_quantity", "oa_acthandset", "oa_contractstarthandset", "oa_contractendhandset", "oa_futuretermdate", "oa_status", "oa_reason", "oa_pendingwith", "oa_emailreceived", "oa_loggedinsp", "oa_completeddate", "oa_remarks"];
+
+        function resetOracleForm() {
+            OA_IDS.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+            document.getElementById("oracleAlert").innerHTML = "";
+            document.getElementById("emailCheckStatus").innerHTML = "";
+            document.getElementById("oa_editId").value = "";
+            document.getElementById("oa_requestid").value = "";
+            document.getElementById("oa_requestIdCard").style.display = "none";
+            document.getElementById("oracleEditBanner").style.display = "none";
+            document.getElementById("submitOracleBtn").style.display = "inline-flex";
+        }
+
+        function cancelOracleEdit() {
+            resetOracleForm();
+        }
+
+        function checkMasterEmail() {
+            var email = document.getElementById("oa_email").value.trim();
+            var sd = document.getElementById("emailCheckStatus"),
+                btn = document.getElementById("checkEmailBtn");
+            if (!email) {
+                sd.innerHTML = '<span style="color:var(--text-muted);">Enter email first</span>';
+                return;
+            }
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Checking...';
+            sd.innerHTML = '<span style="color:var(--text-muted);">Searching...</span>';
+            var url = getSite() + "/_api/web/lists/getbytitle('Master Data')/items?$select=Title,Subscriber,Sub_x0020_Level,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_First_x00200,MSISDN,Tariff_x0020__x0028_Rate_x0020_P,SIM_x0020_Serial_x0020__x0028_IC,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Contract_x0020_Start_x0020_Date_0,Contract_x0020_End_x0020_Date_x00&$filter=End_x0020_User_x0020_Email eq '" + email.replace(/'/g, "''") + "'&$top=1";
+            fetchAllItems(url, [], function(items) {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="search"></i> Check';
+                if (typeof lucide !== "undefined") lucide.createIcons();
+                if (items.length > 0) {
+                    var i = items[0];
+                    document.getElementById("oa_firstname").value = i.End_x0020_User_x0020_First_x0020 || "";
+                    document.getElementById("oa_lastname").value = i.End_x0020_User_x0020_First_x00200 || "";
+                    document.getElementById("oa_entity").value = i.Title || "";
+                    document.getElementById("oa_subscriber").value = i.Subscriber || "";
+                    document.getElementById("oa_sublevel").value = i.Sub_x0020_Level || "";
+                    document.getElementById("oa_msisdn").value = i.MSISDN || "";
+                    document.getElementById("oa_simserial").value = i.SIM_x0020_Serial_x0020__x0028_IC || "";
+                    document.getElementById("oa_tariff").value = i.Tariff_x0020__x0028_Rate_x0020_P || "";
+                    document.getElementById("oa_actsim").value = formatDateForInput(i.Activation_x0020_Date_x0020__x20);
+                    document.getElementById("oa_contractstartsim").value = formatDateForInput(i.Contract_x0020_Start_x0020_Date_);
+                    document.getElementById("oa_contractendsim").value = formatDateForInput(i.Contract_x0020_End_x0020_Date_x0);
+                    document.getElementById("oa_contractstarthandset").value = formatDateForInput(i.Contract_x0020_Start_x0020_Date_0);
+                    document.getElementById("oa_contractendhandset").value = formatDateForInput(i.Contract_x0020_End_x0020_Date_x00);
+                    sd.innerHTML = '<span style="color:#22c55e;font-weight:600;"><i data-lucide="check-circle" style="width:15px;height:15px;"></i> Found! 13 fields populated.</span>';
+                    if (typeof lucide !== "undefined") lucide.createIcons();
+                } else {
+                    sd.innerHTML = '<span style="color:#f59e0b;font-weight:600;"><i data-lucide="alert-triangle" style="width:15px;height:15px;"></i> Not in Master Data — will auto-create on Submit.</span>';
+                    if (typeof lucide !== "undefined") lucide.createIcons();
+                }
+            });
+        }
+
+        function getOraclePayload() {
+            var email = document.getElementById("oa_email").value.trim();
+            return {
+                Title: email,
+                End_x0020_User_x0020_Email: email,
+                End_x0020_User_x0020_First_x0020: document.getElementById("oa_firstname").value || null,
+                End_x0020_User_x0020_Last_x0020_: document.getElementById("oa_lastname").value || null,
+                Entity: document.getElementById("oa_entity").value || null,
+                Subscriber: document.getElementById("oa_subscriber").value || null,
+                Account_x0020_Code: document.getElementById("oa_sublevel").value || null,
+                Transaction_x0020_Type: document.getElementById("oa_transtype").value || null,
+                PO_x0020_No: document.getElementById("oa_pono").value || null,
+                PO_x0020_Date: document.getElementById("oa_podate").value || null,
+                Activity_x0020_Ref_x002e__x0020_: document.getElementById("oa_activityref").value || null,
+                Activity_x0020_Date: document.getElementById("oa_activitydate").value || null,
+                SR_x0020_Date: document.getElementById("oa_srdate").value || null,
+                SO_x0020_No: document.getElementById("oa_sono").value || null,
+                SO_x0020_Creation_x0020_Date: document.getElementById("oa_socreation").value || null,
+                Ship_x0020_To: document.getElementById("oa_shipto").value || null,
+                MSISDN: document.getElementById("oa_msisdn").value || null,
+                SIM_x0020_Serial_x0020__x0028_IC: document.getElementById("oa_simserial").value || null,
+                SIM_x0020_Type: document.getElementById("oa_simtype").value || null,
+                Tariff_x0020__x0028_Rate_x0020_P: document.getElementById("oa_tariff").value || null,
+                Add_x002d_ons: document.getElementById("oa_addons").value || null,
+                Activation_x0020_Date_x0020__x20: document.getElementById("oa_actsim").value || null,
+                Contract_x0020_Start_x0020_Date_: document.getElementById("oa_contractstartsim").value || null,
+                Contract_x0020_End_x0020_Date_x0: document.getElementById("oa_contractendsim").value || null,
+                Device_x0020__x0028_Brand_x0029_: document.getElementById("oa_devicebrand").value || null,
+                Device_x0020_Subcategory: document.getElementById("oa_devicesub").value || null,
+                Capacity: document.getElementById("oa_capacity").value || null,
+                IMEI: document.getElementById("oa_imei").value || null,
+                Quantity: document.getElementById("oa_quantity").value || null,
+                Activation_x0020_Date_x0020__x200: document.getElementById("oa_acthandset").value || null,
+                Contract_x0020_End_x0020_Date_x00: document.getElementById("oa_contractendhandset").value || null,
+                Future_x0020_Termination_x0020_D: document.getElementById("oa_futuretermdate").value || null,
+                Status: document.getElementById("oa_status").value || null,
+                Reason: document.getElementById("oa_reason").value || null,
+                Pending_x0020_With: document.getElementById("oa_pendingwith").value || null,
+                Completed_x0020_Date: document.getElementById("oa_completeddate").value || null,
+                Remarks: document.getElementById("oa_remarks").value || null,
+                Activity_x0020_Ref_x002e__x0020_0: document.getElementById("oa_activityref2").value || null,
+                Activity_x0020_Date_x0020_2: document.getElementById("oa_activitydate2").value || null,
+                SO_x0020_No_x0020_2: document.getElementById("oa_sono2").value || null,
+                SO_x0020_Creation_x0020_Date_x00: document.getElementById("oa_socreation2").value || null,
+                EmailLower: email.toLowerCase(),
+
+            };
+        }
+
+        function autoCreateMasterFromBulkRow(r, cb) {
+            var email = bulkNorm(r.Email);
+            if (!email) {
+                cb();
+                return;
+            }
+            var url = getSite() + "/_api/web/lists/getbytitle('Master Data')/items?$select=Id&$filter=End_x0020_User_x0020_Email eq '" + email.replace(/'/g, "''") + "'&$top=1";
+            fetchAllItems(url, [], function(items) {
+                if (items.length > 0) {
+                    cb();
+                    return;
+                }
+                var payload = {
+                    __metadata: {
+                        type: "SP.Data.Master_x0020_DataListItem"
+                    },
+                    Title: r.Entity || email,
+                    End_x0020_User_x0020_Email: email,
+                    End_x0020_User_x0020_First_x0020: r.FirstName || null,
+                    End_x0020_User_x0020_First_x00200: r.LastName || null,
+                    Subscriber: r.Subscriber || null,
+                    Sub_x0020_Level: r.SubLevel || null,
+                    MSISDN: r.MSISDN || null,
+                    Tariff_x0020__x0028_Rate_x0020_P: r.Tariff || null,
+                    Current_Status: "Active",
+                    EmailLower: email.toLowerCase()
+                };
+                var x = new XMLHttpRequest();
+                x.open("POST", getSite() + "/_api/web/lists/getbytitle('Master Data')/items", true);
+                x.setRequestHeader("Accept", "application/json;odata=verbose");
+                x.setRequestHeader("Content-Type", "application/json;odata=verbose");
+                x.setRequestHeader("X-RequestDigest", getDigest());
+                x.onreadystatechange = function() {
+                    if (x.readyState === 4) cb();
+                };
+                x.send(JSON.stringify(payload));
+            });
+        }
+
+        function autoCreateMasterIfMissing(email, cb) {
+            var url = getSite() + "/_api/web/lists/getbytitle('Master Data')/items?$select=Id&$filter=End_x0020_User_x0020_Email eq '" + email.replace(/'/g, "''") +
+                "'&$top=1";
+            fetchAllItems(url, [], function(items) {
+                if (items.length > 0) {
+                    cb();
+                    return;
+                }
+                var payload = {
+                    __metadata: {
+                        type: "SP.Data.Master_x0020_DataListItem"
+                    },
+                    Title: document.getElementById("oa_entity").value || email || null,
+                    Entity: document.getElementById("oa_entity").value || null,
+                    End_x0020_User_x0020_Email: email,
+                    End_x0020_User_x0020_First_x0020: document.getElementById("oa_firstname").value || null,
+                    End_x0020_User_x0020_First_x00200: document.getElementById("oa_lastname").value || null,
+                    Subscriber: document.getElementById("oa_subscriber").value || null,
+                    Sub_x0020_Level: document.getElementById("oa_sublevel").value || null,
+                    MSISDN: document.getElementById("oa_msisdn").value || null,
+                    Tariff_x0020__x0028_Rate_x0020_P: document.getElementById("oa_tariff").value || null,
+                    Current_Status: "Active",
+                    EmailLower: email.toLowerCase()
+                };
+                var x = new XMLHttpRequest();
+                x.open("POST", getSite() + "/_api/web/lists/getbytitle('Master Data')/items", true);
+                x.setRequestHeader("Accept", "application/json;odata=verbose");
+                x.setRequestHeader("Content-Type", "application/json;odata=verbose");
+                x.setRequestHeader("X-RequestDigest", getDigest());
+                x.onreadystatechange = function() {
+                    if (x.readyState === 4) {
+                        cb();
+                    }
+                };
+                x.send(JSON.stringify(payload));
+            });
+        }
+
+        function submitOracleActivation() {
+            var email = document.getElementById("oa_email").value.trim();
+            var ttype = document.getElementById("oa_transtype").value,
+                status = document.getElementById("oa_status").value;
+            if (!email || !ttype || !status) {
+                alert_("oracleAlert", "error", "Fill required: Email, Transaction Type, Status");
+                return;
+            }
+            var btn = document.getElementById("submitOracleBtn");
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Submitting...';
+            autoCreateMasterIfMissing(email, function() {
+                generateRequestId(function(requestId) {
+                    var payload = getOraclePayload();
+                    payload.__metadata = {
+                        type: "SP.Data.Oracle_x0020_ActivationListItem"
+                    };
+                    applyOracleRequestIdToPayload(payload, requestId);
+                    var x = new XMLHttpRequest();
+                    x.open("POST", getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items", true);
+                    x.setRequestHeader("Accept", "application/json;odata=verbose");
+                    x.setRequestHeader("Content-Type", "application/json;odata=verbose");
+                    x.setRequestHeader("X-RequestDigest", getDigest());
+                    x.onreadystatechange = function() {
+                        if (x.readyState === 4) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i data-lucide="check"></i> Submit';
+                            if (typeof lucide !== "undefined") lucide.createIcons();
+                            if (x.status >= 200 && x.status < 300) {
+                                showSubmitSuccess("oracleAlert", "Oracle record created successfully. Request ID: " + requestId, resetOracleForm, "both");
+                            } else alert_("oracleAlert", "error", "Error " + x.status);
+                        }
+                    };
+                    x.send(JSON.stringify(payload));
+                });
+            });
+        }
+
+        function updateOracleActivation() {
+            var id = document.getElementById("oa_editId").value;
+            if (!id) return;
+            alert_("oracleAlert", "info", "Updating...");
+            // Step 1: fetch ETag
+            var x1 = new XMLHttpRequest();
+            x1.open("GET", getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items(" + id + ")", true);
+            x1.setRequestHeader("Accept", "application/json;odata=verbose");
+            x1.onreadystatechange = function() {
+                if (x1.readyState === 4) {
+                    if (x1.status >= 200 && x1.status < 300) {
+                        var etag = x1.getResponseHeader("ETag");
+                        var payload = getOraclePayload();
+                        payload.__metadata = {
+                            type: "SP.Data.Oracle_x0020_ActivationListItem"
+                        };
+                        // Step 2: PATCH with ETag
+                        var x2 = new XMLHttpRequest();
+                        x2.open("PATCH", getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items(" + id + ")", true);
+                        x2.setRequestHeader("Accept", "application/json;odata=verbose");
+                        x2.setRequestHeader("Content-Type", "application/json;odata=verbose");
+                        x2.setRequestHeader("X-RequestDigest", getDigest());
+                        x2.setRequestHeader("If-Match", etag);
+                        x2.onreadystatechange = function() {
+                            if (x2.readyState === 4) {
+                                if (x2.status >= 200 && x2.status < 300) {
+                                    showSubmitSuccess("oracleAlert", "Oracle record updated successfully.", resetOracleForm, "both");
+                                } else alert_("oracleAlert", "error", "PATCH failed — Error " + x2.status);
+                            }
+                        };
+                        x2.send(JSON.stringify(payload));
+                    } else {
+                        alert_("oracleAlert", "error", "Failed to fetch ETag — Error " + x1.status);
+                    }
+                }
+            };
+            x1.send();
+        }
+        // ═══════════════════════════════════════
+        // CSV DOWNLOADS
+        // ═══════════════════════════════════════
+        function downloadCSV(fn, content) {
+            var b = new Blob([content], {
+                type: "text/csv;charset=utf-8;"
+            });
+            var u = URL.createObjectURL(b);
+            var a = document.createElement("a");
+            a.href = u;
+            a.download = fn;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(u);
+        }
+
+        function downloadMasterCSV() {
+            var keys = ["Email", "FirstName", "LastName", "Entity", "Subscriber", "SubLevel", "L20AC", "MSISDN", "Tariff", "Status", "DeviceModel", "DeviceOffer", "ExpiryDate", "SIMSerial", "ActivationDateSIM", "ContractStartSIM", "ContractEndSIM", "ContractStartHandset", "ContractEndHandset", "DeactivationDateSIM"];
+            var h = keys.map(bulkColLabel).join(",") + "\n";
+            var r = ["john.smith@example.com,John,Smith,Oracle Systems Ltd,du Corporate,5.13291.15.00.100001,5.13291,'971551234567,Premier Plan 250000,Active,iPhone 16,Device Offer A,2025-12-31,'8964010112233445566,2025-01-15,2025-01-15,2027-01-15,2025-01-15,2027-01-15,2027-06-30", "sarah.jones@example.com,Sarah,Jones,Oracle Systems Ltd,du Corporate,5.13291.15.00.100002,5.13291,'971559876543,Enterprise Postpaid Plan,Active,Samsung Galaxy S25,Device Offer B,2025-06-30,'8964010112233445577,2025-02-10,2025-02-10,2027-02-10,2025-02-10,2027-02-10,"];
+            downloadCSV("Master_Data_Example.csv", h + r.join("\n"));
+        }
+
+        function downloadOracleCSV() {
+            var keys = ["RequestID", "Email", "FirstName", "LastName", "Entity", "Subscriber", "SubLevel", "TransactionType", "PONo", "PODate", "ActivityRefNo", "ActivityDate", "SRDate", "SONo", "SOCreationDate", "ShipTo", "ActivityRefNo2", "ActivityDate2", "SONo2", "SOCreationDate2", "MSISDN", "SIMSerial", "SIMType", "Tariff", "Addons", "ActivationDateSIM", "ContractStartSIM", "ContractEndSIM", "DeviceBrand", "DeviceSubcat", "Capacity", "IMEI", "Quantity", "ActivationDateHandset", "ContractEndHandset", "FutureTermDate", "Status", "Reason", "PendingWith", "CompletedDate", "Remarks"];
+            var h = keys.map(bulkColLabel).join(",") + "\n";
+            var r = [",john.smith@example.com,John,Smith,Oracle Systems Ltd,du Corporate,5.13291.15.00.100001,Sim + Handset,PO12345,2026-01-15,ACT-001,2026-01-20,2026-01-22,SO-9876,2026-01-23,Office Building A,ACT-002,2026-01-26,SO-9877,2026-01-27,971551234567,8964010112233445566,Physical SIM,Premier Plan 250000,5G Addon,2026-01-25,2026-01-25,2028-01-25,Apple,iPhone 16,256GB,352123456789012,1,2026-01-25,2028-01-25,2028-12-31,Acknowledged,,du,,New activation — leave Request ID blank for new", "ORC-SIM-2026-06-00078,jane.doe@example.com,Jane,Doe,Oracle Systems Ltd,du Corporate,5.13291.15.00.100002,Sim + Handset,PO12346,2026-02-01,ACT-010,2026-02-05,2026-02-06,SO-9900,2026-02-07,Office Building B,,,,,971559876543,8964010112233445577,Physical SIM,Enterprise Postpaid Plan,,2026-02-04,2026-02-04,2028-02-04,Samsung,Galaxy S25,512GB,352123456789013,1,2026-02-04,2028-02-04,,In Progress,,du,,Update example — paste existing Request ID from list"];
+            downloadCSV("Oracle_Activation_Example.csv", h + r.join("\n"));
+        }
+        // ═══════════════════════════════════════
+        // BULK UPLOAD / UPDATE
+        // ═══════════════════════════════════════
+        var bulkParsedRows = [];
+        var bulkHeaders = [];
+        var bulkIdSeq = null;
+        var ORACLE_HIDDEN_BULK = ["UpdateOrder", "EmailReceived", "LoggedInSP"];
+
+        function getBulkVisibleHeaders() {
+            var target = document.getElementById("bulkTarget").value;
+            if (target !== "oracle") return bulkHeaders;
+            return bulkHeaders.filter(function(h) {
+                return ORACLE_HIDDEN_BULK.indexOf(bulkHeaderToKey(h)) === -1;
+            });
+        }
+
+        function getRowRequestId(r) {
+            var i;
+            for (i = 0; i < bulkHeaders.length; i++) {
+                if (bulkHeaderToKey(bulkHeaders[i]) === "RequestID") {
+                    var v = bulkNorm(r[bulkHeaders[i]]);
+                    if (v) return v;
+                }
+            }
+            return bulkNorm(r.RequestID || r.RequestId || "");
+        }
+
+        function setRowRequestId(r, id) {
+            var i;
+            r.RequestID = id;
+            r.RequestId = id;
+            for (i = 0; i < bulkHeaders.length; i++) {
+                if (bulkHeaderToKey(bulkHeaders[i]) === "RequestID") {
+                    r[bulkHeaders[i]] = id;
+                }
+            }
+        }
+
+        function assignOracleRequestIdsForPreview() {
+            var needs = bulkParsedRows.filter(function(r) {
+                return r._bulkAction === "create" && !getRowRequestId(r);
+            });
+            if (!needs.length) {
+                renderBulkReviewTable();
+                return;
+            }
+            function assignFromSeq(base) {
+                var n = base.next;
+                needs.forEach(function(r) {
+                    setRowRequestId(r, formatRequestId(base.year, base.month, n++));
+                });
+                bulkIdSeq = {
+                    year: base.year,
+                    month: base.month,
+                    next: n
+                };
+                if (bulkHeaders.indexOf("RequestID") === -1) {
+                    bulkHeaders.unshift("RequestID");
+                }
+                renderBulkReviewTable();
+            }
+            if (bulkIdSeq) {
+                assignFromSeq(bulkIdSeq);
+                return;
+            }
+            fetchNextRequestIdBase(function(base) {
+                bulkIdSeq = {
+                    year: base.year,
+                    month: base.month,
+                    next: base.next
+                };
+                assignFromSeq(bulkIdSeq);
+            });
+        }
+
+        function ensureOracleRequestIdForSubmit(r) {
+            if (getRowRequestId(r)) return getRowRequestId(r);
+            if (!bulkIdSeq) return null;
+            var id = formatRequestId(bulkIdSeq.year, bulkIdSeq.month, bulkIdSeq.next++);
+            setRowRequestId(r, id);
+            return id;
+        }
+
+        function bulkNorm(val) {
+            if (val == null || val === undefined) return "";
+            return String(val).trim();
+        }
+
+        function getExistingCsvValue(existing, csvKey, target) {
+            if (!existing) return "";
+            var v = "";
+            if (target === "master") {
+                var mm = {
+                    Email: existing.End_x0020_User_x0020_Email,
+                    Entity: existing.Title,
+                    FirstName: existing.End_x0020_User_x0020_First_x0020,
+                    LastName: existing.End_x0020_User_x0020_First_x00200,
+                    Subscriber: existing.Subscriber,
+                    SubLevel: existing.Sub_x0020_Level,
+                    L20AC: existing.L20_x0020_AC,
+                    MSISDN: existing.MSISDN,
+                    Tariff: existing.Tariff_x0020__x0028_Rate_x0020_P,
+                    Status: existing.Current_Status,
+                    DeviceModel: existing.Device_x0020_Model,
+                    DeviceOffer: existing.Device_x0020_Offer,
+                    ExpiryDate: existing.Expiry_x0020_Date,
+                    SIMSerial: existing.SIM_x0020_Serial_x0020__x0028_IC,
+                    ActivationDateSIM: existing.Activation_x0020_Date_x0020__x20,
+                    ContractStartSIM: existing.Contract_x0020_Start_x0020_Date_,
+                    ContractEndSIM: existing.Contract_x0020_End_x0020_Date_x0,
+                    ContractStartHandset: existing.Contract_x0020_Start_x0020_Date_0,
+                    ContractEndHandset: existing.Contract_x0020_End_x0020_Date_x00,
+                    DeactivationDateSIM: existing.DeactivationDate_x0020_Sim
+                };
+                v = mm[csvKey];
+            } else {
+                var om = {
+                    RequestID: existing.Request_ID,
+                    Email: existing.End_x0020_User_x0020_Email || existing.Title,
+                    FirstName: existing.End_x0020_User_x0020_First_x0020,
+                    LastName: existing.End_x0020_User_x0020_Last_x0020_,
+                    Entity: existing.Entity,
+                    Subscriber: existing.Subscriber,
+                    SubLevel: existing.Account_x0020_Code,
+                    TransactionType: existing.Transaction_x0020_Type,
+                    PONo: existing.PO_x0020_No,
+                    PODate: existing.PO_x0020_Date,
+                    ActivityRefNo: existing.Activity_x0020_Ref_x002e__x0020_,
+                    ActivityDate: existing.Activity_x0020_Date,
+                    SRDate: existing.SR_x0020_Date,
+                    SONo: existing.SO_x0020_No,
+                    SOCreationDate: existing.SO_x0020_Creation_x0020_Date,
+                    ShipTo: existing.Ship_x0020_To,
+                    UpdateOrder: existing.Update_x0020_Order,
+                    ActivityRefNo2: existing.Activity_x0020_Ref_x002e__x0020_0,
+                    ActivityDate2: existing.Activity_x0020_Date_x0020_2,
+                    SONo2: existing.SO_x0020_No_x0020_2,
+                    SOCreationDate2: existing.SO_x0020_Creation_x0020_Date_x00,
+                    MSISDN: existing.MSISDN,
+                    SIMSerial: existing.SIM_x0020_Serial_x0020__x0028_IC,
+                    SIMType: existing.SIM_x0020_Type,
+                    Tariff: existing.Tariff_x0020__x0028_Rate_x0020_P,
+                    Addons: existing.Add_x002d_ons,
+                    ActivationDateSIM: existing.Activation_x0020_Date_x0020__x20,
+                    ContractStartSIM: existing.Contract_x0020_Start_x0020_Date_,
+                    ContractEndSIM: existing.Contract_x0020_End_x0020_Date_x0,
+                    DeviceBrand: existing.Device_x0020__x0028_Brand_x0029_,
+                    DeviceSubcat: existing.Device_x0020_Subcategory,
+                    Capacity: existing.Capacity,
+                    IMEI: existing.IMEI,
+                    Quantity: existing.Quantity,
+                    ActivationDateHandset: existing.Activation_x0020_Date_x0020__x200,
+                    ContractEndHandset: existing.Contract_x0020_End_x0020_Date_x00,
+                    FutureTermDate: existing.Future_x0020_Termination_x0020_D,
+                    Status: existing.Status,
+                    Reason: existing.Reason,
+                    PendingWith: existing.Pending_x0020_With,
+                    EmailReceived: existing.Email_x0020_Received,
+                    LoggedInSP: existing.Logged_x0020_in_x0020_SP,
+                    CompletedDate: existing.Completed_x0020_Date,
+                    Remarks: existing.Remarks
+                };
+                v = om[csvKey];
+            }
+            if (csvKey.indexOf("Date") > -1 && v) return formatDateForCompare(v);
+            return bulkNorm(v);
+        }
+
+        function isBulkCellChanged(row, csvKey, target) {
+            if (row._bulkAction !== "update" || !row._existing) return false;
+            if (target === "oracle" && (csvKey === "RequestID" || csvKey === "RequestId")) return false;
+            if (target === "master" && csvKey === "Email") return false;
+            if (ORACLE_HIDDEN_BULK.indexOf(csvKey) > -1) return false;
+            var newVal = normalizeBulkCompareValue(csvKey, row[csvKey]);
+            var oldVal = normalizeBulkCompareValue(csvKey, getExistingCsvValue(row._existing, csvKey, target));
+            if (!newVal && !oldVal) return false;
+            return newVal !== oldVal;
+        }
+
+        function renderBulkTableHtml(entries, target, isUpdateSection) {
+            if (!entries.length) return "";
+            var visibleHeaders = getBulkVisibleHeaders();
+            var html = '<thead><tr><th>Delete</th>';
+            visibleHeaders.forEach(function(h) {
+                html += '<th>' + escapeHtml(bulkColLabel(bulkHeaderToKey(h))) + '</th>';
+            });
+            html += '</tr></thead><tbody>';
+            entries.forEach(function(entry) {
+                var r = entry.row;
+                var rowIdx = entry.idx;
+                var rowCls = r._markedDelete ? "bulk-row-deleted" : "";
+                var deleteLabel = isUpdateSection ? "Delete" : "Remove";
+                html += '<tr class="' + rowCls + '">';
+                html += '<td class="bulk-delete-col"><label><input type="checkbox"' + (r._markedDelete ? " checked" : "") + ' onchange="toggleBulkRowDelete(' + rowIdx + ')"> ' + deleteLabel + '</label></td>';
+                visibleHeaders.forEach(function(h) {
+                    var key = bulkHeaderToKey(h);
+                    var val = bulkNorm(r[key] !== undefined ? r[key] : r[h]);
+                    var changed = isBulkCellChanged(r, key, target);
+                    var cls = "bulk-editable";
+                    if (!isUpdateSection) cls += " bulk-new-row";
+                    if (changed) cls += " bulk-changed";
+                    var disabled = r._markedDelete ? " disabled" : "";
+                    html += '<td class="' + cls + '"><input type="text" value="' + escapeHtml(val) + '"' + disabled + ' onchange="onBulkCellChange(' + rowIdx + ',\'' + key.replace(/'/g, "\\'") + '\',this.value)" onblur="onBulkCellChange(' + rowIdx + ',\'' + key.replace(/'/g, "\\'") + '\',this.value)"></td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody>';
+            return html;
+        }
+
+        function renderBulkReviewTable() {
+            var target = document.getElementById("bulkTarget").value;
+            var newEntries = [],
+                updateEntries = [],
+                changes = 0,
+                markedDelete = 0;
+            bulkParsedRows.forEach(function(r, idx) {
+                if (r._markedDelete) markedDelete++;
+                if (r._bulkAction === "update") updateEntries.push({
+                    idx: idx,
+                    row: r
+                });
+                else newEntries.push({
+                    idx: idx,
+                    row: r
+                });
+            });
+            updateEntries.forEach(function(entry) {
+                bulkHeaders.forEach(function(h) {
+                    if (isBulkCellChanged(entry.row, h, target)) changes++;
+                });
+            });
+            var newTable = document.getElementById("bulkNewTable");
+            var updateTable = document.getElementById("bulkUpdateTable");
+            var newEmpty = document.getElementById("bulkNewEmpty");
+            var updateEmpty = document.getElementById("bulkUpdateEmpty");
+            if (newEntries.length) {
+                newTable.innerHTML = renderBulkTableHtml(newEntries, target, false);
+                newEmpty.style.display = "none";
+            } else {
+                newTable.innerHTML = "";
+                newEmpty.style.display = "block";
+            }
+            if (updateEntries.length) {
+                updateTable.innerHTML = renderBulkTableHtml(updateEntries, target, true);
+                updateEmpty.style.display = "none";
+            } else {
+                updateTable.innerHTML = "";
+                updateEmpty.style.display = "block";
+            }
+            document.getElementById("bulkNewCount").textContent = newEntries.length;
+            document.getElementById("bulkUpdateCount").textContent = updateEntries.length;
+            document.getElementById("bulkRowCount").textContent = bulkParsedRows.length + " rows in file";
+            document.getElementById("bulkSummary").innerHTML = "<strong>" + newEntries.length + "</strong> new · <strong>" + updateEntries.length + "</strong> updates · <strong>" + changes + "</strong> field changes · <strong>" + markedDelete + "</strong> marked delete";
+            if (typeof lucide !== "undefined") lucide.createIcons();
+        }
+
+        function toggleBulkRowDelete(rowIdx) {
+            if (!bulkParsedRows[rowIdx]) return;
+            bulkParsedRows[rowIdx]._markedDelete = !bulkParsedRows[rowIdx]._markedDelete;
+            renderBulkReviewTable();
+        }
+
+        function onBulkCellChange(rowIdx, colKey, val) {
+            if (!bulkParsedRows[rowIdx]) return;
+            bulkParsedRows[rowIdx][colKey] = val;
+            if (colKey === "RequestID") setRowRequestId(bulkParsedRows[rowIdx], val);
+            if (colKey === "Email" || colKey === "RequestID") {
+                prepareBulkReview();
+                return;
+            }
+            renderBulkReviewTable();
+        }
+
+        function onBulkTargetChange() {
+            bulkIdSeq = null;
+            if (bulkParsedRows.length) prepareBulkReview();
+        }
+
+        function prepareBulkReview() {
+            var target = document.getElementById("bulkTarget").value;
+            var loading = '<tbody><tr><td style="padding:1rem;">Loading existing records...</td></tr></tbody>';
+            document.getElementById("bulkNewTable").innerHTML = loading;
+            document.getElementById("bulkUpdateTable").innerHTML = loading;
+            document.getElementById("bulkNewEmpty").style.display = "none";
+            document.getElementById("bulkUpdateEmpty").style.display = "none";
+            if (target === "master") {
+                var url = getSite() + "/_api/web/lists/getbytitle('Master Data')/items?$select=Id,Title,End_x0020_User_x0020_Email,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_First_x00200,MSISDN,Sub_x0020_Level,Subscriber,Tariff_x0020__x0028_Rate_x0020_P,Current_Status,Device_x0020_Model,L20_x0020_AC,Device_x0020_Offer,Expiry_x0020_Date,SIM_x0020_Serial_x0020__x0028_IC,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Contract_x0020_Start_x0020_Date_0,Contract_x0020_End_x0020_Date_x00,DeactivationDate_x0020_Sim";
+                fetchAllItems(url, [], function(items) {
+                    var map = {};
+                    items.forEach(function(it) {
+                        var em = bulkNorm(it.End_x0020_User_x0020_Email).toLowerCase();
+                        if (em) map[em] = it;
+                    });
+                    bulkParsedRows.forEach(function(r) {
+                        var em = bulkNorm(r.Email).toLowerCase();
+                        var ex = map[em];
+                        var wasDelete = r._markedDelete;
+                        r._spItemId = ex ? ex.Id : null;
+                        r._bulkAction = ex ? "update" : "create";
+                        r._existing = ex || null;
+                        r._markedDelete = wasDelete;
+                    });
+                    renderBulkReviewTable();
+                });
+            } else {
+                var url = getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items?$select=Id,Title,End_x0020_User_x0020_Email,Request_ID,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_Last_x0020_,Transaction_x0020_Type,Status,MSISDN,SIM_x0020_Serial_x0020__x0028_IC,SIM_x0020_Type,Tariff_x0020__x0028_Rate_x0020_P,Add_x002d_ons,Device_x0020__x0028_Brand_x0029_,Device_x0020_Subcategory,Capacity,IMEI,Quantity,Remarks,Entity,Subscriber,Account_x0020_Code,PO_x0020_No,PO_x0020_Date,Activity_x0020_Ref_x002e__x0020_,Activity_x0020_Date,SR_x0020_Date,SO_x0020_No,SO_x0020_Creation_x0020_Date,Ship_x0020_To,Update_x0020_Order,Activity_x0020_Ref_x002e__x0020_0,Activity_x0020_Date_x0020_2,SO_x0020_No_x0020_2,SO_x0020_Creation_x0020_Date_x00,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Activation_x0020_Date_x0020__x200,Contract_x0020_End_x0020_Date_x00,Future_x0020_Termination_x0020_D,Reason,Pending_x0020_With,Email_x0020_Received,Logged_x0020_in_x0020_SP,Completed_x0020_Date";
+                fetchAllItems(url, [], function(items) {
+                    var map = {};
+                    items.forEach(function(it) {
+                        var rid = bulkNorm(it.Request_ID);
+                        if (rid) map[rid.toUpperCase()] = it;
+                    });
+                    bulkParsedRows.forEach(function(r) {
+                        var rid = getRowRequestId(r);
+                        var wasDelete = r._markedDelete;
+                        if (rid && map[rid.toUpperCase()]) {
+                            r._spItemId = map[rid.toUpperCase()].Id;
+                            r._bulkAction = "update";
+                            r._existing = map[rid.toUpperCase()];
+                        } else {
+                            r._bulkAction = "create";
+                            r._spItemId = null;
+                            r._existing = null;
+                        }
+                        r._markedDelete = wasDelete;
+                    });
+                    assignOracleRequestIdsForPreview();
+                });
+            }
+        }
+
+        function previewCSV() {
+            var file = document.getElementById("bulkFileInput").files[0];
+            if (!file) return;
+            document.getElementById("bulkAlert").innerHTML = "";
+            bulkIdSeq = null;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var lines = e.target.result.trim().split(/\r?\n/);
+                if (lines.length < 2) {
+                    alert_("bulkAlert", "error", "Need header + data rows");
+                    return;
+                }
+                var rawHeaders = lines[0].split(",").map(function(h) {
+                    return h.trim().replace(/"/g, "");
+                });
+                bulkHeaders = [];
+                rawHeaders.forEach(function(h) {
+                    var key = bulkHeaderToKey(h);
+                    if (bulkHeaders.indexOf(key) === -1) bulkHeaders.push(key);
+                });
+                bulkParsedRows = [];
+                for (var i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    var vals = lines[i].split(",").map(function(v) {
+                        return v.trim().replace(/"/g, "");
+                    });
+                    var obj = {};
+                    rawHeaders.forEach(function(rawH, idx) {
+                        obj[bulkHeaderToKey(rawH)] = vals[idx] || "";
+                    });
+                    bulkParsedRows.push(obj);
+                }
+                document.getElementById("bulkPreview").style.display = "block";
+                prepareBulkReview();
+            };
+            reader.readAsText(file);
+        }
+
+        function clearBulk(clearAlert) {
+            document.getElementById("bulkFileInput").value = "";
+            document.getElementById("bulkPreview").style.display = "none";
+            document.getElementById("bulkProgress").style.display = "none";
+            if (clearAlert !== false) document.getElementById("bulkAlert").innerHTML = "";
+            document.getElementById("bulkSummary").innerHTML = "";
+            bulkParsedRows = [];
+            bulkHeaders = [];
+            bulkIdSeq = null;
+        }
+
+        function executeBulkUpload() {
+            var workItems = [];
+            bulkParsedRows.forEach(function(r, idx) {
+                if (r._markedDelete) {
+                    if (r._spItemId) workItems.push({
+                        type: "delete",
+                        idx: idx
+                    });
+                } else if (r._spItemId) {
+                    workItems.push({
+                        type: "update",
+                        idx: idx
+                    });
+                } else {
+                    workItems.push({
+                        type: "create",
+                        idx: idx
+                    });
+                }
+            });
+            if (!workItems.length) {
+                alert_("bulkAlert", "error", "Nothing to submit — all rows are marked delete/remove or the file is empty.");
+                return;
+            }
+            var target = document.getElementById("bulkTarget").value;
+            var listName = target === "master" ? "Master Data" : "Oracle Activation";
+            var metaType = target === "master" ? "SP.Data.Master_x0020_DataListItem" : "SP.Data.Oracle_x0020_ActivationListItem";
+            document.getElementById("bulkSubmitBtn").disabled = true;
+            document.getElementById("bulkProgress").style.display = "block";
+            var done = 0,
+                errors = 0,
+                total = workItems.length,
+                errorDetails = [];
+
+            function updateProg() {
+                var pct = Math.round((done + errors) / total * 100);
+                document.getElementById("progressBar").style.width = pct + "%";
+                document.getElementById("progressBar").textContent = pct + "%";
+                document.getElementById("progressText").textContent = "Processed: " + (done + errors) + "/" + total + " | Success: " + done + " | Errors: " + errors;
+            }
+            updateProg();
+
+            function buildPayload(r) {
+                if (target === "master") {
+                    return {
+                        Title: r.Entity || null,
+                        End_x0020_User_x0020_Email: r.Email || null,
+                        End_x0020_User_x0020_First_x0020: r.FirstName || null,
+                        End_x0020_User_x0020_First_x00200: r.LastName || null,
+                        Subscriber: r.Subscriber || null,
+                        Sub_x0020_Level: r.SubLevel || null,
+                        L20_x0020_AC: r.L20AC || null,
+                        MSISDN: r.MSISDN || null,
+                        Tariff_x0020__x0028_Rate_x0020_P: r.Tariff || null,
+                        Current_Status: r.Status || null,
+                        Device_x0020_Model: r.DeviceModel || null,
+                        Device_x0020_Offer: r.DeviceOffer || null,
+                        Expiry_x0020_Date: r.ExpiryDate || null,
+                        SIM_x0020_Serial_x0020__x0028_IC: r.SIMSerial || null,
+                        Activation_x0020_Date_x0020__x20: r.ActivationDateSIM || null,
+                        Contract_x0020_Start_x0020_Date_: r.ContractStartSIM || null,
+                        Contract_x0020_End_x0020_Date_x0: r.ContractEndSIM || null,
+                        Contract_x0020_Start_x0020_Date_0: r.ContractStartHandset || null,
+                        Contract_x0020_End_x0020_Date_x00: r.ContractEndHandset || null,
+                        DeactivationDate_x0020_Sim: r.DeactivationDateSIM || null,
+                        EmailLower: (r.Email || "").toLowerCase()
+                    };
+                }
+                return {
+                    Title: r.Email || null,
+                    End_x0020_User_x0020_Email: r.Email || null,
+                    End_x0020_User_x0020_First_x0020: r.FirstName || null,
+                    End_x0020_User_x0020_Last_x0020_: r.LastName || null,
+                    Entity: r.Entity || null,
+                    Subscriber: r.Subscriber || null,
+                    Account_x0020_Code: r.SubLevel || null,
+                    Transaction_x0020_Type: r.TransactionType || null,
+                    PO_x0020_No: r.PONo || null,
+                    PO_x0020_Date: r.PODate || null,
+                    Activity_x0020_Ref_x002e__x0020_: r.ActivityRefNo || null,
+                    Activity_x0020_Date: r.ActivityDate || null,
+                    SR_x0020_Date: r.SRDate || null,
+                    SO_x0020_No: r.SONo || null,
+                    SO_x0020_Creation_x0020_Date: r.SOCreationDate || null,
+                    Ship_x0020_To: r.ShipTo || null,
+                    Activity_x0020_Ref_x002e__x0020_0: r.ActivityRefNo2 || null,
+                    Activity_x0020_Date_x0020_2: r.ActivityDate2 || null,
+                    SO_x0020_No_x0020_2: r.SONo2 || null,
+                    SO_x0020_Creation_x0020_Date_x00: r.SOCreationDate2 || null,
+                    MSISDN: r.MSISDN || null,
+                    SIM_x0020_Serial_x0020__x0028_IC: r.SIMSerial || null,
+                    SIM_x0020_Type: r.SIMType || null,
+                    Tariff_x0020__x0028_Rate_x0020_P: r.Tariff || null,
+                    Add_x002d_ons: r.Addons || null,
+                    Activation_x0020_Date_x0020__x20: r.ActivationDateSIM || null,
+                    Contract_x0020_Start_x0020_Date_: r.ContractStartSIM || null,
+                    Contract_x0020_End_x0020_Date_x0: r.ContractEndSIM || null,
+                    Device_x0020__x0028_Brand_x0029_: r.DeviceBrand || null,
+                    Device_x0020_Subcategory: r.DeviceSubcat || null,
+                    Capacity: r.Capacity || null,
+                    IMEI: r.IMEI || null,
+                    Quantity: r.Quantity || null,
+                    Activation_x0020_Date_x0020__x200: r.ActivationDateHandset || null,
+                    Contract_x0020_End_x0020_Date_x00: r.ContractEndHandset || null,
+                    Future_x0020_Termination_x0020_D: r.FutureTermDate || null,
+                    Status: r.Status || null,
+                    Reason: r.Reason || null,
+                    Pending_x0020_With: r.PendingWith || null,
+                    Completed_x0020_Date: r.CompletedDate || null,
+                    Remarks: r.Remarks || null,
+                    EmailLower: (r.Email || "").toLowerCase()
+                };
+            }
+
+            function postItem(payload, cb) {
+                payload.__metadata = {
+                    type: metaType
+                };
+                var x = new XMLHttpRequest();
+                x.open("POST", getSite() + "/_api/web/lists/getbytitle('" + listName + "')/items", true);
+                x.setRequestHeader("Accept", "application/json;odata=verbose");
+                x.setRequestHeader("Content-Type", "application/json;odata=verbose");
+                x.setRequestHeader("X-RequestDigest", getDigest());
+                x.onreadystatechange = function() {
+                    if (x.readyState === 4) {
+                        var ok = x.status >= 200 && x.status < 300;
+                        cb(ok, ok ? null : parseSharePointError(x.responseText, x.status));
+                    }
+                };
+                x.send(JSON.stringify(payload));
+            }
+
+            function patchItem(id, payload, cb) {
+                var x1 = new XMLHttpRequest();
+                x1.open("GET", getSite() + "/_api/web/lists/getbytitle('" + listName + "')/items(" + id + ")", true);
+                x1.setRequestHeader("Accept", "application/json;odata=verbose");
+                x1.onreadystatechange = function() {
+                    if (x1.readyState === 4) {
+                        if (x1.status >= 200 && x1.status < 300) {
+                            var etag = x1.getResponseHeader("ETag");
+                            var sparsePayload = {
+                                __metadata: {
+                                    type: metaType
+                                }
+                            };
+                            for (var key in payload) {
+                                if (payload.hasOwnProperty(key) && key !== "__metadata" && payload[key] !== null && payload[key] !== "" && payload[key] !== undefined) {
+                                    sparsePayload[key] = payload[key];
+                                }
+                            }
+                            var x2 = new XMLHttpRequest();
+                            x2.open("PATCH", getSite() + "/_api/web/lists/getbytitle('" + listName + "')/items(" + id + ")", true);
+                            x2.setRequestHeader("Accept", "application/json;odata=verbose");
+                            x2.setRequestHeader("Content-Type", "application/json;odata=verbose");
+                            x2.setRequestHeader("X-RequestDigest", getDigest());
+                            x2.setRequestHeader("If-Match", etag);
+                            x2.onreadystatechange = function() {
+                                if (x2.readyState === 4) {
+                                    var ok = x2.status >= 200 && x2.status < 300;
+                                    cb(ok, ok ? null : parseSharePointError(x2.responseText, x2.status));
+                                }
+                            };
+                            x2.send(JSON.stringify(sparsePayload));
+                        } else {
+                            cb(false, parseSharePointError(x1.responseText, x1.status));
+                        }
+                    }
+                };
+                x1.send();
+            }
+
+            function deleteItem(id, cb) {
+                var x1 = new XMLHttpRequest();
+                x1.open("GET", getSite() + "/_api/web/lists/getbytitle('" + listName + "')/items(" + id + ")", true);
+                x1.setRequestHeader("Accept", "application/json;odata=verbose");
+                x1.onreadystatechange = function() {
+                    if (x1.readyState === 4) {
+                        if (x1.status >= 200 && x1.status < 300) {
+                            var etag = x1.getResponseHeader("ETag");
+                            var x2 = new XMLHttpRequest();
+                            x2.open("DELETE", getSite() + "/_api/web/lists/getbytitle('" + listName + "')/items(" + id + ")", true);
+                            x2.setRequestHeader("Accept", "application/json;odata=verbose");
+                            x2.setRequestHeader("X-RequestDigest", getDigest());
+                            x2.setRequestHeader("If-Match", etag || "*");
+                            x2.onreadystatechange = function() {
+                                if (x2.readyState === 4) {
+                                    var ok = x2.status >= 200 && x2.status < 300;
+                                    cb(ok, ok ? null : parseSharePointError(x2.responseText, x2.status));
+                                }
+                            };
+                            x2.send();
+                        } else {
+                            cb(false, parseSharePointError(x1.responseText, x1.status));
+                        }
+                    }
+                };
+                x1.send();
+            }
+
+            function processWork(wIdx) {
+                if (wIdx >= total) {
+                    document.getElementById("bulkSubmitBtn").disabled = false;
+                    var summary = "Done! " + done + " succeeded, " + errors + " errors.";
+                    if (errorDetails.length) {
+                        summary += "<br><br>" + errorDetails.slice(0, 5).join("<br>");
+                    }
+                    alert_("bulkAlert", errors > 0 ? "error" : "success", summary, errors > 0);
+                    if (errors === 0) {
+                        clearBulk(false);
+                    }
+                    refreshListData(target === "master" ? "master" : "oracle");
+                    return;
+                }
+                var job = workItems[wIdx];
+                var r = bulkParsedRows[job.idx];
+                function onFail(errMsg) {
+                    errors++;
+                    errorDetails.push("Row " + (job.idx + 2) + " (" + job.type + "): " + (errMsg || "Request failed"));
+                }
+                if (job.type === "delete") {
+                    deleteItem(r._spItemId, function(ok, errMsg) {
+                        if (ok) done++;
+                        else onFail(errMsg);
+                        updateProg();
+                        processWork(wIdx + 1);
+                    });
+                } else {
+                    var payload = buildPayload(r);
+                    if (job.type === "update") {
+                        patchItem(r._spItemId, payload, function(ok, errMsg) {
+                            if (ok) done++;
+                            else onFail(errMsg);
+                            updateProg();
+                            processWork(wIdx + 1);
+                        });
+                    } else if (target === "oracle") {
+                        autoCreateMasterFromBulkRow(r, function() {
+                            applyOracleRequestIdToPayload(payload, ensureOracleRequestIdForSubmit(r));
+                            postItem(payload, function(ok, errMsg) {
+                                if (ok) done++;
+                                else onFail(errMsg);
+                                updateProg();
+                                processWork(wIdx + 1);
+                            });
+                        });
+                    } else {
+                        postItem(payload, function(ok, errMsg) {
+                            if (ok) done++;
+                            else onFail(errMsg);
+                            updateProg();
+                            processWork(wIdx + 1);
+                        });
+                    }
+                }
+            }
+            function beginBulkSubmit() {
+                if (target === "oracle" && !bulkIdSeq) {
+                    fetchNextRequestIdBase(function(base) {
+                        bulkIdSeq = {
+                            year: base.year,
+                            month: base.month,
+                            next: base.next
+                        };
+                        processWork(0);
+                    });
+                    return;
+                }
+                processWork(0);
+            }
+            beginBulkSubmit();
+        }
+
+        // ═══ SIDEBAR TOGGLE ═══
+        function toggleSidebar() {
+            var sb = document.querySelector(".sidebar");
+            sb.classList.toggle("collapsed");
+            document.getElementById("sidebarIcon").setAttribute("data-lucide", sb.classList.contains("collapsed") ? "panel-left" : "panel-left-off");
+            if (typeof lucide !== "undefined") lucide.createIcons();
+        }
+
+        // ═══════════════════════════════════════
+        // LOAD DROPDOWN CHOICES FROM SHAREPOINT
+        // ═══════════════════════════════════════
+        function loadDropdownChoices() {
+            var lists = [{
+                    name: 'Master Data',
+                    fields: ['Current_Status', 'Tariff_x0020__x0028_Rate_x0020_P']
+                },
+                {
+                    name: 'Oracle Activation',
+                    fields: ['Transaction_x0020_Type', 'SIM_x0020_Type', 'Tariff_x0020__x0028_Rate_x0020_P', 'Add_x002d_ons', 'Device_x0020__x0028_Brand_x0029_', 'Device_x0020_Subcategory', 'Update_x0020_Order', 'Status', 'Reason', 'Pending_x0020_With', 'Capacity']
+                }
+            ];
+
+            var completed = 0;
+
+            lists.forEach(function(list) {
+                var url = getSite() + "/_api/web/lists/getbytitle('" + list.name + "')/fields?$filter=" +
+                    list.fields.map(function(f) {
+                        return "InternalName eq '" + f + "'";
+                    }).join(" or ") +
+                    "&$select=InternalName,Choices";
+
+                var x = new XMLHttpRequest();
+                x.open("GET", url, true);
+                x.setRequestHeader("Accept", "application/json;odata=verbose");
+                x.onreadystatechange = function() {
+                    if (x.readyState === 4 && x.status >= 200 && x.status < 300) {
+                        try {
+                            var data = JSON.parse(x.responseText);
+                            data.d.results.forEach(function(field) {
+                                if (field.Choices && field.Choices.results) {
+                                    dropdownChoices[field.InternalName] = field.Choices.results;
+                                }
+                            });
+                        } catch (e) {
+                            console.error("Error parsing dropdown choices:", e);
+                        }
+                        completed++;
+                        if (completed === lists.length) {
+                            populateAllDropdowns();
+                        }
+                    }
+                };
+                x.send();
+            });
+        }
+
+        function populateAllDropdowns() {
+            // Master Data dropdowns
+            populateDropdown('md_status', 'Current_Status');
+
+            // Oracle Activation dropdowns
+            populateDropdown('oa_transtype', 'Transaction_x0020_Type');
+            populateDropdown('oa_updateorder', 'Update_x0020_Order');
+            populateDropdown('oa_simtype', 'SIM_x0020_Type');
+            populateDropdown('oa_addons', 'Add_x002d_ons');
+            populateDropdown('oa_devicebrand', 'Device_x0020__x0028_Brand_x0029_');
+            populateDropdown('oa_devicesub', 'Device_x0020_Subcategory');
+            populateDropdown('oa_capacity', 'Capacity');
+            populateDropdown('oa_status', 'Status');
+            populateDropdown('oa_reason', 'Reason');
+            populateDropdown('oa_pendingwith', 'Pending_x0020_With');
+        }
+
+        function populateDropdown(elementId, fieldName) {
+            var select = document.getElementById(elementId);
+            if (!select || !dropdownChoices[fieldName]) return;
+
+            // Keep the first option (-- Select --)
+            var firstOption = select.options[0];
+            select.innerHTML = '';
+            select.appendChild(firstOption);
+
+            // Add choices from SharePoint
+            dropdownChoices[fieldName].forEach(function(choice) {
+                var option = document.createElement('option');
+                option.value = choice;
+                option.textContent = choice;
+                select.appendChild(option);
+            });
+        }
+
+        // ═══ INIT ═══
+        loadDropdownChoices(); // Load dropdown choices on page load
+        if (typeof lucide !== "undefined") lucide.createIcons();
+    </script>
+</body>
+
+</html>
