@@ -8,14 +8,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/32.0.2/ag-grid-community.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-grid.css">
 <link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-theme-alpine.css">
-<style id="bcr-styles">@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+<style id="bcr-styles">
 :root{--bg-body:linear-gradient(145deg,#f0f7ff,#e6f0ff,#eef4ff);--bg-card:#fff;--bg-header:rgba(255,255,255,.97);--bg-sidebar:linear-gradient(180deg,#f0f7ff,#e8f0ff);--bg-content:#f0f5ff;--bg-input:rgba(37,99,235,.06);--bg-secondary:rgba(37,99,235,.05);--bg-hover:rgba(37,99,235,.07);--border:rgba(37,99,235,.18);--border-s:rgba(37,99,235,.42);--t1:#0f1e3e;--t2:#2d4070;--t3:#7a8fb8;--acc:#2563eb;--acc2:#0ea5e9;--glow:rgba(37,99,235,.26);--grad:linear-gradient(135deg,#1d4ed8,#0ea5e9);--nab:rgba(37,99,235,.09);--nab2:rgba(37,99,235,.32);--sc:#2563eb;--cs:0 1px 8px rgba(37,99,235,.1);--ch:0 6px 20px rgba(37,99,235,.18);--chip:rgba(37,99,235,.08);--green:#16a34a;--amber:#d97706;--red:#dc2626}
 body[data-theme="dark"]{--bg-body:linear-gradient(145deg,#070e1f,#0e1835,#09112a);--bg-card:#0d1630;--bg-header:rgba(7,14,31,.98);--bg-sidebar:linear-gradient(180deg,#10193a,#0b1328);--bg-content:#090f25;--bg-input:rgba(37,99,235,.14);--bg-secondary:rgba(37,99,235,.09);--bg-hover:rgba(37,99,235,.13);--border:rgba(37,99,235,.2);--border-s:rgba(37,99,235,.48);--t1:#e2eaff;--t2:#a0b4d8;--t3:#5a7099;--acc:#60a5fa;--acc2:#38bdf8;--glow:rgba(96,165,250,.32);--grad:linear-gradient(135deg,#2563eb,#0ea5e9);--nab:rgba(37,99,235,.16);--nab2:rgba(37,99,235,.44);--sc:#60a5fa;--cs:0 2px 16px rgba(0,0,0,.5);--ch:0 6px 24px rgba(37,99,235,.22);--chip:rgba(37,99,235,.15)}
 body[data-theme="magenta"]{--bg-body:linear-gradient(145deg,#f9f0ff,#fce7ff,#f5eeff);--bg-card:#fff;--bg-header:rgba(255,255,255,.97);--bg-sidebar:linear-gradient(180deg,#fdf4ff,#f8ecff);--bg-content:#f9f3ff;--bg-input:rgba(168,85,247,.06);--bg-secondary:rgba(168,85,247,.05);--bg-hover:rgba(168,85,247,.07);--border:rgba(168,85,247,.2);--border-s:rgba(168,85,247,.45);--t1:#1e1133;--t2:#4b3f6b;--t3:#8b7aad;--acc:#a855f7;--acc2:#c724b1;--glow:rgba(168,85,247,.28);--grad:linear-gradient(135deg,#9248b9,#c724b1);--nab:rgba(168,85,247,.1);--nab2:rgba(168,85,247,.35);--sc:#a855f7;--cs:0 1px 8px rgba(168,85,247,.12);--ch:0 6px 20px rgba(168,85,247,.2);--chip:rgba(168,85,247,.08)}
 body[data-theme="magenta-dark"]{--bg-body:linear-gradient(145deg,#120820,#1e0d33,#160a28);--bg-card:#1f0d38;--bg-header:rgba(18,8,32,.98);--bg-sidebar:linear-gradient(180deg,#230f3d,#1a0a2e);--bg-content:#160a28;--bg-input:rgba(168,85,247,.12);--bg-secondary:rgba(168,85,247,.08);--bg-hover:rgba(168,85,247,.12);--border:rgba(168,85,247,.2);--border-s:rgba(168,85,247,.5);--t1:#f3e8ff;--t2:#c4b5fd;--t3:#8b5cf6;--acc:#c084fc;--acc2:#e879f9;--glow:rgba(192,132,252,.35);--grad:linear-gradient(135deg,#9248b9,#c724b1);--nab:rgba(168,85,247,.16);--nab2:rgba(168,85,247,.45);--sc:#e879f9;--cs:0 2px 16px rgba(0,0,0,.5);--ch:0 6px 24px rgba(168,85,247,.25);--chip:rgba(168,85,247,.15)}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-body);color:var(--t1);min-height:100vh;line-height:1.5;transition:background .3s,color .3s}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:var(--bg-body);color:var(--t1);min-height:100vh;line-height:1.5;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
 select,input,textarea,button{font-family:inherit}
 .portal-shell{max-width:1800px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
 .header{background:var(--bg-header);border-bottom:1px solid var(--border);backdrop-filter:blur(16px);padding:0 1.25rem;height:56px;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:200}
@@ -58,7 +58,7 @@ select,input,textarea,button{font-family:inherit}
 .dash-sub{font-size:.75rem;color:var(--t3)}
 .top-stats{display:grid;gap:.85rem;margin-bottom:1rem}
 .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:.9rem 1rem;box-shadow:var(--cs);position:relative;overflow:hidden;transition:transform .18s,box-shadow .18s}
-.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad)}
+.stat-card::before{display:none}
 .stat-card.clickable{cursor:pointer}
 .stat-card.clickable:hover{transform:translateY(-2px);box-shadow:var(--ch)}
 .stat-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);font-weight:700;margin-bottom:.3rem;display:flex;align-items:center}
@@ -114,7 +114,7 @@ select,input,textarea,button{font-family:inherit}
 .lead-table tr{cursor:pointer}
 .lead-table tr:hover td{background:var(--bg-hover)}
 .avatar-sm{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;flex-shrink:0}
-.ag-theme-alpine{--ag-background-color:var(--bg-card);--ag-foreground-color:var(--t1);--ag-border-color:var(--border);--ag-header-background-color:var(--bg-secondary);--ag-odd-row-background-color:var(--bg-secondary);--ag-row-hover-color:var(--bg-hover);--ag-font-family:Inter,sans-serif}
+.ag-theme-alpine{--ag-background-color:var(--bg-card);--ag-foreground-color:var(--t1);--ag-border-color:var(--border);--ag-header-background-color:var(--bg-secondary);--ag-odd-row-background-color:var(--bg-secondary);--ag-row-hover-color:var(--bg-hover);--ag-font-family:'Segoe UI',system-ui,sans-serif}
 .ag-theme-alpine .ag-root-wrapper{background:var(--bg-card)!important;border-color:var(--border)!important;border-radius:10px!important}
 .ag-theme-alpine .ag-header,.ag-theme-alpine .ag-header-cell{background:var(--bg-secondary)!important;color:var(--t1)!important;font-weight:700!important;font-size:.71rem!important;text-transform:uppercase!important}
 .ag-theme-alpine .ag-header-cell-text{color:var(--t1)!important}
@@ -229,9 +229,19 @@ select,input,textarea,button{font-family:inherit}
 @media(max-width:900px){.chart-grid{grid-template-columns:1fr}.landing-page{flex-direction:column}}
 @media(max-width:768px){.form-grid{grid-template-columns:1fr}.header-center{display:none}}
 @media print{body *{visibility:hidden}#printArea,#printArea *{visibility:visible}#printArea{position:absolute;left:0;top:0;width:100%}}
+#bcr-root{position:relative;width:100%;isolation:isolate}
+#bcr-root a,#bcr-root button,#bcr-root .insight-title,#bcr-root .insight-sub,#bcr-root .stat-label,#bcr-root .stat-subtitle,#bcr-root .mt-label,#bcr-root .nav-item,#bcr-root .panel-title,#bcr-root .dash-sub,#bcr-root .export-btn{text-decoration:none!important}
+#bcr-root [data-lucide]{stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
+.insight-ico{display:flex;align-items:center;justify-content:center}
+.nav-item .nav-icon{display:flex;align-items:center;flex-shrink:0;width:17px;height:17px}
+.portal-shell{display:flex!important;flex-direction:column!important;position:relative;z-index:1}
+.header{flex-shrink:0;order:1}
+.main-container{flex:1;order:2;min-height:0;display:flex}
+.dev-console{display:none}
 </style>
 </head>
 <body data-theme="blue">
+<div id="bcr-root">
 
 <div id="loadingOverlay" class="loading-overlay" style="display:none;">
   <div class="loading-logo"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
@@ -270,7 +280,7 @@ select,input,textarea,button{font-family:inherit}
           <p class="landing-note" id="accessNote"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg><span>Ctrl+Shift+D to switch test users</span></p>
         </div>
       </div>
-      <div class="landing-footer"><p>BCR · Barred Contact Registry · Dummy Mode</p></div>
+      <div class="landing-footer"><p>BCR · Barred Contact Registry</p></div>
     </div>
   </div>
 </div>
@@ -306,7 +316,7 @@ select,input,textarea,button{font-family:inherit}
 <div id="detailDrawer" class="detail-drawer"><div class="detail-drawer-inner" id="detailDrawerInner"></div></div>
 <div id="scriptPanel" class="script-panel"><div class="script-panel-inner" id="scriptPanelInner"></div></div>
 
-<div class="dev-console" id="devConsole">
+<div class="dev-console" id="devConsole" style="display:none">
   <span class="dev-console-label">Test Login</span>
   <select id="devUserSelect"></select>
   <button type="button" id="devLoginBtn">Login</button>
@@ -328,12 +338,21 @@ var STORAGE_KEY = 'bcr_records_v2';
    USE_DUMMY = false → SharePoint lists BCR_Records / BCR_Access
    Fill SP_CONFIG.siteUrl, then set USE_DUMMY = false.
    ════════════════════════════════════════════════════════════ */
-var USE_DUMMY = true; // ← flip this to false for live SharePoint data
+var USE_DUMMY = false; // true = local test data | false = SharePoint lists
 var SP_CONFIG = {
-  siteUrl: '',              // e.g. 'https://du.sharepoint.com/sites/BCR'
+  siteUrl: '',              // auto-detects from _spPageContextInfo if blank
   recordsList: 'BCR_Records',
   accessList: 'BCR_Access'
 };
+var RECORD_SP_FIELDS = [
+  'Id','Reference_ID','Serial_Number','Contact_Date','Contact_Time','Entry_Month',
+  'Agent_Name','Agent_Email','Touch_Point','Customer_Location','Contact_Identifier',
+  'Customer_Type','Complainer_Role','Caller_Name','Customer_Name','Emirates_ID_System',
+  'Emirates_ID_Provided','Email_Address','Alternative_Contact','Currently_In_UAE',
+  'Account_Number','MSISDN','Customer_Segment','Customer_Stack','Service_Calling_For',
+  'Service_Status','Plan_Name','Complaint_Summary','Complaint_Details','Action_Taken',
+  'Manager_Callback','TDRA_Mentioned','Script_Topic','Duplicate_Flag','Previous_Entry_ID','Internal_Notes'
+];
 
 var BCR_ACCESS = [
   { Title:'Tehleel Lone', User_Email:'tehleel.lone@du.ae', Role:'Admin' },
@@ -439,6 +458,121 @@ function toast(msg, type){
 function showLoading(step){ $('loadingOverlay').style.display='flex'; if(step) $('loadingStep').textContent=step; }
 function hideLoading(){ $('loadingOverlay').style.display='none'; }
 
+function getSpSite(){
+  if(SP_CONFIG.siteUrl) return SP_CONFIG.siteUrl.replace(/\/$/,'');
+  if(typeof _spPageContextInfo!=='undefined'&&_spPageContextInfo&&_spPageContextInfo.webAbsoluteUrl)
+    return _spPageContextInfo.webAbsoluteUrl;
+  return 'http://sharedspaces:8081/sites/FGKA';
+}
+function spGet(url,cb){
+  var xhr=new XMLHttpRequest();xhr.open('GET',url,true);
+  xhr.setRequestHeader('Accept','application/json;odata=verbose');
+  xhr.onreadystatechange=function(){
+    if(xhr.readyState!==4)return;
+    if(xhr.status>=200&&xhr.status<300){try{cb(null,JSON.parse(xhr.responseText));}catch(e){cb(e,null);}}
+    else{cb(new Error('HTTP '+xhr.status),null);}
+  };
+  xhr.onerror=function(){cb(new Error('Network error'),null);};xhr.send();
+}
+var _bcrDigest=null,_bcrDigestExp=0;
+function getDigest(cb){
+  var now=Date.now();
+  if(_bcrDigest&&now<_bcrDigestExp){cb(_bcrDigest);return;}
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST',getSpSite()+'/_api/contextinfo',true);
+  xhr.setRequestHeader('Accept','application/json;odata=verbose');
+  xhr.onreadystatechange=function(){
+    if(xhr.readyState!==4)return;
+    if(xhr.status>=200&&xhr.status<300){
+      try{var d=JSON.parse(xhr.responseText);
+        _bcrDigest=d.d.GetContextWebInformation.FormDigestValue;
+        _bcrDigestExp=now+(d.d.GetContextWebInformation.FormDigestTimeoutSeconds-60)*1000;
+        cb(_bcrDigest);
+      }catch(e){cb(null);}
+    }else{cb(null);}
+  };
+  xhr.onerror=function(){cb(null);};xhr.send();
+}
+function spPost(url,body,cb){
+  getDigest(function(digest){
+    var xhr=new XMLHttpRequest();xhr.open('POST',url,true);
+    xhr.setRequestHeader('Accept','application/json;odata=verbose');
+    xhr.setRequestHeader('Content-Type','application/json;odata=verbose');
+    if(digest)xhr.setRequestHeader('X-RequestDigest',digest);
+    xhr.onreadystatechange=function(){
+      if(xhr.readyState!==4)return;
+      if(xhr.status>=200&&xhr.status<300){try{cb(null,JSON.parse(xhr.responseText));}catch(e){cb(null,{});}}
+      else{cb(new Error('HTTP '+xhr.status),null);}
+    };
+    xhr.onerror=function(){cb(new Error('Network error'),null);};xhr.send(JSON.stringify(body));
+  });
+}
+function spMapItem(item){
+  var o={Id:item.Id};
+  RECORD_SP_FIELDS.forEach(function(f){ if(f!=='Id'&&item[f]!=null) o[f]=item[f]; });
+  return makeRecord(o);
+}
+function loadRecordsFromSharePoint(cb){
+  var site=getSpSite(), sel=RECORD_SP_FIELDS.join(',');
+  var url=site+"/_api/web/lists/getbytitle('"+SP_CONFIG.recordsList+"')/items?$select="+encodeURIComponent(sel)+"&$top=5000&$orderby=Contact_Date desc";
+  spGet(url,function(err,data){
+    if(err){ toast('Failed to load BCR_Records — '+err.message,'error'); BCR.all=[]; if(cb)cb(); return; }
+    BCR.all=(data.d&&data.d.results?data.d.results:[]).map(spMapItem);
+    BCR.all.sort(function(a,b){return String(b.Contact_Date).localeCompare(String(a.Contact_Date));});
+    if(cb)cb();
+  });
+}
+function saveRecordToSharePoint(rec,cb){
+  var site=getSpSite(), body={__metadata:{type:'SP.Data.'+SP_CONFIG.recordsList+'ListItem'}};
+  RECORD_SP_FIELDS.forEach(function(f){
+    if(f==='Id')return;
+    if(rec[f]!=null&&rec[f]!=='') body[f]=rec[f];
+  });
+  spPost(site+"/_api/web/lists/getbytitle('"+SP_CONFIG.recordsList+"')/items",body,function(err,data){
+    if(err){ toast('Save failed — '+err.message,'error'); if(cb)cb(err); return; }
+    if(data&&data.d) rec.Id=data.d.Id;
+    if(cb)cb(null,rec);
+  });
+}
+function bcrIcons(){ if(typeof lucide!=='undefined') try{ lucide.createIcons(); }catch(e){} }
+function bcrIcon(name,size){ size=size||16; return '<i data-lucide="'+name+'" style="width:'+size+'px;height:'+size+'px"></i>'; }
+function loadLucide(cb){
+  if(typeof lucide!=='undefined'){ bcrIcons(); if(cb)cb(); return; }
+  var s=document.createElement('script');
+  s.src=getSpSite()+'/Shared%20Documents/lucide.min.js';
+  s.onload=function(){ bcrIcons(); if(cb)cb(); };
+  s.onerror=function(){
+    s=document.createElement('script');
+    s.src='http://sharedspaces:8086/sites/SM/Shared%20Documents/lucide.min.js';
+    s.onload=function(){ bcrIcons(); if(cb)cb(); };
+    s.onerror=function(){ if(cb)cb(); };
+    document.head.appendChild(s);
+  };
+  document.head.appendChild(s);
+}
+function showDenied(msg){
+  $('lName').textContent='Access Denied'; $('lEmail').textContent=msg; $('lRole').textContent='No Access';
+  $('launchBtn').disabled=true;
+  $('accessNote').innerHTML=bcrIcon('shield-x',14)+'<span style="color:var(--red);margin-left:6px">'+esc(msg)+'</span>';
+  bcrIcons();
+}
+function initAccess(){
+  showLoading('Checking access...');
+  var site=getSpSite();
+  spGet(site+'/_api/web/currentuser?$select=Title,Email',function(err,data){
+    if(err){ hideLoading(); showDenied('Cannot reach SharePoint'); return; }
+    USER.email=data.d.Email; USER.name=data.d.Title;
+    var filter="User_Email eq '"+String(USER.email).replace(/'/g,"''")+"'";
+    spGet(site+"/_api/web/lists/getbytitle('"+SP_CONFIG.accessList+"')/items?$select=Title,User_Email,Role&$filter="+encodeURIComponent(filter),function(err2,data2){
+      hideLoading();
+      if(err2||!data2.d.results.length){ showDenied('No access in BCR_Access for '+USER.email); return; }
+      var row=data2.d.results[0];
+      setupLanding({Title:row.Title||USER.name,User_Email:row.User_Email||USER.email,Role:row.Role||'Agent'});
+      bcrIcons();
+    });
+  });
+}
+
 /* ── data ────────────────────────────────────────────────── */
 function makeRecord(obj){
   var d = obj.Contact_Date || todayStr();
@@ -485,25 +619,18 @@ function seedRecords(){
   return out;
 }
 
-function loadRecords(){
-  /* DATA SWITCH: when USE_DUMMY is false, load from SharePoint REST instead of localStorage */
-  if (!USE_DUMMY) {
-    console.warn('[BCR] USE_DUMMY=false — wire loadRecordsFromSharePoint() here (SP_CONFIG.siteUrl + BCR_Records).');
-    /* return loadRecordsFromSharePoint(); */
-  }
-  try {
-    var raw = localStorage.getItem(STORAGE_KEY);
-    BCR.all = raw ? JSON.parse(raw) : seedRecords();
+function loadRecords(cb){
+  if(!USE_DUMMY){ loadRecordsFromSharePoint(cb||function(){}); return; }
+  try{
+    var raw=localStorage.getItem(STORAGE_KEY);
+    BCR.all=raw?JSON.parse(raw):seedRecords();
     if(!raw) saveRecords();
-  } catch(e){ BCR.all = seedRecords(); }
-  BCR.all.sort(function(a,b){ return String(b.Contact_Date).localeCompare(String(a.Contact_Date)); });
+  }catch(e){ BCR.all=seedRecords(); }
+  BCR.all.sort(function(a,b){return String(b.Contact_Date).localeCompare(String(a.Contact_Date));});
+  if(cb)cb();
 }
 function saveRecords(){
-  /* DATA SWITCH: when USE_DUMMY is false, POST/PATCH to SharePoint BCR_Records */
-  if (!USE_DUMMY) {
-    console.warn('[BCR] USE_DUMMY=false — wire saveRecordsToSharePoint() here.');
-    return;
-  }
+  if(!USE_DUMMY) return;
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(BCR.all)); }catch(e){}
 }
 
@@ -589,8 +716,8 @@ function renderDashboard(){
     + '<div class="dashboard-section">'
     + '<div class="dash-head"><div><div class="section-title">Dashboard</div><div class="dash-sub">Barred account customer contacts — click any tile to filter</div></div>'
     + '<div class="table-actions">'
-    + '<button type="button" class="export-btn" id="exportPdfBtn">Export_PDF</button>'
-    + '<button type="button" class="export-btn ghost" id="exportExcelBtn">Export_Excel</button>'
+    + '<button type="button" class="export-btn" id="exportPdfBtn">'+bcrIcon('file-text',14)+' Export PDF</button>'
+    + '<button type="button" class="export-btn ghost" id="exportExcelBtn">'+bcrIcon('file-spreadsheet',14)+' Export Excel</button>'
     + '</div></div>'
     + '<div id="insightRow" class="insight-row"></div>'
     + '<div id="filterBar"></div>'
@@ -615,6 +742,7 @@ function renderDashboard(){
   $('exportPdfBtn').onclick = exportPDF;
   $('exportExcelBtn').onclick = exportExcel;
   updateRecordCount();
+  bcrIcons();
 }
 
 function refreshDashboard(){
@@ -628,6 +756,7 @@ function refreshDashboard(){
   if(BCR.gridApi) BCR.gridApi.setGridOption('rowData', BCR.filtered);
   if(BCR.chartsVisible) renderCharts();
   updateRecordCount();
+  bcrIcons();
 }
 function updateRecordCount(){ var el=$('recordCount'); if(el) el.textContent = BCR.filtered.length+' of '+BCR.all.length+' records'; }
 
@@ -639,17 +768,18 @@ function renderInsights(){
   // top complaint
   var byComp={}; t.forEach(function(r){ if(r.Complaint_Summary) byComp[r.Complaint_Summary]=(byComp[r.Complaint_Summary]||0)+1; });
   var topComp=Object.keys(byComp).sort(function(a,b){return byComp[b]-byComp[a];})[0];
-  if(topComp) cards.push({ico:'📋',color:'#2563eb',title:pretty(topComp),sub:byComp[topComp]+' contacts — most common complaint'});
+  if(topComp) cards.push({ico:'clipboard-list',color:'#2563eb',title:pretty(topComp),sub:byComp[topComp]+' contacts — most common complaint'});
   // busiest agent
   var byAg={}; t.forEach(function(r){ if(r.Agent_Name) byAg[r.Agent_Name]=(byAg[r.Agent_Name]||0)+1; });
   var topAg=Object.keys(byAg).sort(function(a,b){return byAg[b]-byAg[a];})[0];
-  if(topAg) cards.push({ico:'🧑‍💼',color:'#d97706',title:topAg,sub:byAg[topAg]+' contacts logged'});
-  if(s.tdra>0) cards.push({ico:'⚠️',color:'#dc2626',title:s.tdra+' TDRA mentions',sub:'Customers threatening TDRA escalation'});
-  if(s.repeatMsisdn>0) cards.push({ico:'🔁',color:'#8b5cf6',title:s.repeatMsisdn+' repeat contacts',sub:s.dup+' flagged as duplicate (7-day)'});
-  cards.push({ico:'🇦🇪',color:'#16a34a',title:s.emarati+' Emarati / '+s.nonEmarati+' Non-Emarati',sub:'Customer type split'});
+  if(topAg) cards.push({ico:'user',color:'#d97706',title:topAg,sub:byAg[topAg]+' contacts logged'});
+  if(s.tdra>0) cards.push({ico:'alert-triangle',color:'#dc2626',title:s.tdra+' TDRA mentions',sub:'Customers threatening TDRA escalation'});
+  if(s.repeatMsisdn>0) cards.push({ico:'repeat',color:'#8b5cf6',title:s.repeatMsisdn+' repeat contacts',sub:s.dup+' flagged as duplicate (7-day)'});
+  cards.push({ico:'users',color:'#16a34a',title:s.emarati+' Emarati / '+s.nonEmarati+' Non-Emarati',sub:'Customer type split'});
   el.innerHTML = cards.slice(0,4).map(function(c){
-    return '<div class="insight-card" style="border-left:3px solid '+c.color+'"><div style="display:flex;align-items:center;gap:8px"><div class="insight-ico" style="background:'+c.color+'22">'+c.ico+'</div><div style="min-width:0"><div class="insight-title">'+esc(c.title)+'</div><div class="insight-sub">'+esc(c.sub)+'</div></div></div></div>';
+    return '<div class="insight-card" style="border-left:3px solid '+c.color+'"><div style="display:flex;align-items:center;gap:8px"><div class="insight-ico" style="background:'+c.color+'22;color:'+c.color+'">'+bcrIcon(c.ico,16)+'</div><div style="min-width:0"><div class="insight-title">'+esc(c.title)+'</div><div class="insight-sub">'+esc(c.sub)+'</div></div></div></div>';
   }).join('');
+  bcrIcons();
 }
 
 /* ── KPI strip (clickable, meaningful) ───────────────────── */
@@ -681,9 +811,10 @@ function pct(n,d){ return d? Math.round(n/d*100)+'% of total' : '—'; }
 function scrollToGrid(){ var g=$('printArea'); if(g) g.scrollIntoView({behavior:'smooth',block:'start'}); }
 
 /* ── panels ──────────────────────────────────────────────── */
-function miniTile(key,label,val,color,sub){
+function miniTile(key,label,val,color,sub,icon){
   var active = BCR.activePanel===key;
-  return '<div class="mini-tile" data-panel="'+key+'" style="border-color:'+(active?color:'var(--border)')+';'+(active?'background:'+color+'14;':'')+'"><div class="mt-label">'+label+'</div><div class="mt-val" style="color:'+color+'">'+val+'</div><div class="mt-sub" style="color:'+color+'">'+sub+'</div></div>';
+  var ico = icon ? bcrIcon(icon,13)+' ' : '';
+  return '<div class="mini-tile" data-panel="'+key+'" style="border-color:'+(active?color:'var(--border)')+';'+(active?'background:'+color+'14;':'')+'"><div class="mt-label">'+ico+label+'</div><div class="mt-val" style="color:'+color+'">'+val+'</div><div class="mt-sub" style="color:'+color+'">'+sub+'</div></div>';
 }
 function bindPanelTiles(root){
   root.querySelectorAll('.mini-tile[data-panel]').forEach(function(tile){
@@ -697,25 +828,27 @@ function bindPanelTiles(root){
 }
 function renderTypePanel(){
   var el=$('typePanel'); if(!el) return; var s=getStats();
-  el.innerHTML='<div class="panel"><div class="panel-head"><div class="panel-title">Location & Presence</div><div class="dash-sub">Click to filter</div></div>'
+  el.innerHTML='<div class="panel"><div class="panel-head"><div class="panel-title">'+bcrIcon('map-pin',16)+' Location & Presence</div><div class="dash-sub">Click to filter</div></div>'
     + '<div class="panel-grid" style="grid-template-columns:repeat(4,1fr)">'
-    + miniTile('Inside_UAE','🇦🇪 Inside UAE',s.inside,'#16a34a',pct(s.inside,s.total))
-    + miniTile('Outside_UAE','🌍 Outside UAE',s.outside,'#0ea5e9',pct(s.outside,s.total))
-    + miniTile('In_UAE_Yes','✅ Currently in UAE',s.inUaeYes,'#2563eb',pct(s.inUaeYes,s.total))
-    + miniTile('In_UAE_No','✈️ Not in UAE',s.inUaeNo,'#d97706',pct(s.inUaeNo,s.total))
+    + miniTile('Inside_UAE','Inside UAE',s.inside,'#16a34a',pct(s.inside,s.total),'map-pin')
+    + miniTile('Outside_UAE','Outside UAE',s.outside,'#0ea5e9',pct(s.outside,s.total),'globe')
+    + miniTile('In_UAE_Yes','Currently in UAE',s.inUaeYes,'#2563eb',pct(s.inUaeYes,s.total),'check-circle')
+    + miniTile('In_UAE_No','Not in UAE',s.inUaeNo,'#d97706',pct(s.inUaeNo,s.total),'plane')
     + '</div></div>';
   bindPanelTiles(el);
+  bcrIcons();
 }
 function renderCompliancePanel(){
   var el=$('compliancePanel'); if(!el) return; var s=getStats();
-  el.innerHTML='<div class="panel"><div class="panel-head"><div class="panel-title">Segment & Escalation</div><div class="dash-sub">Click to filter</div></div>'
+  el.innerHTML='<div class="panel"><div class="panel-head"><div class="panel-title">'+bcrIcon('layers',16)+' Segment & Escalation</div><div class="dash-sub">Click to filter</div></div>'
     + '<div class="panel-grid" style="grid-template-columns:repeat(4,1fr)">'
-    + miniTile('Consumer','👤 Consumer',s.consumer,'#2563eb',pct(s.consumer,s.total))
-    + miniTile('Enterprise','🏢 Enterprise',s.enterprise,'#8b5cf6',pct(s.enterprise,s.total))
-    + '<div class="mini-tile" style="cursor:default;border-color:var(--border)"><div class="mt-label">🔁 Repeat MSISDN</div><div class="mt-val" style="color:#e11d48">'+s.repeatMsisdn+'</div><div class="mt-sub" style="color:#e11d48">'+s.uniqMsisdn+' unique numbers</div></div>'
-    + '<div class="mini-tile" style="cursor:default;border-color:var(--border)"><div class="mt-label">📞 Unique Numbers</div><div class="mt-val" style="color:#16a34a">'+s.uniqMsisdn+'</div><div class="mt-sub" style="color:#16a34a">distinct MSISDN</div></div>'
+    + miniTile('Consumer','Consumer',s.consumer,'#2563eb',pct(s.consumer,s.total),'user')
+    + miniTile('Enterprise','Enterprise',s.enterprise,'#8b5cf6',pct(s.enterprise,s.total),'building-2')
+    + '<div class="mini-tile" style="cursor:default;border-color:var(--border)"><div class="mt-label">'+bcrIcon('repeat',13)+' Repeat MSISDN</div><div class="mt-val" style="color:#e11d48">'+s.repeatMsisdn+'</div><div class="mt-sub" style="color:#e11d48">'+s.uniqMsisdn+' unique numbers</div></div>'
+    + '<div class="mini-tile" style="cursor:default;border-color:var(--border)"><div class="mt-label">'+bcrIcon('hash',13)+' Unique Numbers</div><div class="mt-val" style="color:#16a34a">'+s.uniqMsisdn+'</div><div class="mt-sub" style="color:#16a34a">distinct MSISDN</div></div>'
     + '</div></div>';
   bindPanelTiles(el);
+  bcrIcons();
 }
 
 /* ── agent leaderboard + drilldown ───────────────────────── */
@@ -1369,11 +1502,24 @@ function submitRecord(){
     Contact_Time:new Date().toISOString(), Agent_Name:USER.name, Agent_Email:USER.email,
     Duplicate_Flag:dup?'Yes':'No', Previous_Entry_ID:dup?dup.Reference_ID:''
   }));
-  BCR.all.unshift(rec); saveRecords();
-  toast('Entry saved · '+(isAdmin()?rec.Reference_ID:'reference logged'),'success');
-  BCR.pending={}; BCR.formMode='entry'; BCR.dupWarn=null;
-  if(isAdmin()){ BCR.view='dashboard'; renderMain(); }
-  else { renderMain(); }
+  function done(){
+    BCR.pending={}; BCR.formMode='entry'; BCR.dupWarn=null;
+    if(isAdmin()){ BCR.view='dashboard'; renderMain(); }
+    else { renderMain(); }
+  }
+  if(USE_DUMMY){
+    BCR.all.unshift(rec); saveRecords();
+    toast('Entry saved · '+(isAdmin()?rec.Reference_ID:'reference logged'),'success');
+    done(); return;
+  }
+  showLoading('Saving to SharePoint...');
+  saveRecordToSharePoint(rec,function(err){
+    hideLoading();
+    if(err) return;
+    BCR.all.unshift(rec);
+    toast('Entry saved to BCR_Records','success');
+    done();
+  });
 }
 
 /* ── script panel (accordion) ────────────────────────────── */
@@ -1399,16 +1545,17 @@ function renderNav(){
   if(!isAdmin()) return;
   nav.innerHTML='<div class="nav-section-label">BCR</div>';
   var items=[
-    {view:'dashboard',label:'Dashboard',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>'},
-    {view:'form',label:'New_Entry',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>'}
+    {view:'dashboard',label:'Dashboard',icon:'layout-dashboard'},
+    {view:'form',label:'New Entry',icon:'file-plus'}
   ];
   items.forEach(function(it){
     var d=document.createElement('div');
     d.className='nav-item'+(BCR.view===it.view?' active':'');
-    d.innerHTML='<span class="nav-icon"><svg viewBox="0 0 24 24">'+it.icon+'</svg></span><span>'+it.label+'</span>';
+    d.innerHTML='<span class="nav-icon">'+bcrIcon(it.icon,17)+'</span><span class="nav-label">'+it.label+'</span>';
     d.onclick=function(){ BCR.view=it.view; BCR.formMode='entry'; renderMain(); };
     nav.appendChild(d);
   });
+  bcrIcons();
 }
 function renderMain(){
   renderNav();
@@ -1455,15 +1602,17 @@ function setupLanding(user){
   var btn=$('launchBtn'); btn.disabled=false;
   $('launchBtnText').textContent = isAdmin()?'Go to Dashboard':'Go to Form';
   btn.onclick=function(){ showLoading('Launching BCR...'); setTimeout(launchPortal,400); };
-  $('accessNote').innerHTML='<span style="color:var(--green);font-weight:600">Access granted — '+esc(USER.role)+'</span>';
+  $('accessNote').innerHTML=bcrIcon('check-circle',14)+'<span style="color:var(--green);font-weight:600;margin-left:6px">Access granted — '+esc(USER.role)+'</span>';
+  bcrIcons();
 }
 function launchPortal(){
-  hideLoading();
-  $('landingPage').style.display='none';
+  $('landingPage').style.cssText='display:none!important';
   $('portalShell').style.display='flex';
   $('portalShell').style.flexDirection='column';
   BCR.view=isAdmin()?'dashboard':'form'; BCR.formMode='entry'; BCR.pending={};
-  renderMain();
+  if(USE_DUMMY){ hideLoading(); renderMain(); return; }
+  showLoading('Loading BCR_Records...');
+  loadRecords(function(){ hideLoading(); renderMain(); });
 }
 
 /* ── theme ───────────────────────────────────────────────── */
@@ -1485,9 +1634,10 @@ function initTheme(){
 function initDev(){
   var sel=$('devUserSelect');
   sel.innerHTML=BCR_ACCESS.map(function(a){ return '<option value="'+esc(a.User_Email)+'">'+esc(a.Title)+' ('+esc(a.Role)+')</option>'; }).join('');
-  $('devLoginBtn').onclick=function(){ var acc=findAccess(sel.value); if(acc){ setupLanding(acc); $('landingPage').style.display='flex'; } };
+  $('devLoginBtn').onclick=function(){ var acc=findAccess(sel.value); if(acc){ setupLanding(acc); $('landingPage').style.display='flex'; bcrIcons(); } };
   document.addEventListener('keydown',function(e){ if(e.ctrlKey&&e.shiftKey&&(e.key==='D'||e.key==='d')){ var dc=$('devConsole'); dc.style.display=dc.style.display==='none'?'flex':'none'; } });
   setupLanding(BCR_ACCESS[0]);
+  bcrIcons();
 }
 
 /* ── sidebar / exit ──────────────────────────────────────── */
@@ -1498,17 +1648,27 @@ function initShellControls(){
 
 /* ── init ────────────────────────────────────────────────── */
 function init(){
-  loadRecords();
   initTheme();
-  initDev();
   initShellControls();
-  $('landingPage').style.display='flex';
-  hideLoading();
+  loadLucide(function(){
+    if(USE_DUMMY){
+      initDev();
+      loadRecords(function(){
+        $('landingPage').style.display='flex';
+        hideLoading();
+        bcrIcons();
+      });
+    } else {
+      $('landingPage').style.display='flex';
+      initAccess();
+    }
+  });
 }
 document.addEventListener('DOMContentLoaded', init);
 
 window.BCR = BCR;
 })();
 </script>
+</div>
 </body>
 </html>
