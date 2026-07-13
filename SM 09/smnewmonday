@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SEMAILBOX.JS — SE Mailbox Intelligence v6.3
+   SEMAILBOX.JS — SE Mailbox Intelligence v6.5
    BA-grade: SLA · Agent drilldown · Forecasting · Insights
    Rules: Unassigned = no Agent/Citrix · Assigned = Agent/Citrix
           Completed = Flag date · Age based on received date
@@ -15,16 +15,6 @@ const MB_CONFIG = {
     SP_FILE_NAME: 'SEMailbox_Data.xlsx',
     ACCT_MAP_LIST:'Account Mapping',
     STORAGE_KEY:  'semailbox_last_file_name',
-    PARTNER_EMAILS_KEY: 'semailbox_partner_emails',
-    // Internal = sender domain matches one of these (from SM dashboard / du.ae)
-    INTERNAL_DOMAINS: ['du.ae', 'duservicemanagement.com'],
-    // ▼ UPDATE PARTNER EMAILS HERE (or use the Partner Management panel in the UI)
-    PARTNER_EMAILS_DEFAULT: [
-        'partner1@example.com',  // Partner 1 — replace with real address
-        'partner2@example.com',  // Partner 2 — replace with real address
-        'partner3@example.com',  // Partner 3 — replace with real address
-        'partner4@example.com',  // Partner 4 — replace with real address
-    ],
 };
 
 /* ── COLOURS ─────────────────────────────────────────────────── */
@@ -55,6 +45,7 @@ let MB = {
     filterLocations: [],   // [] = all
     filterSlaStatus: [],   // [] = all
     filterSlaTypes:  [],   // SLA column values — [] = all
+    filterSenderTypes: [], // Sender Type column — [] = all
     filterYears:  [],
     filterMonths: [],
     filterWeeks:  [],
@@ -69,7 +60,7 @@ let MB = {
     workloadStatus:  'inprogress',
     trendPeriod:     'W',
     drillAgent:      null,
-    activeSourceFilter: null,  // internal | customer | partner | repeat
+    activeSourceFilter: null,  // sender type key (lowercase) or 'repeat'
 
     dataLoaded:   false,
     lastFileName: localStorage.getItem(MB_CONFIG.STORAGE_KEY) || '',
@@ -122,11 +113,20 @@ function mbParseCategories(raw) {
    Completed:  Flag Completed Date set
    Legacy tabs (Unassigned/Assigned/Closed) still supported
    ══════════════════════════════════════════════════════════════ */
-function mbResolveStatus(tabName, flagDate, agentName, citrixId) {
-    const tabL     = (tabName || '').toLowerCase().trim();
-    const hasFlag  = mbHasValue(flagDate);
+function mbResolveStatus(tabName, flagDate, agentName, citrixId, assignmentStatus, caseStatus) {
+    const asgL = String(assignmentStatus || '').toLowerCase().trim();
+    const caseL = String(caseStatus || '').toLowerCase().trim();
+    const hasFlag = mbHasValue(flagDate);
     const hasAgent = mbHasValue(agentName) || mbHasValue(citrixId);
 
+    // Excel Raw Data columns take precedence when present
+    if (asgL || caseL) {
+        if (hasFlag || caseL === 'closed') return 'Completed';
+        if (asgL === 'unassigned') return 'Unassigned';
+        if (asgL === 'assigned') return 'In Progress';
+    }
+
+    const tabL = (tabName || '').toLowerCase().trim();
     if (tabL === 'unassigned') return 'Unassigned';
     if (tabL === 'assigned')   return hasFlag ? 'Completed' : 'In Progress';
     if (tabL === 'closed')     return 'Closed';
@@ -181,32 +181,36 @@ function mbDateToWeek(v) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   EMAIL CLASSIFICATION — Internal · Customer · Partner · Repeat
+   SENDER TYPE & REPEAT THREAD HELPERS
    ══════════════════════════════════════════════════════════════ */
-function mbGetPartnerEmails() {
-    try {
-        const raw = localStorage.getItem(MB_CONFIG.PARTNER_EMAILS_KEY);
-        if (raw) {
-            const arr = JSON.parse(raw);
-            if (Array.isArray(arr) && arr.length) return arr.map(e => String(e).trim().toLowerCase()).filter(Boolean);
-        }
-    } catch (e) {}
-    return MB_CONFIG.PARTNER_EMAILS_DEFAULT.map(e => e.trim().toLowerCase());
+const MB_SENDER_ORDER = ['Internal Team', 'Customer', 'Channel Partner'];
+const MB_SENDER_COLORS = {
+    'internal team': '#4c6fff',
+    'customer': '#27ae60',
+    'channel partner': '#a855f7',
+};
+const MB_SENDER_ICONS = {
+    'internal team': '🏢',
+    'customer': '🌐',
+    'channel partner': '🤝',
+};
+function mbNormSenderType(v) {
+    const s = String(v ?? '').trim();
+    return s || 'Unknown';
 }
-function mbSavePartnerEmails(emails) {
-    localStorage.setItem(MB_CONFIG.PARTNER_EMAILS_KEY, JSON.stringify(emails.map(e => String(e).trim()).filter(Boolean)));
+function mbSenderColor(type) {
+    const k = mbNormSenderType(type).toLowerCase();
+    if (MB_SENDER_COLORS[k]) return MB_SENDER_COLORS[k];
+    let h = 0;
+    for (let i = 0; i < k.length; i++) h = ((h << 5) - h) + k.charCodeAt(i);
+    return MB_CLR.smColors[Math.abs(h) % MB_CLR.smColors.length];
+}
+function mbSenderIcon(type) {
+    return MB_SENDER_ICONS[mbNormSenderType(type).toLowerCase()] || '📧';
 }
 function mbExtractEmail(from) {
     const m = String(from || '').match(/[\w.+-]+@[\w.-]+\.\w+/i);
     return m ? m[0].toLowerCase() : '';
-}
-function mbGetDomain(email) {
-    const i = email.lastIndexOf('@');
-    return i >= 0 ? email.slice(i + 1).toLowerCase() : '';
-}
-function mbIsInternalDomain(domain) {
-    if (!domain) return false;
-    return MB_CONFIG.INTERNAL_DOMAINS.some(d => domain === d || domain.endsWith('.' + d));
 }
 function mbNormalizeSubject(subject) {
     let s = String(subject || '').trim();
@@ -217,27 +221,19 @@ function mbNormalizeSubject(subject) {
     }
     return s.toLowerCase();
 }
-function mbClassifySender(from) {
-    const email = mbExtractEmail(from);
-    if (!email) return 'unknown';
-    const partners = mbGetPartnerEmails();
-    if (partners.some(p => email === p)) return 'partner';
-    if (mbIsInternalDomain(mbGetDomain(email))) return 'internal';
-    return 'customer';
-}
 function mbEnrichTickets(tickets) {
     const subMap = {};
     tickets.forEach(t => {
         const key = t.subjectKey || mbNormalizeSubject(t.subject);
         t.subjectKey = key;
+        t.senderType = mbNormSenderType(t.senderType);
         if (key) subMap[key] = (subMap[key] || 0) + 1;
     });
     tickets.forEach(t => {
         const cnt = t.subjectKey ? (subMap[t.subjectKey] || 1) : 1;
         t.subjectRepeatCount = cnt;
         t.isRepeatSubject = cnt > 1;
-        t.fromEmail = mbExtractEmail(t.from);
-        t.emailSource = mbClassifySender(t.from);
+        if (!t.fromEmail) t.fromEmail = mbExtractEmail(t.from);
     });
     return tickets;
 }
@@ -296,7 +292,8 @@ function mbParseSheet(sheet, tabName) {
         const n = {};
         Object.keys(row).forEach(k => { n[k.trim().toLowerCase()] = row[k]; });
 
-        const from      = String(n['from']||n['to']||n['sender']||'');
+        const from      = String(n['from']||n['to']||'').trim();
+        const sender    = String(n['sender']||'').trim();
         const subject   = String(n['subject']||n['title']||'');
         const received  = n['received']||n['date received']||n['date']||n['sent']||'';
         const flagDate  = n['completed date']||n['flag completed date']||n['flag completed']||'';
@@ -310,19 +307,23 @@ function mbParseSheet(sheet, tabName) {
         const ageing    = String(n['ageing']||'').trim();
         const ageingHrs = n['ageing hours'];
         const slaStatus = String(n['sla status']||'').trim();
+        const assignmentStatus = String(n['assignment status']||'').trim();
+        const caseStatus = String(n['case status']||'').trim();
+        const mailboxType = String(n['mailbox type']||'').trim();
         const pendingReason = String(n['pending reason']||n['pendingreason']||'').trim();
         const owner     = String(n['owner']||'').trim();
+        const senderType = mbNormSenderType(n['sender type']||n['sendertype']||n['sender_type']||'');
+        const fromDisplay = from || sender;
 
         const parsed    = mbParseCategories(catRaw);
         // Only accept a REAL Citrix code (CNFX…) from the category text as a fallback.
         // Never fabricate assignment from free-text names in Categories.
         if (!citrixId) citrixId = mbExtractCitrix(catRaw);
 
-        const status    = mbResolveStatus(tabName, flagDate, agentName, citrixId);
+        const status    = mbResolveStatus(tabName, flagDate, agentName, citrixId, assignmentStatus, caseStatus);
         const ageDays   = mbComputeAgeDays(status, received);
         const ageHours  = mbComputeAgeHours(status, received, ageingHrs);
         const subjectKey = mbNormalizeSubject(subject);
-        const emailSource = mbClassifySender(from);
 
         const mapped    = mbMatchByUserId(citrixId || owner) || mbMatchByUserId(owner) || mbMatchSM(citrixId, agentName || parsed.smName);
         let smFullName  = agentName || mapped?.Service_Manager_Name || parsed.smName || '';
@@ -341,14 +342,14 @@ function mbParseSheet(sheet, tabName) {
 
         out.push({
             id: `${tabName}-${idx}`, tab: tabName,
-            from, subject, subjectKey, fromEmail: mbExtractEmail(from), emailSource,
+            from: fromDisplay, sender, subject, subjectKey, senderType, fromEmail: mbExtractEmail(fromDisplay),
             received, receivedFmt: mbFmtDate(received),
             flagDate, flagDateFmt: mbFmtDate(flagDate),
             catRaw, category: issueCategory, smCode: citrixId, smName: agentName || parsed.smName,
             smFullName, agentName, citrixId, location,
             sla, slaDue, slaDueFmt: mbFmtDate(slaDue),
             ageing, ageingHours: ageingHrs !== '' && ageingHrs != null ? Number(ageingHrs) : null,
-            slaStatus, resolveDays,
+            slaStatus, assignmentStatus, caseStatus, mailboxType, resolveDays,
             smEmail: mapped?.Email_ID||'', smTeam: mapped?.Team||location||'',
             status, ageDays, ageHours,
             owner, pendingReason,
@@ -365,7 +366,10 @@ function mbParseSheet(sheet, tabName) {
     return out;
 }
 
-const MB_SKIP_SHEETS = new Set(['master categories','active list','sheet1','sheet2','sheet3']);
+const MB_SKIP_SHEETS = new Set([
+    'master categories','active list','sheet1','sheet2','sheet3',
+    'email handling','day on day inflow','week on week inflow','channel partners',
+]);
 
 function mbProcessWorkbook(wb) {
     const knownMap = {
@@ -404,6 +408,7 @@ function mbProcessWorkbook(wb) {
     MB.filterLocations = [];
     MB.filterSlaStatus = [];
     MB.filterSlaTypes  = [];
+    MB.filterSenderTypes = [];
     MB.filterYears  = [];
     MB.filterMonths = [];
     MB.filterWeeks  = [];
@@ -500,6 +505,8 @@ function mbApplyFilters() {
         data = data.filter(t => MB.filterSlaStatus.includes(t.slaStatus || 'Unknown'));
     if (MB.filterSlaTypes.length > 0)
         data = data.filter(t => MB.filterSlaTypes.includes(String(t.sla || 'Unknown').trim() || 'Unknown'));
+    if (MB.filterSenderTypes.length > 0)
+        data = data.filter(t => MB.filterSenderTypes.includes(t.senderType || 'Unknown'));
 
     if (MB.filterYears.length > 0)  data = data.filter(t => MB.filterYears.includes(t.recvYear));
     if (MB.filterMonths.length > 0) data = data.filter(t => MB.filterMonths.includes(t.recvYM));
@@ -518,9 +525,8 @@ function mbApplyFilters() {
     }
 
     if (MB.activeSourceFilter) {
-        const sf = MB.activeSourceFilter;
-        if (sf === 'repeat') data = data.filter(t => t.isRepeatSubject);
-        else data = data.filter(t => t.emailSource === sf);
+        if (MB.activeSourceFilter === 'repeat') data = data.filter(t => t.isRepeatSubject);
+        else data = data.filter(t => (t.senderType || 'Unknown').toLowerCase() === MB.activeSourceFilter);
     }
 
     if (MB.activeKpiFilter) {
@@ -533,8 +539,8 @@ function mbApplyFilters() {
     }
     if (MB.activeSlaFilter) {
         const fn = {
-            within:  t => (t.slaStatus||'').toLowerCase().includes('within') && t.status!=='Completed',
-            outside: t => (t.slaStatus||'').toLowerCase().includes('outside') && t.status!=='Completed',
+            within:  t => mbIsWithin(t) && mbIsOpen(t),
+            outside: t => mbIsOutside(t) && mbIsOpen(t),
         }[MB.activeSlaFilter];
         if (fn) data = data.filter(fn);
     }
@@ -563,9 +569,18 @@ function mbApplyFilters() {
 /* ══════════════════════════════════════════════════════════════
    KPI + METRIC ENGINE
    ══════════════════════════════════════════════════════════════ */
-function mbIsOutside(t) { return (t.slaStatus||'').toLowerCase().includes('outside'); }
-function mbIsWithin(t)  { return (t.slaStatus||'').toLowerCase().includes('within'); }
-function mbIsOpen(t)    { return t.status==='In Progress' || t.status==='Unassigned'; }
+function mbIsOutside(t) {
+    const s = (t.slaStatus||'').toLowerCase();
+    return s.includes('outside') && !s.startsWith('closed');
+}
+function mbIsWithin(t)  {
+    const s = (t.slaStatus||'').toLowerCase();
+    return s.includes('within') && !s.startsWith('closed');
+}
+function mbIsOpen(t) {
+    if (t.caseStatus) return String(t.caseStatus).toLowerCase() === 'open';
+    return t.status==='In Progress' || t.status==='Unassigned';
+}
 
 function mbGetKPIs(t) {
     t = t || MB.filteredTickets;
@@ -634,9 +649,7 @@ const MB_METRIC_TIPS = {
     age2448:   'Open emails aged 24–48 hours since received date.',
     age48p:    'Open emails aged 48 hours or more since received date.',
     backlog:   'When a day is selected: include still-open emails received before the earliest selected day. Turn off to see only emails received on the selected day(s).',
-    internal:  'Emails from internal senders — domain ends with @du.ae or @duservicemanagement.com (AM / internal staff).',
-    customer:  'Emails from external senders — any domain other than internal domains and partner list.',
-    partner:   'Emails from configured Partner Management addresses (see Partner Management section below).',
+    senderType:'Sender Type from the Excel column — e.g. Internal Team, Customer, Channel Partner. Count & % reflect current filters.',
     repeat:    'Emails sharing the same subject thread (Re:/Fw: prefixes stripped). Count = emails in repeat threads; % = share of total.',
 };
 function mbInfoIcon(tip) {
@@ -650,7 +663,6 @@ function mbRenderAll() {
     mbRenderKPIs();
     mbRenderSlaPanel();
     mbRenderSourcePanel();
-    mbRenderPartnerConfig();
     mbRenderAgentTable();
     if (MB.chartsVisible) {
         mbRenderAgeTiles();
@@ -733,6 +745,13 @@ function mbRenderTopFilters() {
     const allLocs   = [...new Set(MB.allTickets.map(t=>t.location||'Unknown').filter(Boolean))].sort();
     const allSla    = [...new Set(MB.allTickets.map(t=>t.slaStatus||'Unknown').filter(Boolean))].sort();
     const allSlaTypes = [...new Set(MB.allTickets.map(t=>String(t.sla||'').trim()||'Unknown').filter(Boolean))].sort();
+    const allSenderTypes = [...new Set(MB.allTickets.map(t=>t.senderType||'Unknown').filter(Boolean))].sort((a,b)=>{
+        const ai = MB_SENDER_ORDER.indexOf(a), bi = MB_SENDER_ORDER.indexOf(b);
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1;
+        if (bi >= 0) return 1;
+        return a.localeCompare(b);
+    });
     const allYears  = [...new Set(MB.allTickets.map(t=>t.recvYear).filter(Boolean))].sort().reverse();
     const allYMs    = [...new Set(MB.allTickets.map(t=>t.recvYM).filter(Boolean))].sort().reverse();
     const allWeeks  = [...new Set(MB.allTickets.map(t=>t.recvWeek).filter(Boolean))].sort().reverse().slice(0,20);
@@ -772,6 +791,7 @@ function mbRenderTopFilters() {
         ${dd('mb-f-sm',   'Agent',      allAgents, MB.filterSMs,       'mbFilterSM')}
         ${dd('mb-f-loc',  'Location',   allLocs,   MB.filterLocations, 'mbFilterLoc')}
         ${dd('mb-f-slat', 'SLA Type',   allSlaTypes, MB.filterSlaTypes, 'mbFilterSlaType')}
+        ${dd('mb-f-stype','Sender Type', allSenderTypes, MB.filterSenderTypes, 'mbFilterSenderType')}
         ${dd('mb-f-sla',  'SLA Status', allSla,    MB.filterSlaStatus, 'mbFilterSla')}
         ${dd('mb-f-year', 'Year',       allYears,  MB.filterYears,     'mbFilterYear')}
         ${dd('mb-f-month','Month',      allYMs,    MB.filterMonths,    'mbFilterMonth')}
@@ -811,13 +831,14 @@ function _mbSetFilter(arr, val, cb) {
 window.mbFilterSM    = (v,cb) => _mbSetFilter(MB.filterSMs,       v, cb);
 window.mbFilterLoc   = (v,cb) => _mbSetFilter(MB.filterLocations, v, cb);
 window.mbFilterSlaType = (v,cb) => _mbSetFilter(MB.filterSlaTypes, v, cb);
+window.mbFilterSenderType = (v,cb) => _mbSetFilter(MB.filterSenderTypes, v, cb);
 window.mbFilterSla   = (v,cb) => _mbSetFilter(MB.filterSlaStatus, v, cb);
 window.mbFilterYear  = (v,cb) => _mbSetFilter(MB.filterYears,  v, cb);
 window.mbFilterMonth = (v,cb) => _mbSetFilter(MB.filterMonths, v, cb);
 window.mbFilterWeek  = (v,cb) => _mbSetFilter(MB.filterWeeks,  v, cb);
 window.mbFilterDay   = (v,cb) => _mbSetFilter(MB.filterDays,   v, cb);
 window.mbClearAllFilters = () => {
-    MB.filterSMs=[]; MB.filterLocations=[]; MB.filterSlaStatus=[]; MB.filterSlaTypes=[];
+    MB.filterSMs=[]; MB.filterLocations=[]; MB.filterSlaStatus=[]; MB.filterSlaTypes=[]; MB.filterSenderTypes=[];
     MB.filterYears=[]; MB.filterMonths=[]; MB.filterWeeks=[]; MB.filterDays=[];
     MB.includeBacklog=false;
     MB.activeKpiFilter=null; MB.activeSlaFilter=null; MB.ageFilter=null; MB.drillAgent=null; MB.activeSourceFilter=null;
@@ -908,23 +929,33 @@ window.mbToggleSla = function(v){
 function mbGetSourceStats(t) {
     t = t || MB.filteredTickets;
     const total = t.length || 1;
-    const internal = t.filter(x => x.emailSource === 'internal').length;
-    const customer = t.filter(x => x.emailSource === 'customer').length;
-    const partner  = t.filter(x => x.emailSource === 'partner').length;
-    const repeat   = t.filter(x => x.isRepeatSubject).length;
+    const byType = {};
+    t.forEach(x => {
+        const label = mbNormSenderType(x.senderType);
+        byType[label] = (byType[label] || 0) + 1;
+    });
+    const types = Object.entries(byType).map(([label, count]) => ({
+        key: label.toLowerCase(),
+        label,
+        count,
+        pct: Math.round(count / total * 100),
+        color: mbSenderColor(label),
+        icon: mbSenderIcon(label),
+    })).sort((a, b) => {
+        const ai = MB_SENDER_ORDER.indexOf(a.label), bi = MB_SENDER_ORDER.indexOf(b.label);
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1;
+        if (bi >= 0) return 1;
+        return a.label.localeCompare(b.label);
+    });
+    const repeat = t.filter(x => x.isRepeatSubject).length;
     const repeatThreads = new Set(t.filter(x => x.isRepeatSubject).map(x => x.subjectKey)).size;
     const topRepeats = {};
     t.filter(x => x.isRepeatSubject && x.subjectKey).forEach(x => {
         if (!topRepeats[x.subjectKey]) topRepeats[x.subjectKey] = { key: x.subjectKey, label: x.subject || x.subjectKey, count: x.subjectRepeatCount };
     });
     const topList = Object.values(topRepeats).sort((a, b) => b.count - a.count).slice(0, 8);
-    return {
-        total, internal, customer, partner, repeat, repeatThreads, topList,
-        internalPct: Math.round(internal / total * 100),
-        customerPct: Math.round(customer / total * 100),
-        partnerPct:  Math.round(partner / total * 100),
-        repeatPct:   Math.round(repeat / total * 100),
-    };
+    return { total, types, repeat, repeatThreads, topList, repeatPct: Math.round(repeat / total * 100) };
 }
 
 function mbRenderSourcePanel() {
@@ -933,22 +964,25 @@ function mbRenderSourcePanel() {
     const s = mbGetSourceStats();
     const sf = MB.activeSourceFilter;
     const tile = (key, icon, label, count, pct, color, tip) => `
-        <div onclick="mbToggleSourceFilter('${key}')" style="cursor:pointer;background:var(--bg-card);border:2px solid ${sf===key?color:'var(--border)'};border-radius:12px;padding:1rem;${sf===key?`background:${color}18;`:''}box-shadow:var(--cs);">
+        <div onclick="mbToggleSourceFilter('${String(key).replace(/'/g,"\\'")}')" style="cursor:pointer;background:var(--bg-card);border:2px solid ${sf===key?color:'var(--border)'};border-radius:12px;padding:1rem;${sf===key?`background:${color}18;`:''}box-shadow:var(--cs);">
             <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:.3rem;display:flex;align-items:center;">${icon} ${label} ${mbInfoIcon(tip)}</div>
             <div style="font-size:1.7rem;font-weight:900;color:${color};line-height:1;">${count}</div>
             <div style="font-size:.75rem;font-weight:700;color:${color};margin-top:.25rem;">${pct}% of total</div>
         </div>`;
 
+    const typeTiles = s.types.map(tp =>
+        tile(tp.key, tp.icon, tp.label, tp.count, tp.pct, tp.color, MB_METRIC_TIPS.senderType + ' Value: ' + tp.label)
+    ).join('');
+    const cols = Math.min(Math.max(s.types.length + 1, 2), 5);
+
     el.innerHTML = `
     <div class="table-section" style="margin-bottom:1rem;">
         <div class="table-header" style="margin-bottom:.75rem;">
-            <h3 class="table-title"><i data-lucide="mail" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Email Source &amp; Thread Analysis</h3>
-            <div style="font-size:12px;color:var(--t3);">Click a tile to filter the grid${sf?` · <button type="button" class="reset-btn" onclick="mbToggleSourceFilter(null)" style="padding:2px 8px;font-size:11px;">✕ Clear</button>`:''}</div>
+            <h3 class="table-title"><i data-lucide="mail" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Sender Type &amp; Thread Analysis</h3>
+            <div style="font-size:12px;color:var(--t3);">From Excel Sender Type column · click to filter${sf?` · <button type="button" class="reset-btn" onclick="mbToggleSourceFilter(null)" style="padding:2px 8px;font-size:11px;">✕ Clear</button>`:''}</div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1rem;">
-            ${tile('internal','🏢','Internal',s.internal,s.internalPct,'#4c6fff',MB_METRIC_TIPS.internal)}
-            ${tile('customer','🌐','Customers',s.customer,s.customerPct,'#27ae60',MB_METRIC_TIPS.customer)}
-            ${tile('partner','🤝','Partner Mgmt',s.partner,s.partnerPct,'#a855f7',MB_METRIC_TIPS.partner)}
+        <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:.75rem;margin-bottom:1rem;">
+            ${typeTiles}
             ${tile('repeat','🔁','Repeat Threads',s.repeat,s.repeatPct,'#e67e22',MB_METRIC_TIPS.repeat)}
         </div>
         ${s.topList.length ? `
@@ -970,43 +1004,6 @@ window.mbToggleSourceFilter = function(v) {
     mbApplyFilters();
     mbRenderAll();
     if (v) mbScrollToGrid();
-};
-
-function mbRenderPartnerConfig() {
-    const el = document.getElementById('mb-partner-config');
-    if (!el) return;
-    const emails = mbGetPartnerEmails();
-    const inputs = [0, 1, 2, 3].map(i => {
-        const val = emails[i] || MB_CONFIG.PARTNER_EMAILS_DEFAULT[i] || '';
-        return `<div style="flex:1;min-width:200px;">
-            <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:4px;">Partner ${i + 1}</div>
-            <input type="email" id="mb-partner-${i}" value="${val.replace(/"/g,'&quot;')}" placeholder="partner${i+1}@example.com"
-                style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);font-size:12px;color:var(--t1);">
-        </div>`;
-    }).join('');
-
-    el.innerHTML = `
-    <div class="table-section" style="margin-bottom:1rem;">
-        <div class="table-header" style="margin-bottom:.75rem;">
-            <h3 class="table-title"><i data-lucide="handshake" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:6px;"></i>Partner Management Emails</h3>
-            <button type="button" class="export-btn" onclick="mbSavePartnerConfig()" style="padding:6px 12px;font-size:11px;">Save &amp; Re-classify</button>
-        </div>
-        <div style="font-size:11px;color:var(--t3);margin-bottom:.75rem;">Update the 4 partner email addresses below, or edit defaults in <code style="font-size:10px;">MB_CONFIG.PARTNER_EMAILS_DEFAULT</code> in semailbox.js (lines ~24–29).</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">${inputs}</div>
-    </div>`;
-    if (typeof lucide!=='undefined') lucide.createIcons();
-}
-
-window.mbSavePartnerConfig = function() {
-    const emails = [0, 1, 2, 3].map(i => {
-        const inp = document.getElementById('mb-partner-' + i);
-        return inp ? inp.value.trim() : '';
-    }).filter(Boolean);
-    mbSavePartnerEmails(emails.length ? emails : MB_CONFIG.PARTNER_EMAILS_DEFAULT);
-    MB.allTickets = mbEnrichTickets(MB.allTickets);
-    mbApplyFilters();
-    mbRenderAll();
-    mbShowToast('✅ Partner emails saved', 'success');
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1285,8 +1282,8 @@ function mbBuildAgentStats(list) {
         s.total++;
         if (t.status==='In Progress') s.open++;
         if (t.status==='Completed'||t.status==='Closed') s.completed++;
-        if (t.status!=='Completed' && mbIsOutside(t)) s.outside++;
-        if (t.status!=='Completed' && mbIsWithin(t)) s.within++;
+        if (mbIsOpen(t) && mbIsOutside(t)) s.outside++;
+        if (mbIsOpen(t) && mbIsWithin(t)) s.within++;
         if (t.ageDays!=null) s.ages.push(t.ageDays);
         if (t.resolveDays!=null) s.res.push(t.resolveDays);
         if (t.category) s.cats[t.category]=(s.cats[t.category]||0)+1;
@@ -1420,7 +1417,7 @@ function mbRenderCategories() {
 
     // Top categories (with outside-SLA overlay)
     const catMap={};
-    t.forEach(x=>{ if(!x.category) return; if(!catMap[x.category]) catMap[x.category]={total:0,outside:0}; catMap[x.category].total++; if(x.status!=='Completed'&&mbIsOutside(x)) catMap[x.category].outside++; });
+    t.forEach(x=>{ if(!x.category) return; if(!catMap[x.category]) catMap[x.category]={total:0,outside:0}; catMap[x.category].total++; if(mbIsOpen(x)&&mbIsOutside(x)) catMap[x.category].outside++; });
     const sorted=Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total).slice(0,10);
     mbMakeChart('categories',{ type:'bar',
         data:{labels:sorted.map(e=>e[0]),datasets:[
@@ -1620,8 +1617,8 @@ function mbRenderGrid() {
         mbEnhanceCol({field:'sla',           headerName:'SLA Type',      width:120}),
         mbEnhanceCol({field:'slaStatus',     headerName:'SLA Status',    width:150,cellRenderer:slaR}),
         mbEnhanceCol({field:'from',          headerName:'From',          width:170}),
-        mbEnhanceCol({field:'emailSource',   headerName:'Source',        width:100,
-         cellRenderer:p=>{ const c={internal:'#4c6fff',customer:'#27ae60',partner:'#a855f7'}[p.value]||'var(--t3)'; return `<span style="font-size:10px;font-weight:700;color:${c};text-transform:capitalize;">${p.value||'—'}</span>`; }}),
+        mbEnhanceCol({field:'senderType',    headerName:'Sender Type',   width:110,
+         cellRenderer:p=>{ const c=mbSenderColor(p.value); return `<span style="font-size:10px;font-weight:700;color:${c};">${p.value||'—'}</span>`; }}),
         mbEnhanceCol({field:'subject',       headerName:'Subject',       flex:1,tooltipField:'subject',minWidth:220}),
         mbEnhanceCol({field:'subjectRepeatCount',headerName:'Thread #', width:90,
          cellRenderer:p=>p.value>1?`<span style="font-size:10px;font-weight:800;color:#e67e22;">${p.value}</span>`:'—'}),
@@ -1782,9 +1779,6 @@ function mbInjectShell() {
 
     <!-- Email source & repeats -->
     <div id="mb-source-panel"></div>
-
-    <!-- Partner email config -->
-    <div id="mb-partner-config"></div>
 
     <!-- Agent leaderboard -->
     <div class="table-section" style="margin-bottom:1rem;">
