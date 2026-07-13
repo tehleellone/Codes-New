@@ -1,0 +1,1986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oracle Service Request Portal</title>
+
+<!-- Lucide Icons - LOCAL VERSION -->
+<script src="http://sharedspaces:8086/sites/OP/Shared%20Documents/lucide.min.js"></script>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Hide SharePoint page title "Dashboard" */
+h1.ms-core-pageTitle,
+.ms-core-pageTitle {
+  display: none !important;
+}
+
+/* THEMES */
+:root {
+  --bg-primary: linear-gradient(135deg, #1a0a27 0%, #2a1a3a 50%, #1d0f19 100%);
+  --bg-card: rgba(26, 10, 39, 0.7);
+  --bg-header: rgba(26, 10, 39, 0.9);
+  --bg-sidebar: rgba(26, 10, 39, 0.85);
+  --border-color: rgba(146, 72, 185, 0.25);
+  --border-hover: rgba(146, 72, 185, 0.6);
+  --text-primary: #FFFDFE;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --table-hover: rgba(146, 72, 185, 0.05);
+}
+
+/* Light mode for Magenta */
+body.light-theme {
+  --bg-primary: linear-gradient(135deg, #fdf0fc 0%, #f5e6ff 50%, #fef8ff 100%);
+  --bg-card: rgba(255, 255, 255, 0.96);
+  --bg-header: rgba(255, 255, 255, 0.98);
+  --bg-sidebar: rgba(250, 235, 255, 0.98);
+  --border-color: rgba(146, 72, 185, 0.18);
+  --border-hover: rgba(146, 72, 185, 0.4);
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --table-hover: rgba(146, 72, 185, 0.06);
+}
+
+/* Cyan Theme (dark) */
+body.cyan-theme {
+  --bg-primary: linear-gradient(135deg, #0a1a27 0%, #1a2a3a 50%, #0f1d19 100%);
+  --bg-card: rgba(10, 26, 39, 0.75);
+  --bg-header: rgba(10, 26, 39, 0.95);
+  --bg-sidebar: rgba(10, 26, 39, 0.9);
+  --border-color: rgba(19, 157, 203, 0.25);
+  --border-hover: rgba(19, 157, 203, 0.6);
+  --text-primary: #f9fafb;
+  --text-secondary: #e5e7eb;
+  --text-muted: #9ca3af;
+  --table-hover: rgba(19, 157, 203, 0.06);
+}
+
+/* Cyan Theme (light) */
+body.cyan-theme.light-theme {
+  --bg-primary: linear-gradient(135deg, #f0f9ff 0%, #e6f4ff 50%, #f8fcff 100%);
+  --bg-card: rgba(255, 255, 255, 0.96);
+  --bg-header: rgba(255, 255, 255, 0.98);
+  --bg-sidebar: rgba(227, 245, 255, 0.98);
+  --border-color: rgba(19, 157, 203, 0.18);
+  --border-hover: rgba(19, 157, 203, 0.4);
+  --text-primary: #0f172a;
+  --text-secondary: #1f2937;
+  --text-muted: #6b7280;
+  --table-hover: rgba(19, 157, 203, 0.06);
+}
+
+/* Cyan theme accents */
+body.cyan-theme .logo {
+  background: linear-gradient(135deg, #139DCB, #2193C9);
+  box-shadow: 0 0 20px rgba(19, 157, 203, 0.5);
+}
+body.cyan-theme .header-title,
+body.cyan-theme .section-title {
+  background: linear-gradient(135deg, #139DCB, #2193C9, #9248B9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+body.cyan-theme .card-icon,
+body.cyan-theme .status-badge {
+  background: linear-gradient(135deg, rgba(19, 157, 203, 0.18), rgba(33, 147, 201, 0.18));
+}
+
+/* Base body + background */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-y: auto;
+}
+
+/* Background Particles Container */
+.bg-particles {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* PORTAL SHELL – one rounded card */
+.portal-shell {
+  max-width: 1400px;
+  margin: 12px auto 24px;
+  padding: 10px 14px 18px;
+  border-radius: 22px;
+  background: radial-gradient(circle at top left,
+              rgba(255, 255, 255, 0.08),
+              transparent 55%) ,
+              rgba(15, 23, 42, 0.65);
+  box-shadow: 0 22px 40px rgba(15, 23, 42, 0.65);
+  position: relative;
+  z-index: 2;
+}
+body.light-theme .portal-shell {
+  background: radial-gradient(circle at top left,
+              rgba(248, 244, 255, 0.95),
+              rgba(253, 242, 255, 0.98));
+  box-shadow: 0 18px 32px rgba(148, 163, 184, 0.45);
+}
+
+/* Header */
+.header {
+  background: var(--bg-header);
+  backdrop-filter: blur(10px);
+  border-radius: 16px 16px 0 0;
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  padding: 0.9rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #AF33B5, #C724B1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.4rem;
+  box-shadow: 0 0 20px rgba(199, 36, 177, 0.55);
+  position: relative;
+  z-index: 2;
+}
+
+.signal-waves {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px; height: 80px;
+  pointer-events: none;
+  z-index: 1;
+}
+.signal-wave {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(146, 72, 185, 0.4);
+  border-radius: 50%;
+  animation: signalPulse 3s ease-out infinite;
+}
+.signal-wave:nth-child(2){ animation-delay:1s;}
+.signal-wave:nth-child(3){ animation-delay:2s;}
+
+@keyframes signalPulse {
+  0% { width:40px;height:40px;opacity:1; }
+  100% { width:100px;height:100px;opacity:0; }
+}
+
+.header-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #C724B1, #9248B9, #139DCB);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.color-scheme-selector {
+  padding: 0.45rem 0.9rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.color-scheme-selector:hover,
+.color-scheme-selector:focus {
+  border-color: var(--border-hover);
+  outline: none;
+  box-shadow: 0 0 12px rgba(146, 72, 185, 0.35);
+}
+
+.theme-toggle {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-color);
+ display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-size: 1.1rem;
+}
+.theme-toggle:hover {
+  transform: scale(1.06) rotate(10deg);
+  border-color: var(--border-hover);
+  box-shadow: 0 0 16px rgba(146, 72, 185, 0.35);
+}
+
+/* NEW: make theme selector + toggle light in light-theme */
+body.light-theme .color-scheme-selector {
+  background: #f9fafb;
+  color: #111827;
+  border-color: rgba(148, 163, 184, 0.8);
+  box-shadow: 0 0 10px rgba(148, 163, 184, 0.45);
+}
+body.light-theme .theme-toggle {
+  background: #f9fafb;
+  color: #111827;
+  border-color: rgba(148, 163, 184, 0.8);
+  box-shadow: 0 0 10px rgba(148, 163, 184, 0.45);
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  background: rgba(19, 157, 203, 0.1);
+  border: 1px solid rgba(19, 157, 203, 0.35);
+  border-radius: 20px;
+  font-size: 0.8rem;
+}
+.status-dot {
+  width: 7px;height:7px;
+  border-radius: 50%;
+  background:#139DCB;
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{
+  0%,100%{opacity:1;box-shadow:0 0 7px #139DCB;}
+  50%{opacity:.5;box-shadow:0 0 13px #139DCB;}
+}
+
+/* MAIN LAYOUT */
+.main-container {
+ display: flex;
+  height: auto;
+  max-height: calc(100vh - 150px);
+  border-radius: 0 0 16px 16px;
+  border: 1px solid var(--border-color);
+  border-top: none;
+  overflow: hidden;
+  background: linear-gradient(120deg,
+              rgba(255,255,255,0.04),
+              rgba(255,255,255,0.02));
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: linear-gradient(180deg,
+              rgba(252, 231, 255, 0.96),
+              rgba(248, 232, 255, 0.98));
+  backdrop-filter: blur(14px);
+  border-right: 1px solid rgba(248, 187, 255, 0.7);
+  padding: 1.5rem 0;
+  transition: width 0.3s;
+  position: relative;
+}
+body:not(.light-theme) .sidebar {
+  background: linear-gradient(180deg,
+              rgba(40, 16, 65, 0.98),
+              rgba(32, 12, 55, 0.98));
+}
+
+.sidebar.collapsed { width: 78px; }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 0.8rem;
+  right: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9248B9, #AF33B5);
+  border: 2px solid rgba(26, 10, 39, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(146, 72, 185, 0.6);
+  color: #fff;
+  font-size: 0.8rem;
+}
+.sidebar-toggle:hover { transform: scale(1.05); }
+
+.nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0 0.9rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.25s;
+}
+.nav-item::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;
+  width:3px;height:100%;
+  background: linear-gradient(180deg,#C724B1,#9248B9);
+  transform:scaleY(0);
+  transition:transform 0.25s;
+}
+.nav-item:hover{
+  background:rgba(199,36,177,0.06);
+}
+.nav-item.active{
+  background:rgba(199,36,177,0.12);
+  border:1px solid rgba(199,36,177,0.35);
+}
+.nav-item.active::before{ transform:scaleY(1); }
+
+.nav-icon{
+  width:24px;height:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.nav-label{
+  font-size:0.9rem;
+  font-weight:500;
+}
+.sidebar.collapsed .nav-label{
+  opacity:0;
+  width:0;
+}
+
+/* CONTENT */
+.content {
+  flex: 1;
+  padding: 1.3rem 1.4rem 1.4rem;
+  overflow-y: auto;
+  background: linear-gradient(180deg,
+              rgba(255, 255, 255, 0.96),
+              rgba(253, 244, 255, 0.98));
+}
+body:not(.light-theme) .content{
+  background: radial-gradient(circle at top,
+              rgba(32, 10, 52, 0.96),
+              rgba(12, 10, 25, 0.98));
+}
+
+/* SECTION HEADER */
+.section-header {
+  margin-bottom: 1.1rem;
+  padding-top: 0.4rem;
+}
+.section-title{
+  font-size:1.45rem;
+  font-weight:700;
+  background:linear-gradient(135deg,#C724B1,#9248B9,#139DCB);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+/* SECTIONS */
+.section{ display:none; animation:fadeIn .4s;}
+.section.active{ display:block;}
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* TOP METRICS (Active Users + Handsets) */
+.top-metrics-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:1rem;
+  margin-bottom:1.1rem;
+}
+.metric-card .card-value{
+  font-size:2.1rem;
+}
+
+/* Cards */
+.cards-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:1rem;
+  margin-bottom:1rem;
+}
+.card{
+  background:var(--bg-card);
+  backdrop-filter:blur(10px);
+  border-radius:16px;
+  border:1px solid var(--border-color);
+  padding:1rem 1.1rem;
+  position:relative;
+  overflow:hidden;
+  transition:all .25s;
+}
+.card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 10px 22px rgba(0,0,0,0.28);
+  border-color:var(--border-hover);
+}
+.card::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:3px;
+  background:linear-gradient(90deg,#C724B1,#9248B9,#139DCB);
+}
+
+.card-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:0.6rem;
+}
+.card-title{
+  font-size:.8rem;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  letter-spacing:.05em;
+}
+.card-value{
+  font-size:2.1rem;
+  font-weight:700;
+  margin-top:0.2rem;
+  background:linear-gradient(135deg,#9248B9,#C724B1);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.card-label{
+  font-size:.88rem;
+  color:var(--text-secondary);
+}
+.card-icon{
+  width:36px;height:36px;
+  border-radius:12px;
+  background:linear-gradient(135deg,rgba(146,72,185,0.2),rgba(199,36,177,0.2));
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* Progress bar in cards */
+.progress-bar{
+  width:100%;height:6px;
+  border-radius:4px;
+  background:rgba(146,72,185,0.1);
+  overflow:hidden;
+  margin-top:.4rem;
+}
+.progress-fill{
+  height:100%;
+  border-radius:4px;
+  background:linear-gradient(90deg,#9248B9,#C724B1);
+}
+
+/* Data table */
+.table-container{
+  background:var(--bg-card);
+  border-radius:16px;
+  border:1px solid var(--border-color);
+  padding:0.6rem;
+}
+.table-wrapper{
+  max-height:calc(100vh - 310px);
+  overflow:auto;
+}
+.data-table{
+  width:100%;
+  border-collapse:collapse;
+}
+.data-table thead{
+  position:sticky;
+  top:0;
+  background:linear-gradient(135deg,rgba(146,72,185,1) 0%,rgba(99,102,241,0.98) 100%);
+}
+body.light-theme .data-table thead{
+  background:linear-gradient(135deg,rgba(146,72,185,.2),rgba(99,102,241,.2));
+}
+.data-table th,
+.data-table td{
+  padding:0.6rem 0.8rem;
+  border-bottom:1px solid var(--border-color);
+  font-size:.85rem;
+  white-space:nowrap;
+}
+.data-table th{
+  color:var(--text-primary);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  cursor:pointer;
+}
+.data-table tbody tr:hover{
+  background:var(--table-hover);
+}
+.status-pill{
+  display:inline-block;
+  padding:0.2rem 0.6rem;
+  border-radius:999px;
+  font-size:.72rem;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.status-completed{background:rgba(34,197,94,0.18);color:#4ade80;border:1px solid rgba(34,197,94,0.4);}
+.status-inprocess{background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.4);}
+.status-pending{background:rgba(251,191,36,0.18);color:#fbbf24;border:1px solid rgba(251,191,36,0.4);}
+.status-onhold{background:rgba(239,68,68,0.18);color:#f87171;border:1px solid rgba(239,68,68,0.4);}
+
+/* Search + pagination */
+.table-controls{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:0 0 0.5rem;
+  gap:0.8rem;
+  flex-wrap:wrap;
+}
+.table-search{
+  flex:1; min-width:220px;
+}
+.table-search input{
+  width:100%;
+  padding:0.55rem 0.9rem;
+  border-radius:10px;
+  border:1px solid var(--border-color);
+  background:var(--bg-card);
+  color:var(--text-primary);
+  font-size:.85rem;
+}
+.table-search input:focus{
+  outline:none;
+  border-color:var(--border-hover);
+}
+
+.pagination-controls{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:0.4rem;
+  margin-top:0.4rem;
+  justify-content:center;
+}
+.pagination-btn{
+  padding:0.35rem 0.75rem;
+  border-radius:6px;
+  border:1px solid var(--border-color);
+  background:var(--bg-card);
+  font-size:.8rem;
+  cursor:pointer;
+}
+.pagination-btn.active{
+  background:linear-gradient(135deg,#9248B9,#C724B1);
+  color:#fff;
+}
+.rows-per-page{
+  display:flex;align-items:center;gap:0.4rem;
+  font-size:.8rem;color:var(--text-secondary);
+}
+.rows-per-page select{
+  padding:0.3rem 0.5rem;
+  border-radius:6px;
+  border:1px solid var(--border-color);
+  background:var(--bg-card);
+  color:var(--text-primary);
+}
+
+/* Simple filters (status + age) */
+.filters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:1rem;
+  margin-bottom:0.9rem;
+}
+.filter-group{
+  min-width:200px;
+  flex:1;
+}
+.filter-label{
+  font-size:.75rem;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  margin-bottom:0.3rem;
+}
+.filter-select{
+  width:100%;
+  padding:0.55rem 0.7rem;
+  border-radius:8px;
+  border:1px solid var(--border-color);
+  background:var(--bg-card);
+  color:var(--text-primary);
+  font-size:.85rem;
+}
+
+/* Loading */
+.loading{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:220px;
+  gap:0.6rem;
+}
+.spinner{
+  width:44px;height:44px;
+  border-radius:50%;
+  border:4px solid rgba(146,72,185,0.15);
+  border-top-color:#9248B9;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Mobile responsive */
+@media(max-width:768px){
+  .portal-shell{margin:4px 6px;}
+  .sidebar{
+    position:fixed;
+    left:-240px;top:0;
+    height:100vh;
+    z-index:900;
+ }
+  .sidebar.collapsed{ left:0;width:200px;}
+  .content{padding:0.9rem;}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-particles" id="particles"></div>
+
+<div class="portal-shell">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-section">
+      <div class="logo">
+        <div class="signal-waves">
+          <div class="signal-wave"></div>
+          <div class="signal-wave"></div>
+          <div class="signal-wave"></div>
+        </div>
+        <i data-lucide="radio"></i>
+      </div>
+      <div class="header-title">Oracle Service Request Portal</div>
+    </div>
+    <div class="header-actions">
+      <select class="color-scheme-selector" id="colorSchemeSelector" onchange="switchColorScheme()">
+        <option value="magenta">Magenta Theme</option>
+        <option value="cyan">Cyan Theme</option>
+      </select>
+      <div class="theme-toggle" onclick="toggleTheme()">
+        <i data-lucide="moon" id="themeIcon"></i>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span>Live</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-container">
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-toggle" onclick="toggleSidebar()">
+        <span id="toggleIcon">◀</span>
+      </div>
+      <div class="nav-items">
+        <div class="nav-item active" data-section="dashboard" onclick="switchSection('dashboard')">
+          <div class="nav-icon"><i data-lucide="bar-chart-3"></i></div>
+          <div class="nav-label">Dashboard</div>
+        </div>
+        <div class="nav-item" data-section="charts" onclick="switchSection('charts')">
+          <div class="nav-icon"><i data-lucide="trending-up"></i></div>
+          <div class="nav-label">Analytics</div>
+        </div>
+        <div class="nav-item" data-section="customCharts" onclick="switchSection('customCharts')">
+          <div class="nav-icon"><i data-lucide="pie-chart"></i></div>
+          <div class="nav-label">Custom Charts</div>
+        </div>
+        <div class="nav-item" data-section="data" onclick="switchSection('data')">
+          <div class="nav-icon"><i data-lucide="database"></i></div>
+          <div class="nav-label">Data View</div>
+        </div>
+        <div class="nav-item" data-section="reports" onclick="switchSection('reports')">
+          <div class="nav-icon"><i data-lucide="file-text"></i></div>
+          <div class="nav-label">Reports</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <!-- DASHBOARD -->
+      <div id="dashboard" class="section active">
+        <div class="loading" id="dashboardLoading">
+          <div class="spinner"></div>
+          <div>Loading dashboard...</div>
+        </div>
+
+        <div id="dashboardContent" style="display:none;">
+          <!-- Top metrics -->
+          <div class="top-metrics-grid">
+            <div class="card metric-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Active Users</div>
+                  <div class="card-value" id="activeUsersValue">-</div>
+                </div>
+                <div class="card-icon"><i data-lucide="users"></i></div>
+              </div>
+            </div>
+            <div class="card metric-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">No. of Handsets</div>
+                  <div class="card-value" id="handsetsValue">-</div>
+                </div>
+                <div class="card-icon"><i data-lucide="smartphone"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Overview -->
+          <div class="section-header">
+            <h2 class="section-title">Status Overview</h2>
+          </div>
+          <div class="cards-grid" id="statsCards"></div>
+
+          <!-- Aging -->
+          <div class="section-header">
+            <h2 class="section-title">Aging</h2>
+          </div>
+          <div class="cards-grid" id="agingCards"></div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <div id="charts" class="section">
+        <div class="section-header">
+          <h2 class="section-title">Analytics &amp; Insights</h2>
+        </div>
+        <div class="filters" id="chartFilters"></div>
+        <div class="cards-grid">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Status Distribution</div>
+              </div>
+            </div>
+            <canvas id="statusChart" style="width:100%;height:260px;"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Aging Buckets</div>
+              </div>
+            </div>
+            <canvas id="agingChart" style="width:100%;height:260px;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- CUSTOM CHARTS -->
+      <div id="customCharts" class="section">
+        <div class="section-header">
+          <h2 class="section-title">Custom Chart Builder</h2>
+        </div>
+        <div class="filters">
+          <div class="filter-group">
+            <label class="filter-label">Chart Type</label>
+            <select id="chartTypeSelect" class="filter-select">
+              <option value="bar">Bar</option>
+              <option value="line">Line</option>
+              <option value="pie">Pie</option>
+              <option value="donut">Donut</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Category</label>
+            <select id="chartXAxisSelect" class="filter-select">
+              <option value="status">Status</option>
+              <option value="ageBucket">Age Bucket</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Metric</label>
+            <select id="chartYAxisSelect" class="filter-select">
+              <option value="count">Count</option>
+            </select>
+          </div>
+          <div class="filter-group" style="display:flex;align-items:flex-end;">
+            <button type="button" class="pagination-btn" onclick="addCustomChart()">
+              <i data-lucide="plus-circle" style="width:16px;height:16px;"></i>&nbsp;Add Chart
+            </button>
+          </div>
+        </div>
+        <div id="customChartsContainer" class="cards-grid"></div>
+      </div>
+
+      <!-- DATA VIEW -->
+      <div id="data" class="section">
+        <div class="section-header">
+          <h2 class="section-title">Data View &amp; Management</h2>
+        </div>
+
+        <div class="filters" id="dataFilters"></div>
+
+        <div class="table-controls">
+          <div class="table-search">
+            <input type="text" id="tableSearch" placeholder="Search across all columns..." onkeyup="searchTable()">
+          </div>
+          <div id="tableRowCount" style="font-size:.82rem;color:var(--text-secondary);">
+            Showing 0 rows
+          </div>
+        </div>
+
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr></tr>
+              </thead>
+              <tbody id="dataTableBody"></tbody>
+            </table>
+          </div>
+       </div>
+        <div class="pagination-controls" id="paginationControls"></div>
+      </div>
+
+      <!-- REPORTS -->
+      <div id="reports" class="section">
+        <div class="section-header">
+          <h2 class="section-title">Reports &amp; Summary</h2>
+        </div>
+        <div class="cards-grid">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Summary Report</div>
+                <div class="card-value" id="reportTotal">-</div>
+                <div class="card-label">Total Items</div>
+              </div>
+              <div class="card-icon"><i data-lucide="bar-chart-2"></i></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Completion Rate</div>
+                <div class="card-value" id="reportRate">-</div>
+                <div class="card-label">Percentage</div>
+              </div>
+              <div class="card-icon"><i data-lucide="check-circle"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main-container -->
+</div><!-- portal-shell -->
+
+<script>
+// ================= CONFIG =================
+var CONFIG = {
+  listTitle: "Oracle Activation",
+  statusField: "Status",
+  transactionField: "Transaction_x0020_Type",
+  dateField: "SR_x0020_Date",
+  dateFieldFallback: "Created",
+  closedStatuses: ["Completed", "Cancelled", "Fulfilled"],
+  statuses: [
+    "Acknowledged",
+    "In Process",
+    "Assigned for biometrics",
+    "Pending with user",
+    "On Hold",
+    "Cancelled",
+    "Completed"
+  ]
+};
+
+// Master Data stats (Active users + Handsets)
+var MASTER_STATS = {
+  activeUsers: null,
+  handsets: null
+};
+
+// ================= DATA MODEL =================
+var DATA = {
+  raw: [],
+  filtered: []
+};
+
+// Data table columns – with Transaction Type added
+var COLUMNS = [
+  { field: "id",              header: "ID",               type: "number", minWidth: "80px",  sortable: true, searchable: true },
+  { field: "status",          header: "Status",           type: "status", minWidth: "150px", sortable: true, searchable: true },
+  { field: "transactionType", header: "Transaction Type", type: "text",   minWidth: "180px", sortable: true, searchable: true },
+  { field: "srDate",          header: "SR Date",          type: "date",   minWidth: "150px", sortable: true, searchable: true },
+  { field: "completedDate",   header: "Completed Date",   type: "date",   minWidth: "150px", sortable: true, searchable: true },
+  { field: "created",         header: "Created",          type: "date",   minWidth: "150px", sortable: true, searchable: true },
+  { field: "age",             header: "Age (Days)",       type: "number", minWidth: "110px", sortable: true, searchable: false }
+];
+
+// ================= SIDEBAR / NAV =================
+function toggleSidebar(){
+  var sb = document.getElementById("sidebar");
+  var icon = document.getElementById("toggleIcon");
+  sb.classList.toggle("collapsed");
+  icon.textContent = sb.classList.contains("collapsed") ? "▶" : "◀";
+}
+
+function switchSection(id){
+  var sections = document.querySelectorAll(".section");
+  var navItems = document.querySelectorAll(".nav-item");
+  sections.forEach(function(s){ s.classList.remove("active"); });
+  navItems.forEach(function(n){ n.classList.remove("active"); });
+
+  document.getElementById(id).classList.add("active");
+  document.querySelector('[data-section="'+id+'"]').classList.add("active");
+
+  if(id === "charts"){ renderCharts(); }
+  if(id === "data"){ renderDataTable(); renderPagination(); }
+}
+
+// ================= THEME =================
+function toggleTheme(){
+  var body = document.body;
+  var icon = document.getElementById("themeIcon");
+  body.classList.toggle("light-theme");
+  icon.setAttribute("data-lucide", body.classList.contains("light-theme") ? "sun" : "moon");
+  try{ localStorage.setItem("oraclePortalLightMode", body.classList.contains("light-theme")?"true":"false"); }catch(e){}
+  lucide.createIcons();
+  renderCharts();
+}
+function switchColorScheme(){
+  var val = document.getElementById("colorSchemeSelector").value;
+  if(val === "cyan"){ document.body.classList.add("cyan-theme"); }
+  else{ document.body.classList.remove("cyan-theme"); }
+  try{ localStorage.setItem("oraclePortalColorScheme", val); }catch(e){}
+  lucide.createIcons();
+  renderCharts();
+}
+
+// ================= UTILITIES =================
+function daysBetween(iso){
+  if(!iso) return null;
+  var d = new Date(iso);
+  if(isNaN(d)) return null;
+  return Math.floor((new Date() - d) / (24*3600*1000));
+}
+function formatDate(v){
+  if(!v) return "-";
+  var d = new Date(v);
+  if(isNaN(d)) return "-";
+  return d.toLocaleDateString();
+}
+function safeValue(v){
+  if(v === null || v === undefined || v === "") return "-";
+  return v.toString();
+}
+
+// ================= DATA PROCESSING =================
+function processData(rows){
+  if(!rows || !rows.length){
+    document.getElementById("dashboardLoading").style.display = "none";
+    return;
+  }
+
+  DATA.raw = rows.map(function(r){
+    var srDate      = r.SR_x0020_Date || r.Created;
+    var status      = (r[CONFIG.statusField] || r.Status || "").toString();
+    var transaction = r[CONFIG.transactionField];
+    var completed   = r.Completed_x0020_Date;
+
+    var item = {
+      id: r.Id || r.ID,
+      status: status,
+      transactionType: transaction,
+      srDate: srDate,
+      completedDate: completed,
+      created: r.Created,
+      age: daysBetween(srDate)
+    };
+
+    item.ageBucket = getAgeBucket(item.age);
+    return item;
+  });
+
+  DATA.filtered = DATA.raw.slice();
+
+  buildTableHeaders();
+  renderDashboard();
+  renderDataTable();
+  renderFilters();
+}
+// aging helper used in charts/custom charts
+function getAgeBucket(age){
+  if(age == null) return "Unknown";
+  if(age <= 10) return "1–10 days";
+  if(age <= 30) return "11–30 days";
+  return "31+ days";
+}
+
+// ================= STATUS / AGING STATS =================
+function getStatusCounts(){
+  var counts = {};
+  CONFIG.statuses.forEach(function(s){ counts[s] = 0; });
+  DATA.filtered.forEach(function(r){
+    if(counts.hasOwnProperty(r.status)){ counts[r.status]++; }
+  });
+  return counts;
+}
+function getAgingBuckets(){
+  var open = DATA.filtered.filter(function(r){
+    return CONFIG.closedStatuses.indexOf(r.status) < 0;
+  });
+  var buckets = [
+    { label: "1–10 days",  count: 0, test: function(a){ return a!=null && a>=0 && a<=10; } },
+    { label: "11–30 days", count: 0, test: function(a){ return a!=null && a>=11 && a<=30; } },
+    { label: "31+ days",   count: 0, test: function(a){ return a!=null && a>=31; } }
+  ];
+  open.forEach(function(r){
+    buckets.forEach(function(b){ if(b.test(r.age)) b.count++; });
+  });
+  return buckets;
+}
+function getStatusCountsFromRaw(){
+  var counts = {};
+  CONFIG.statuses.forEach(function(s){ counts[s] = 0; });
+  DATA.raw.forEach(function(r){  // ← Use DATA.raw instead of DATA.filtered
+    if(counts.hasOwnProperty(r.status)){ counts[r.status]++; }
+  });
+  return counts;
+}
+
+function getAgingBucketsFromRaw(){
+  var open = DATA.raw.filter(function(r){  // ← Use DATA.raw
+    return CONFIG.closedStatuses.indexOf(r.status) < 0;
+  });
+  var buckets = [
+    { label: "1–10 days",  count: 0, test: function(a){ return a!=null && a>=0 && a<=10; } },
+    { label: "11–30 days", count: 0, test: function(a){ return a!=null && a>=11 && a<=30; } },
+    { label: "31+ days",   count: 0, test: function(a){ return a!=null && a>=31; } }
+  ];
+  open.forEach(function(r){
+    buckets.forEach(function(b){ if(b.test(r.age)) b.count++; });
+  });
+  return buckets;
+}
+// ================= DASHBOARD RENDER =================
+function renderDashboard(){
+  var loadingEl   = document.getElementById("dashboardLoading");
+  var contentEl   = document.getElementById("dashboardContent");
+  var statsCards  = document.getElementById("statsCards");
+  var agingCards  = document.getElementById("agingCards");
+
+  if(!statsCards || !agingCards) return;
+
+  var counts  = getStatusCounts();
+  var buckets = getAgingBuckets();
+
+  var countValues = [];
+  for(var key in counts){ if(counts.hasOwnProperty(key)) countValues.push(counts[key]); }
+  var maxStatus = Math.max.apply(null, countValues.concat([1]));
+
+  var maxBucket = Math.max.apply(null, buckets.map(function(b){return b.count;}).concat([1]));
+
+  // Status cards (INCLUDING TOTAL CARD)
+  var icons = ["check-circle","radio","activity","clock","pause-circle","x-circle","target"];
+  var statHtml = "";
+  var counts  = getStatusCountsFromRaw();  // ← Use raw data
+  var buckets = getAgingBucketsFromRaw();  // ← Use raw data
+  
+  var totalRecords = DATA.raw.length;  // ← Use raw data
+
+  // Total Requests card
+  statHtml +=
+    '<div class="card">' +
+      '<div class="card-header">' +
+        '<div>' +
+          '<div class="card-title">Total Requests</div>' +
+          '<div class="card-value">' + totalRecords.toLocaleString("en-US") + '</div>' +
+        '</div>' +
+        '<div class="card-icon"><i data-lucide="layers"></i></div>' +
+      '</div>' +
+      '<div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>' +
+    '</div>';
+
+var i = 0;
+  CONFIG.statuses.forEach(function(status){
+    var c = counts[status] || 0;
+    var pct = Math.round((c / maxStatus) * 100);
+    statHtml += '<div class="card" onclick="filterByStatus(\''+status+'\')" style="cursor:pointer;transition:all 0.2s;" onmouseover="this.style.transform=\'scale(1.02)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+      '<div class="card-header">' +
+        '<div><div class="card-title">'+status+'</div>' +
+        '<div class="card-value">'+c+'</div></div>' +
+        '<div class="card-icon"><i data-lucide="'+icons[i%icons.length]+'"></i></div>' +
+      '</div>' +
+      '<div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%"></div></div>' +
+    '</div>';
+    i++;
+  });
+  statsCards.innerHTML = statHtml;
+
+  // Aging cards
+// Aging cards
+  var agingHtml = "";
+  var agingFilters = ["0-10", "11-30", "31+"];
+  buckets.forEach(function(b, idx){
+    var pct = Math.round((b.count / maxBucket) * 100);
+    agingHtml += '<div class="card" onclick="filterByAge(\''+agingFilters[idx]+'\')" style="cursor:pointer;transition:all 0.2s;" onmouseover="this.style.transform=\'scale(1.02)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+      '<div class="card-header">' +
+        '<div><div class="card-title">'+b.label+'</div>' +
+        '<div class="card-value">'+b.count+'</div></div>' +
+        '<div class="card-icon"><i data-lucide="timer"></i></div>' +
+      '</div>' +
+      '<div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%"></div></div>' +
+    '</div>';
+  });
+  agingCards.innerHTML = agingHtml;
+
+  // Reports summary
+  var completed = DATA.filtered.filter(function(r){
+    return CONFIG.closedStatuses.indexOf(r.status) >= 0;
+  }).length;
+  var rate = DATA.filtered.length ? Math.round((completed / DATA.filtered.length) * 100) : 0;
+  document.getElementById("reportTotal").textContent = DATA.filtered.length;
+  document.getElementById("reportRate").textContent = rate + "%";
+
+  lucide.createIcons();
+
+  loadingEl.style.display  = "none";
+  contentEl.style.display  = "block";
+}
+
+// ================= CHARTS (canvas 2D, no external lib) =================
+function renderCharts(){
+  setTimeout(function(){
+    renderStatusChart();
+    renderAgingChart();
+    // update any custom charts too
+    Object.keys(customCharts).forEach(function(id){ renderCustomChart(id); });
+  }, 80);
+}
+
+function renderStatusChart(){
+  var canvas = document.getElementById("statusChart");
+  if(!canvas) return;
+  var ctx = canvas.getContext("2d");
+
+  canvas.width  = canvas.clientWidth || 500;
+  canvas.height = 260;
+
+  var counts = getStatusCounts();
+  var labels = CONFIG.statuses;
+  var values = labels.map(function(s){ return counts[s]; });
+  var maxVal = Math.max.apply(null, values.concat([1]));
+
+  var isLight = document.body.classList.contains("light-theme");
+  var isCyan  = document.body.classList.contains("cyan-theme");
+  var textColor  = isLight ? "#0f172a" : "#e5e7eb";
+  var labelColor = isLight ? "#6b7280" : "#9ca3af";
+
+  var padding = 40;
+  var w = canvas.width;
+  var h = canvas.height;
+  var chartW = w - padding*2;
+  var chartH = h - padding*2;
+  var barW   = chartW / labels.length * 0.7;
+
+  ctx.clearRect(0,0,w,h);
+
+  labels.forEach(function(label, idx){
+    var val   = values[idx];
+    var barH  = (val / maxVal) * chartH;
+    var xBase = padding + (chartW / labels.length) * idx;
+    var x     = xBase + (chartW/labels.length - barW)/2;
+    var y     = h - padding - barH;
+
+    var grad = ctx.createLinearGradient(x,y,x,h-padding);
+    if(isCyan){ grad.addColorStop(0,"#139DCB"); grad.addColorStop(1,"#2193C9"); }
+    else      { grad.addColorStop(0,"#9248B9"); grad.addColorStop(1,"#C724B1"); }
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(x,y,barW,barH);
+
+    ctx.fillStyle = textColor;
+    ctx.font = "bold 12px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.fillText(val, x+barW/2, y-4);
+
+    ctx.fillStyle = labelColor;
+    ctx.font = "10px Segoe UI";
+    ctx.save();
+    ctx.translate(x+barW/2, h-padding+12);
+    ctx.rotate(-Math.PI/4);
+    ctx.fillText(label.substring(0,14), 0, 0);
+    ctx.restore();
+  });
+}
+
+function renderAgingChart(){
+  var canvas = document.getElementById("agingChart");
+  if(!canvas) return;
+  var ctx = canvas.getContext("2d");
+
+  canvas.width  = canvas.clientWidth || 500;
+  canvas.height = 260;
+
+  var buckets = getAgingBuckets();
+  var total   = buckets.reduce(function(sum,b){return sum+b.count;},0);
+  if(!total){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+
+  var isLight = document.body.classList.contains("light-theme");
+  var isCyan  = document.body.classList.contains("cyan-theme");
+  var textColor = isLight ? "#0f172a" : "#e5e7eb";
+
+  var w = canvas.width, h = canvas.height;
+  var cx = w/2, cy = h/2;
+  var radius = Math.min(w,h)/2 - 40;
+
+  var colors = isCyan ?
+    ["#139DCB","#2193C9","#9248B9"] :
+    ["#C724B1","#AF33B5","#9248B9"];
+
+  ctx.clearRect(0,0,w,h);
+  var start = -Math.PI/2;
+
+  buckets.forEach(function(b, idx){
+    var slice = (b.count / total) * Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,radius,start,start+slice);
+    ctx.closePath();
+    ctx.fillStyle = colors[idx%colors.length];
+    ctx.fill();
+
+    var mid = start + slice/2;
+    var lx = cx + Math.cos(mid) * (radius*0.7);
+    var ly = cy + Math.sin(mid) * (radius*0.7);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 12px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.fillText(b.count, lx, ly);
+
+    start += slice;
+  });
+
+  // legend
+  var ly = 20;
+  buckets.forEach(function(b, idx){
+    ctx.fillStyle = colors[idx%colors.length];
+    ctx.fillRect(18, ly, 12, 12);
+    ctx.fillStyle = textColor;
+    ctx.font = "11px Segoe UI";
+    ctx.textAlign = "left";
+    ctx.fillText(b.label+": "+b.count, 36, ly+10);
+    ly += 18;
+  });
+}
+
+// ================= FILTERS (status + age) =================
+function renderFilters(){
+  var statusOptions = '<option value="">All Statuses</option>';
+  CONFIG.statuses.forEach(function(s){
+    statusOptions += '<option value="'+s+'">'+s+'</option>';
+  });
+
+  var block = function(idPrefix){
+    return '<div class="filter-group">'+
+      '<label class="filter-label">Status</label>'+
+      '<select id="'+idPrefix+'StatusFilter" class="filter-select" onchange="applyFilters()">'+statusOptions+'</select>'+
+      '</div>'+
+      '<div class="filter-group">'+
+      '<label class="filter-label">Age Range</label>'+
+      '<select id="'+idPrefix+'AgeFilter" class="filter-select" onchange="applyFilters()">'+
+        '<option value="">All Ages</option>'+
+        '<option value="0-10">1–10 days</option>'+
+        '<option value="11-30">11–30 days</option>'+
+        '<option value="31+">31+ days</option>'+
+      '</select></div>';
+  };
+
+  document.getElementById("chartFilters").innerHTML = block("chart");
+  document.getElementById("dataFilters").innerHTML  = block("data");
+}
+
+function applyFilters(){
+  var activeSection = document.querySelector(".section.active");
+  var prefix = activeSection && activeSection.id === "charts" ? "chart" : "data";
+
+  var statusVal = document.getElementById(prefix+"StatusFilter").value || "";
+  var ageVal    = document.getElementById(prefix+"AgeFilter").value || "";
+
+  DATA.filtered = DATA.raw.slice();
+
+  if(statusVal){
+    DATA.filtered = DATA.filtered.filter(function(r){ return r.status === statusVal; });
+  }
+  if(ageVal){
+    DATA.filtered = DATA.filtered.filter(function(r){
+      var a = r.age;
+      if(a == null) return false;
+      if(ageVal==="0-10") return a>=0 && a<=10;
+      if(ageVal==="11-30")return a>=11 && a<=30;
+      if(ageVal==="31+")  return a>=31;
+      return true;
+    });
+  }
+
+  renderDashboard();
+  renderDataTable();
+  renderPagination();
+  if(activeSection && activeSection.id === "charts"){ renderCharts(); }
+}
+function filterByStatus(status){
+  // Switch to data section
+  var sections = document.querySelectorAll(".section");
+  var navItems = document.querySelectorAll(".nav-item");
+  sections.forEach(function(s){ s.classList.remove("active"); });
+  navItems.forEach(function(n){ n.classList.remove("active"); });
+  
+  document.getElementById("data").classList.add("active");
+  document.querySelector('[data-section="data"]').classList.add("active");
+  
+  // Apply status filter
+  document.getElementById("dataStatusFilter").value = status;
+  document.getElementById("dataAgeFilter").value = "";
+  
+  // Filter the data
+  DATA.filtered = DATA.raw.filter(function(r){ return r.status === status; });
+  
+  // Reset search and pagination
+  TABLE_STATE.searchTerm = "";
+  TABLE_STATE.currentPage = 1;
+  document.getElementById("tableSearch").value = "";
+  
+  // Render
+  renderDataTable();
+  renderPagination();
+  
+  // Scroll to top
+  document.querySelector(".content").scrollTop = 0;
+}
+function filterByAge(ageRange){
+  // Switch to data section
+  var sections = document.querySelectorAll(".section");
+  var navItems = document.querySelectorAll(".nav-item");
+  sections.forEach(function(s){ s.classList.remove("active"); });
+  navItems.forEach(function(n){ n.classList.remove("active"); });
+  
+  document.getElementById("data").classList.add("active");
+  document.querySelector('[data-section="data"]').classList.add("active");
+  
+  // Apply age filter
+  document.getElementById("dataStatusFilter").value = "";
+  document.getElementById("dataAgeFilter").value = ageRange;
+  
+  // Filter the data
+  DATA.filtered = DATA.raw.filter(function(r){
+    var a = r.age;
+    if(a == null) return false;
+    if(ageRange==="0-10") return a>=0 && a<=10;
+    if(ageRange==="11-30")return a>=11 && a<=30;
+    if(ageRange==="31+")  return a>=31;
+    return true;
+  });
+  
+  // Exclude closed statuses from aging filter
+  DATA.filtered = DATA.filtered.filter(function(r){
+    return CONFIG.closedStatuses.indexOf(r.status) < 0;
+  });
+  
+  // Reset search and pagination
+  TABLE_STATE.searchTerm = "";
+  TABLE_STATE.currentPage = 1;
+  document.getElementById("tableSearch").value = "";
+  
+  // Render
+  renderDataTable();
+  renderPagination();
+  
+  // Scroll to top
+  document.querySelector(".content").scrollTop = 0;
+}
+// ================= DATA TABLE =================
+var TABLE_STATE = {
+  currentPage: 1,
+  rowsPerPage: 25,
+  sortColumn: -1,
+  sortDirection: "asc",
+  searchTerm: ""
+};
+
+function buildTableHeaders(){
+  var theadRow = document.querySelector(".data-table thead tr");
+  if(!theadRow) return;
+  var html = "";
+  COLUMNS.forEach(function(col, idx){
+    html += '<th onclick="sortTable('+idx+')" style="min-width:'+col.minWidth+'">'+
+      col.header+' <i data-lucide="chevrons-up-down" class="sort-icon"></i></th>';
+  });
+  theadRow.innerHTML = html;
+  lucide.createIcons();
+}
+
+function getFilteredTableData(){
+  var filtered = DATA.filtered.slice();
+
+  // search
+  if(TABLE_STATE.searchTerm){
+    var term = TABLE_STATE.searchTerm;
+    filtered = filtered.filter(function(item){
+      for(var i=0;i<COLUMNS.length;i++){
+        var col = COLUMNS[i];
+        if(!col.searchable) continue;
+        var v = item[col.field];
+        if(v === null || v === undefined) continue;
+        var txt = col.type==="date" ? formatDate(v).toLowerCase()
+                                    : v.toString().toLowerCase();
+        if(txt.indexOf(term)>=0) return true;
+      }
+      return false;
+    });
+  }
+
+  // sort
+  if(TABLE_STATE.sortColumn >= 0){
+    var col = COLUMNS[TABLE_STATE.sortColumn];
+    filtered.sort(function(a,b){
+      var av = a[col.field], bv = b[col.field];
+      if(col.type === "date"){
+        av = av ? new Date(av).getTime() : 0;
+        bv = bv ? new Date(bv).getTime() : 0;
+      }
+      if(av < bv) return TABLE_STATE.sortDirection==="asc" ? -1 : 1;
+      if(av > bv) return TABLE_STATE.sortDirection==="asc" ? 1 : -1;
+      return 0;
+    });
+  }
+  return filtered;
+}
+
+function renderDataTable(){
+  var tbody = document.getElementById("dataTableBody");
+  if(!tbody) return;
+
+  var rows = getFilteredTableData();
+  var start = (TABLE_STATE.currentPage-1)*TABLE_STATE.rowsPerPage;
+  var end   = start + TABLE_STATE.rowsPerPage;
+  var pageRows = rows.slice(start,end);
+
+  var html = "";
+  pageRows.forEach(function(item){
+    html += "<tr>";
+    COLUMNS.forEach(function(col){
+      var v = item[col.field];
+      var cell;
+      if(col.type === "status"){
+        var cls = "status-pill ";
+        if(CONFIG.closedStatuses.indexOf(v)>=0) cls += "status-completed";
+        else if(v && v.indexOf("Process")>=0)   cls += "status-inprocess";
+        else if(v && v.indexOf("Pending")>=0)   cls += "status-pending";
+        else                                    cls += "status-onhold";
+        cell = '<span class="'+cls+'">'+safeValue(v)+'</span>';
+      }else if(col.type === "date"){
+        cell = formatDate(v);
+      }else{
+        cell = safeValue(v);
+      }
+      html += "<td>"+cell+"</td>";
+    });
+    html += "</tr>";
+  });
+
+  if(!html){
+    html = '<tr><td colspan="'+COLUMNS.length+'" style="text-align:center;padding:1rem;">No data available</td></tr>';
+  }
+  tbody.innerHTML = html;
+  updateSortIcons();
+}
+
+function updateSortIcons(){
+  var headers = document.querySelectorAll(".data-table th");
+  headers.forEach(function(th, idx){
+    var icon = th.querySelector(".sort-icon");
+    if(!icon) return;
+    if(TABLE_STATE.sortColumn === idx){
+      icon.setAttribute("data-lucide", TABLE_STATE.sortDirection==="asc" ? "chevron-up" : "chevron-down");
+    }else{
+      icon.setAttribute("data-lucide", "chevrons-up-down");
+    }
+  });
+  lucide.createIcons();
+}
+
+function sortTable(idx){
+  if(TABLE_STATE.sortColumn === idx){
+    TABLE_STATE.sortDirection = TABLE_STATE.sortDirection === "asc" ? "desc" : "asc";
+  }else{
+    TABLE_STATE.sortColumn = idx;
+    TABLE_STATE.sortDirection = "asc";
+  }
+  renderDataTable();
+  renderPagination();
+}
+
+var searchTimer;
+function searchTable(){
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(function(){
+    var term = document.getElementById("tableSearch").value.toLowerCase();
+    TABLE_STATE.searchTerm = term;
+    TABLE_STATE.currentPage = 1;
+    renderDataTable();
+    renderPagination();
+  }, 250);
+}
+
+function changePage(p){
+  TABLE_STATE.currentPage = p;
+  renderDataTable();
+  renderPagination();
+}
+function changeRowsPerPage(v){
+  TABLE_STATE.rowsPerPage = parseInt(v, 10);
+  TABLE_STATE.currentPage = 1;
+  renderDataTable();
+  renderPagination();
+}
+
+function renderPagination(){
+  var rows = getFilteredTableData();
+  var total = rows.length;
+  var pages = Math.max(1, Math.ceil(total / TABLE_STATE.rowsPerPage));
+  var cur   = Math.min(TABLE_STATE.currentPage, pages);
+
+  TABLE_STATE.currentPage = cur;
+
+  var html = '<div class="rows-per-page">'+
+    '<span>Rows per page:</span>'+
+    '<select onchange="changeRowsPerPage(this.value)">'+
+      '<option value="25"'+(TABLE_STATE.rowsPerPage===25?' selected':'')+'>25</option>'+
+      '<option value="50"'+(TABLE_STATE.rowsPerPage===50?' selected':'')+'>50</option>'+
+      '<option value="100"'+(TABLE_STATE.rowsPerPage===100?' selected':'')+'>100</option>'+
+    '</select></div>';
+
+  html += '<button class="pagination-btn" onclick="changePage(1)" '+(cur===1?'disabled':'')+'>First</button>';
+  html += '<button class="pagination-btn" onclick="changePage('+(cur-1)+')" '+(cur===1?'disabled':'')+'>Prev</button>';
+
+  var start = Math.max(1, cur-2);
+  var end   = Math.min(pages, cur+2);
+  for(var i=start;i<=end;i++){
+    html += '<button class="pagination-btn'+(i===cur?' active':'')+'" onclick="changePage('+i+')">'+i+'</button>';
+  }
+
+  html += '<button class="pagination-btn" onclick="changePage('+(cur+1)+')" '+(cur===pages?'disabled':'')+'>Next</button>';
+  html += '<button class="pagination-btn" onclick="changePage('+pages+')" '+(cur===pages?'disabled':'')+'>Last</button>';
+  html += '<span class="table-info" style="margin-left:6px;font-size:.8rem;color:var(--text-secondary);">Page '+cur+' of '+pages+'</span>';
+
+  document.getElementById("paginationControls").innerHTML = html;
+
+  var from = total ? ( (cur-1)*TABLE_STATE.rowsPerPage + 1 ) : 0;
+  var to   = Math.min(cur*TABLE_STATE.rowsPerPage, total);
+  document.getElementById("tableRowCount").textContent =
+    "Showing "+from+"-"+to+" of "+total+" rows";
+}
+
+// ================= CUSTOM CHARTS (simple) =================
+var customCharts = {};
+var customChartCounter = 0;
+
+function addCustomChart(){
+  customChartCounter++;
+  var id = "customChart"+customChartCounter;
+  var canvasId = id+"Canvas";
+
+  var type  = document.getElementById("chartTypeSelect").value;
+  var xAxis = document.getElementById("chartXAxisSelect").value;
+
+  var titleText = (type.charAt(0).toUpperCase()+type.slice(1)) + " – " +
+                  (xAxis === "status" ? "Status" : "Age Bucket");
+
+  var html = '<div class="card" id="'+id+'">'+
+    '<div class="card-header">'+
+      '<div><div class="card-title">'+titleText+'</div></div>'+
+      '<button type="button" class="pagination-btn" style="padding:0.2rem 0.6rem;font-size:.75rem;" onclick="removeCustomChart(\''+id+'\')">'+
+        '<i data-lucide="x-circle" style="width:14px;height:14px;"></i>&nbsp;Remove</button>'+
+    '</div>'+
+    '<canvas id="'+canvasId+'" style="width:100%;height:220px;"></canvas>'+
+  '</div>';
+
+  document.getElementById("customChartsContainer").insertAdjacentHTML("beforeend", html);
+  lucide.createIcons();
+
+  customCharts[id] = { canvasId: canvasId, type: type, xAxis: xAxis };
+  renderCustomChart(id);
+}
+
+function removeCustomChart(id){
+  var el = document.getElementById(id);
+  if(el) el.remove();
+  delete customCharts[id];
+}
+
+function aggregateForCustom(xAxis){
+  var agg = {};
+  DATA.filtered.forEach(function(r){
+    var key = xAxis === "status" ? r.status : getAgeBucket(r.age);
+    key = key || "Unknown";
+    if(!agg[key]) agg[key] = 0;
+    agg[key]++;
+  });
+  var res = [];
+  for(var k in agg){ if(agg.hasOwnProperty(k)) res.push({label:k,value:agg[k]}); }
+  res.sort(function(a,b){ return b.value - a.value; });
+  return res.slice(0,10);
+}
+
+function renderCustomChart(id){
+  var cfg = customCharts[id];
+  if(!cfg) return;
+  var canvas = document.getElementById(cfg.canvasId);
+  if(!canvas) return;
+  var ctx = canvas.getContext("2d");
+
+  canvas.width  = canvas.clientWidth || 500;
+  canvas.height = 220;
+
+  var data = aggregateForCustom(cfg.xAxis);
+  if(!data.length){ ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+
+  if(cfg.type === "bar")  renderCustomBar(ctx, canvas, data);
+  if(cfg.type === "line") renderCustomLine(ctx, canvas, data);
+  if(cfg.type === "pie" || cfg.type === "donut")
+    renderCustomPie(ctx, canvas, data, cfg.type === "donut");
+}
+
+function renderCustomBar(ctx, canvas, data){
+  var isLight = document.body.classList.contains("light-theme");
+  var isCyan  = document.body.classList.contains("cyan-theme");
+  var textColor  = isLight ? "#0f172a" : "#e5e7eb";
+  var labelColor = isLight ? "#6b7280" : "#9ca3af";
+
+  var w = canvas.width, h = canvas.height;
+  var padding = 40;
+  var chartW = w - padding*2;
+  var chartH = h - padding*2;
+  var barW   = Math.min(chartW / data.length * 0.7, 60);
+  var maxVal = Math.max.apply(null, data.map(function(d){return d.value;}).concat([1]));
+
+  ctx.clearRect(0,0,w,h);
+
+  data.forEach(function(d, idx){
+    var barH = (d.value / maxVal) * chartH;
+   var xBase= padding + (chartW/data.length) * idx;
+    var x    = xBase + (chartW/data.length - barW)/2;
+    var y    = h - padding - barH;
+
+    var grad = ctx.createLinearGradient(x,y,x,h-padding);
+    if(isCyan){ grad.addColorStop(0,"#139DCB");grad.addColorStop(1,"#2193C9"); }
+    else      { grad.addColorStop(0,"#9248B9");grad.addColorStop(1,"#C724B1"); }
+    ctx.fillStyle = grad;
+    ctx.fillRect(x,y,barW,barH);
+
+    ctx.fillStyle = textColor;
+    ctx.font = "bold 11px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.fillText(d.value, x+barW/2, y-4);
+
+    ctx.fillStyle = labelColor;
+    ctx.font = "10px Segoe UI";
+    ctx.save();
+    ctx.translate(x+barW/2, h-padding+12);
+    ctx.rotate(-Math.PI/4);
+    ctx.fillText(d.label.substring(0,14),0,0);
+    ctx.restore();
+  });
+}
+
+function renderCustomLine(ctx, canvas, data){
+  var isLight = document.body.classList.contains("light-theme");
+  var isCyan  = document.body.classList.contains("cyan-theme");
+ var textColor  = isLight ? "#0f172a" : "#e5e7eb";
+  var labelColor = isLight ? "#6b7280" : "#9ca3af";
+
+  var w = canvas.width, h = canvas.height;
+  var padding = 40;
+  var chartW = w - padding*2;
+  var chartH = h - padding*2;
+  var maxVal = Math.max.apply(null, data.map(function(d){return d.value;}).concat([1]));
+
+  ctx.clearRect(0,0,w,h);
+
+  ctx.beginPath();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = isCyan ? "#139DCB" : "#9248B9";
+
+  data.forEach(function(d, idx){
+    var x = padding + (chartW/(data.length-1)) * idx;
+    var y = h - padding - (d.value/maxVal)*chartH;
+    if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  data.forEach(function(d, idx){
+    var x = padding + (chartW/(data.length-1)) * idx;
+    var y = h - padding - (d.value/maxVal)*chartH;
+    ctx.beginPath();
+    ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fillStyle = isCyan ? "#2193C9" : "#C724B1";
+    ctx.fill();
+
+    ctx.fillStyle = textColor;
+    ctx.font = "bold 11px Segoe UI";
+   ctx.textAlign = "center";
+    ctx.fillText(d.value, x, y-8);
+
+    ctx.fillStyle = labelColor;
+    ctx.font = "10px Segoe UI";
+    ctx.save();
+    ctx.translate(x, h-padding+12);
+    ctx.rotate(-Math.PI/4);
+    ctx.fillText(d.label.substring(0,14),0,0);
+    ctx.restore();
+  });
+}
+
+function renderCustomPie(ctx, canvas, data, isDonut){
+  var isLight = document.body.classList.contains("light-theme");
+  var isCyan  = document.body.classList.contains("cyan-theme");
+  var textColor = isLight ? "#0f172a" : "#e5e7eb";
+
+  var w = canvas.width, h = canvas.height;
+  var cx = w/2, cy = h/2;
+  var radius = Math.min(w,h)/2 - 50;
+
+  var total = data.reduce(function(s,d){return s+d.value;},0);
+  var colors = isCyan ?
+    ["#139DCB","#2193C9","#7B56BB","#9248B9","#AF33B5","#C724B1"] :
+    ["#C724B1","#AF33B5","#9248B9","#7B56BB","#2193C9","#139DCB"];
+
+  ctx.clearRect(0,0,w,h);
+  var start = -Math.PI/2;
+
+  data.forEach(function(d, idx){
+    var slice = (d.value/total)*Math.PI*2;
+    ctx.beginPath();
+    ctx.arc(cx,cy,radius,start,start+slice);
+    if(isDonut){
+      ctx.arc(cx,cy,radius*0.5,start+slice,start,true);
+    }else{
+      ctx.lineTo(cx,cy);
+    }
+    ctx.closePath();
+    ctx.fillStyle = colors[idx%colors.length];
+    ctx.fill();
+
+    var mid = start + slice/2;
+    var r   = isDonut ? radius*0.75 : radius*0.7;
+    var lx  = cx + Math.cos(mid)*r;
+    var ly  = cy + Math.sin(mid)*r;
+    ctx.fillStyle = "#fff";
+    ctx.font = "11px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.fillText(d.value, lx, ly);
+
+    start += slice;
+  });
+
+  // legend
+  var ly = 20;
+  data.forEach(function(d, idx){
+    ctx.fillStyle = colors[idx%colors.length];
+    ctx.fillRect(18, ly, 12, 12);
+   ctx.fillStyle = textColor;
+    ctx.font = "10px Segoe UI";
+    ctx.textAlign = "left";
+    ctx.fillText(d.label.substring(0,18)+": "+d.value, 36, ly+10);
+    ly += 18;
+  });
+}
+
+// ================= MASTER DATA COUNTS =================
+function loadMasterCounts(){
+  var site = (typeof _spPageContextInfo !== "undefined" && _spPageContextInfo.webAbsoluteUrl) || location.origin;
+  var url  = site.replace(/\/$/, "") + "/_api/web/lists/getbytitle('Master Data')/items?$top=5000";
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+  xhr.setRequestHeader("Accept","application/json;odata=verbose");
+  xhr.onreadystatechange = function(){
+    if(xhr.readyState === 4){
+      if(xhr.status >= 200 && xhr.status < 300){
+        try{
+          var json = JSON.parse(xhr.responseText);
+          var rows = json.value || (json.d && json.d.results) || [];
+          MASTER_STATS.activeUsers = rows.length;
+
+          var deviceField = null;
+          if(rows.length){
+            var sample = rows[0];
+            for(var key in sample){
+              if(!sample.hasOwnProperty(key)) continue;
+              var low = key.toLowerCase();
+              if(low.indexOf("device") >= 0 && low.indexOf("model") >= 0){
+                deviceField = key;
+                break;
+              }
+            }
+          }
+          var handsets = 0;
+          if(deviceField){
+            rows.forEach(function(r){
+              var val = (r[deviceField] || "").toString().trim();
+              if(val && val !== "#N/A") handsets++;
+            });
+          }
+          MASTER_STATS.handsets = handsets;
+          updateTopMetrics();
+        }catch(e){
+          console.error("Error parsing Master Data response", e);
+        }
+      }else{
+        console.error("Error loading Master Data:", xhr.status, xhr.responseText);
+      }
+    }
+  };
+  xhr.send();
+}
+
+function updateTopMetrics(){
+  var au = document.getElementById("activeUsersValue");
+  var hs = document.getElementById("handsetsValue");
+  if(!au || !hs) return;
+
+  if(MASTER_STATS.activeUsers != null){
+    au.textContent = Number(MASTER_STATS.activeUsers).toLocaleString("en-US");
+  }else{
+    au.textContent = "-";
+  }
+  if(MASTER_STATS.handsets != null){
+    hs.textContent = Number(MASTER_STATS.handsets).toLocaleString("en-US");
+  }else{
+    hs.textContent = "-";
+  }
+}
+
+// ================= LIST DATA LOAD =================
+function loadData(){
+  var site = (typeof _spPageContextInfo !== "undefined" && _spPageContextInfo.webAbsoluteUrl) || location.origin;
+  var base = site.replace(/\/$/, "");
+var url = base + "/_api/web/lists/getbytitle('" + encodeURIComponent(CONFIG.listTitle) + "')/items" +
+            "?$select=Id," +
+              encodeURIComponent(CONFIG.statusField) + "," +
+              encodeURIComponent(CONFIG.transactionField) + "," +
+              "SR_x0020_Date," +
+              "Completed_x0020_Date," +
+              "Created" +
+            "&$top=5000&$format=json";
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+  xhr.setRequestHeader("Accept","application/json;odata=verbose");
+  xhr.onreadystatechange = function(){
+    if(xhr.readyState === 4){
+      if(xhr.status >= 200 && xhr.status < 300){
+        try{
+          var json = JSON.parse(xhr.responseText);
+          var rows = json.value || (json.d && json.d.results) || [];
+          processData(rows);
+        }catch(e){
+          console.error("Parse error:", e);
+          document.getElementById("dashboardLoading").style.display = "none";
+        }
+      }else{
+        console.error("Error loading list data:", xhr.status, xhr.responseText);
+        document.getElementById("dashboardLoading").style.display = "none";
+      }
+    }
+  };
+  xhr.send();
+}
+
+// ================= INIT =================
+function init(){
+  try{
+    var savedColor = localStorage.getItem("oraclePortalColorScheme");
+    var savedLight = localStorage.getItem("oraclePortalLightMode");
+    if(savedColor === "cyan"){
+      document.body.classList.add("cyan-theme");
+      document.getElementById("colorSchemeSelector").value = "cyan";
+    }
+    if(savedLight === "true"){
+      document.body.classList.add("light-theme");
+      document.getElementById("themeIcon").setAttribute("data-lucide","sun");
+    }
+  }catch(e){}
+
+  if(typeof lucide !== "undefined" && lucide.createIcons){
+    lucide.createIcons();
+  }
+
+  loadMasterCounts();
+  loadData();
+}
+
+if(window._spBodyOnLoadFunctionNames){
+  _spBodyOnLoadFunctionNames.push("init");
+}else if(document.readyState === "complete"){
+  init();
+}else{
+  window.addEventListener("load", init);
+}
+</script>
+</body>
+</html>
+ 
+Tehleel Lone
+Sales Operations Specialist
+Enterprise Sales 
+Mob: 	+971561959567
+Email: 	Tehleel.Lone@du.ae
+
+
+
+Emirates Integrated Telecommunications Company, PJSC. P.O.Box 502666, Dubai, U.A.E.
+ 
+ 
+ 
+ 
+
+
+ 
+
+Give tomorrow a better chance, think before you print
+This email and any attachments contain confidential information. You must not read, print, copy, store, or otherwise use them unless you are the intended recipient. If you have received them in error, please delete them and contact du. Without exception, du does not enter into any agreement through email communications and nothing in this email shall be construed or interpreted as binding du or creating any obligation (whether financial or otherwise) for du. You should check attachments for viruses before opening. Please note that email communications may be monitored in accordance with the laws of the United Arab Emirates. Commercial License No.576513; Commercial Registration No. 77967 
