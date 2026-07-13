@@ -135,7 +135,7 @@ select,input,textarea,button{font-family:inherit}
 .badge-yes{background:rgba(220,38,38,.12);color:var(--red)}
 .badge-no{background:rgba(22,163,74,.12);color:var(--green)}
 .badge-dup{background:rgba(217,119,6,.14);color:var(--amber)}
-.landing-page{min-height:100vh;display:flex;background:var(--bg-body)}
+.landing-page{min-height:520px;display:flex;flex-wrap:wrap;background:var(--bg-body);width:100%}
 .landing-left,.landing-right{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem}
 .landing-container{max-width:420px;width:100%}
 .landing-card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:1.4rem;box-shadow:var(--cs)}
@@ -229,8 +229,12 @@ select,input,textarea,button{font-family:inherit}
 @media(max-width:900px){.chart-grid{grid-template-columns:1fr}.landing-page{flex-direction:column}}
 @media(max-width:768px){.form-grid{grid-template-columns:1fr}.header-center{display:none}}
 @media print{body *{visibility:hidden}#printArea,#printArea *{visibility:visible}#printArea{position:absolute;left:0;top:0;width:100%}}
-#bcr-root{position:relative;width:100%;isolation:isolate}
-#bcr-root a,#bcr-root button,#bcr-root .insight-title,#bcr-root .insight-sub,#bcr-root .stat-label,#bcr-root .stat-subtitle,#bcr-root .mt-label,#bcr-root .nav-item,#bcr-root .panel-title,#bcr-root .dash-sub,#bcr-root .export-btn{text-decoration:none!important}
+#bcr-root{position:relative;width:100%;isolation:isolate;display:block;box-sizing:border-box;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--t1);line-height:1.5}
+#bcr-root *,#bcr-root *::before,#bcr-root *::after{box-sizing:border-box}
+#bcr-root a,#bcr-root button,#bcr-root h1,#bcr-root h2,#bcr-root h3,#bcr-root p,#bcr-root .insight-title,#bcr-root .insight-sub,#bcr-root .stat-label,#bcr-root .stat-subtitle,#bcr-root .mt-label,#bcr-root .nav-item,#bcr-root .panel-title,#bcr-root .dash-sub,#bcr-root .export-btn,#bcr-root .landing-brand-title,#bcr-root .landing-title{text-decoration:none!important}
+#bcr-root .landing-page{min-height:auto!important;height:auto!important;padding:1.5rem 1rem}
+#bcr-root .landing-left,#bcr-root .landing-right{align-items:flex-start!important;padding:1rem 1.25rem}
+#bcr-root .landing-right .landing-container{margin-top:0}
 #bcr-root [data-lucide]{stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
 .insight-ico{display:flex;align-items:center;justify-content:center}
 .nav-item .nav-icon{display:flex;align-items:center;flex-shrink:0;width:17px;height:17px}
@@ -340,7 +344,8 @@ var STORAGE_KEY = 'bcr_records_v2';
    ════════════════════════════════════════════════════════════ */
 var USE_DUMMY = false; // true = local test data | false = SharePoint lists
 var SP_CONFIG = {
-  siteUrl: '',              // auto-detects from _spPageContextInfo if blank
+  listsSiteUrl: 'http://sharedspaces:8095/BO_Portal/billingsupport', // where BCR_Access + BCR_Records live
+  siteUrl: '',              // optional override; else listsSiteUrl, else page site
   recordsList: 'BCR_Records',
   accessList: 'BCR_Access'
 };
@@ -439,6 +444,19 @@ FILTER_DIMS.forEach(function(d){ BCR.filters[d.id] = []; });
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normEmail(e){ return String(e||'').trim().toLowerCase(); }
+function emailKey(e){
+  e=normEmail(e); var at=e.indexOf('@');
+  if(at<0) return e;
+  return e.slice(0,at).replace(/\./g,'')+e.slice(at);
+}
+function findAccessInList(rows,email){
+  var key=emailKey(email);
+  for(var i=0;i<rows.length;i++){
+    if(emailKey(rows[i].User_Email)===key) return rows[i];
+    if(normEmail(rows[i].User_Email)===normEmail(email)) return rows[i];
+  }
+  return null;
+}
 function isAdmin(){ return USER.role === 'Admin'; }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -459,10 +477,11 @@ function showLoading(step){ $('loadingOverlay').style.display='flex'; if(step) $
 function hideLoading(){ $('loadingOverlay').style.display='none'; }
 
 function getSpSite(){
+  if(SP_CONFIG.listsSiteUrl) return SP_CONFIG.listsSiteUrl.replace(/\/$/,'');
   if(SP_CONFIG.siteUrl) return SP_CONFIG.siteUrl.replace(/\/$/,'');
   if(typeof _spPageContextInfo!=='undefined'&&_spPageContextInfo&&_spPageContextInfo.webAbsoluteUrl)
     return _spPageContextInfo.webAbsoluteUrl;
-  return 'http://sharedspaces:8081/sites/FGKA';
+  return 'http://sharedspaces:8095/BO_Portal/billingsupport';
 }
 function spGet(url,cb){
   var xhr=new XMLHttpRequest();xhr.open('GET',url,true);
@@ -538,17 +557,20 @@ function bcrIcons(){ if(typeof lucide!=='undefined') try{ lucide.createIcons(); 
 function bcrIcon(name,size){ size=size||16; return '<i data-lucide="'+name+'" style="width:'+size+'px;height:'+size+'px"></i>'; }
 function loadLucide(cb){
   if(typeof lucide!=='undefined'){ bcrIcons(); if(cb)cb(); return; }
-  var s=document.createElement('script');
-  s.src=getSpSite()+'/Shared%20Documents/lucide.min.js';
-  s.onload=function(){ bcrIcons(); if(cb)cb(); };
-  s.onerror=function(){
-    s=document.createElement('script');
-    s.src='http://sharedspaces:8086/sites/SM/Shared%20Documents/lucide.min.js';
+  var sources=[
+    'http://sharedspaces:8086/sites/SM/Shared%20Documents/lucide.min.js',
+    getSpSite()+'/Shared%20Documents/lucide.min.js'
+  ];
+  var i=0;
+  function tryNext(){
+    if(i>=sources.length){ if(cb)cb(); return; }
+    var s=document.createElement('script');
+    s.src=sources[i++];
     s.onload=function(){ bcrIcons(); if(cb)cb(); };
-    s.onerror=function(){ if(cb)cb(); };
+    s.onerror=tryNext;
     document.head.appendChild(s);
-  };
-  document.head.appendChild(s);
+  }
+  tryNext();
 }
 function showDenied(msg){
   $('lName').textContent='Access Denied'; $('lEmail').textContent=msg; $('lRole').textContent='No Access';
@@ -560,13 +582,22 @@ function initAccess(){
   showLoading('Checking access...');
   var site=getSpSite();
   spGet(site+'/_api/web/currentuser?$select=Title,Email',function(err,data){
-    if(err){ hideLoading(); showDenied('Cannot reach SharePoint'); return; }
+    if(err){ hideLoading(); showDenied('Cannot reach SharePoint at '+site); return; }
     USER.email=data.d.Email; USER.name=data.d.Title;
-    var filter="User_Email eq '"+String(USER.email).replace(/'/g,"''")+"'";
-    spGet(site+"/_api/web/lists/getbytitle('"+SP_CONFIG.accessList+"')/items?$select=Title,User_Email,Role&$filter="+encodeURIComponent(filter),function(err2,data2){
+    spGet(site+"/_api/web/lists/getbytitle('"+SP_CONFIG.accessList+"')/items?$select=Title,User_Email,Role&$top=500",function(err2,data2){
       hideLoading();
-      if(err2||!data2.d.results.length){ showDenied('No access in BCR_Access for '+USER.email); return; }
-      var row=data2.d.results[0];
+      if(err2){
+        var msg=String(err2.message||err2);
+        if(msg.indexOf('404')>=0) showDenied('BCR_Access list not found on '+site+' — check listsSiteUrl');
+        else showDenied('Cannot read BCR_Access — '+msg);
+        return;
+      }
+      var rows=data2.d&&data2.d.results?data2.d.results:[];
+      var row=findAccessInList(rows,USER.email);
+      if(!row){
+        showDenied('No BCR_Access row for '+USER.email+' — add this email on billingsupport (current list has '+rows.length+' row(s))');
+        return;
+      }
       setupLanding({Title:row.Title||USER.name,User_Email:row.User_Email||USER.email,Role:row.Role||'Agent'});
       bcrIcons();
     });
