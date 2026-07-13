@@ -232,10 +232,13 @@ select,input,textarea,button{font-family:inherit}
 #bcr-root{position:relative;width:100%;isolation:isolate;display:block;box-sizing:border-box;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--t1);line-height:1.5;overflow:hidden}
 #bcr-root *,#bcr-root *::before,#bcr-root *::after{box-sizing:border-box}
 #bcr-root a,#bcr-root button,#bcr-root h1,#bcr-root h2,#bcr-root h3,#bcr-root p,#bcr-root .insight-title,#bcr-root .insight-sub,#bcr-root .stat-label,#bcr-root .stat-subtitle,#bcr-root .mt-label,#bcr-root .nav-item,#bcr-root .panel-title,#bcr-root .dash-sub,#bcr-root .export-btn,#bcr-root .landing-brand-title,#bcr-root .landing-title{text-decoration:none!important}
-#bcr-stage{position:relative;width:100%;min-height:640px;overflow:hidden}
-#bcr-root .bcr-view{display:none!important;visibility:hidden!important;position:absolute!important;left:0!important;top:0!important;width:100%!important;z-index:-9999!important;pointer-events:none!important;height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:none!important}
-#bcr-root #landingPage.bcr-on{display:flex!important;visibility:visible!important;position:relative!important;z-index:2!important;pointer-events:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:640px!important;flex-wrap:wrap;width:100%;padding:1.5rem 1rem;margin:0}
-#bcr-root #portalShell.bcr-on{display:flex!important;visibility:visible!important;position:relative!important;z-index:2!important;pointer-events:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:100vh!important;flex-direction:column!important;width:100%;margin:0 auto;padding:0}
+#bcr-root, #bcr-root *{text-decoration:none!important}
+#bcr-root *:hover,#bcr-root *:focus,#bcr-root *:active{text-decoration:none!important;border-bottom:none!important;box-shadow:none!important}
+#bcr-root label,#bcr-root .form-label,#bcr-root .review-key,#bcr-root .review-val,#bcr-root .form-section-title,#bcr-root .landing-feature-title,#bcr-root .landing-feature-desc{cursor:default;text-decoration:none!important}
+#bcr-stage{position:relative;width:100%;overflow:hidden}
+#bcr-root .bcr-view,#bcr-root .bcr-off{display:none!important;visibility:hidden!important;position:absolute!important;left:-9999px!important;top:0!important;width:0!important;z-index:-9999!important;pointer-events:none!important;height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:none!important}
+#bcr-root #landingPage.bcr-on{display:flex!important;visibility:visible!important;position:relative!important;left:0!important;z-index:2!important;pointer-events:auto!important;width:100%!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:600px!important;flex-wrap:wrap;padding:1.5rem 1rem;margin:0}
+#bcr-root #portalShell.bcr-on{display:flex!important;visibility:visible!important;position:absolute!important;left:0!important;top:0!important;right:0!important;z-index:5!important;pointer-events:auto!important;width:100%!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:100vh!important;flex-direction:column!important;margin:0!important;padding:0!important;background:var(--bg-body)}
 #bcr-root .landing-left,#bcr-root .landing-right{align-items:flex-start;padding:1rem 1.25rem}
 #bcr-root [data-lucide]{stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
 .insight-ico{display:flex;align-items:center;justify-content:center}
@@ -362,6 +365,18 @@ var RECORD_SP_FIELDS = [
   'Service_Status','Plan_Name','Complaint_Summary','Complaint_Details','Action_Taken',
   'Manager_Callback','TDRA_Mentioned','Script_Topic','Duplicate_Flag','Previous_Entry_ID','Internal_Notes'
 ];
+var SP_BOOL_FIELDS = ['Currently_In_UAE','Manager_Callback','TDRA_Mentioned','Duplicate_Flag'];
+function toSpBool(v){
+  if(v===true||v===false) return v;
+  var s=String(v||'').trim().toLowerCase();
+  if(s==='yes'||s==='true'||s==='1') return true;
+  return false;
+}
+function fromSpBool(v){
+  if(v===true) return 'Yes';
+  if(v===false) return 'No';
+  return v==null?'':String(v);
+}
 
 var BCR_ACCESS = [
   { Title:'Tehleel Lone', User_Email:'tehleel.lone@du.ae', Role:'Admin' },
@@ -482,27 +497,20 @@ function hideLoading(){ $('loadingOverlay').style.display='none'; }
 function hideView(el){
   if(!el) return;
   el.classList.remove('bcr-on');
-  el.style.display='none';
-  el.style.visibility='hidden';
-  el.style.position='absolute';
-  el.style.left='0';
-  el.style.top='0';
-  el.style.width='100%';
-  el.style.zIndex='-9999';
-  el.style.height='0';
-  el.style.maxHeight='0';
-  el.style.overflow='hidden';
-  el.style.pointerEvents='none';
+  el.classList.add('bcr-off');
+  el.style.cssText='display:none!important;visibility:hidden!important;position:absolute!important;left:-9999px!important;top:0!important;width:0!important;height:0!important;max-height:0!important;overflow:hidden!important;z-index:-9999!important;pointer-events:none!important;margin:0!important;padding:0!important;border:none!important;';
 }
 function showView(el,display){
   if(!el) return;
+  el.classList.remove('bcr-off');
   el.classList.add('bcr-on');
+  el.style.cssText='';
   el.style.display=display||'flex';
   el.style.visibility='visible';
   el.style.position='relative';
   el.style.zIndex='2';
-  el.style.left='';
-  el.style.top='';
+  el.style.left='0';
+  el.style.top='0';
   el.style.width='100%';
   el.style.height='auto';
   el.style.maxHeight='none';
@@ -511,15 +519,34 @@ function showView(el,display){
 }
 function showLanding(){
   hideView($('portalShell'));
+  var stage=$('bcr-stage');
+  if(stage) stage.style.minHeight='600px';
   showView($('landingPage'),'flex');
-  try{ window.scrollTo(0,0); }catch(e){}
+  scrollBcrTop();
 }
 function showPortal(){
   hideView($('landingPage'));
   var portal=$('portalShell');
-  showView(portal,'flex');
-  portal.style.flexDirection='column';
-  try{ window.scrollTo(0,0); }catch(e){}
+  var stage=$('bcr-stage');
+  if(stage && portal){
+    stage.style.minHeight='0';
+    stage.insertBefore(portal, stage.firstChild);
+  }
+  if(portal){
+    portal.style.cssText='display:flex!important;visibility:visible!important;position:absolute!important;left:0!important;top:0!important;width:100%!important;min-height:100vh!important;flex-direction:column!important;z-index:5!important;background:var(--bg-body);';
+    portal.classList.remove('bcr-off');
+    portal.classList.add('bcr-on');
+  }
+  scrollBcrTop();
+}
+function scrollBcrTop(){
+  try{
+    var root=$('bcr-root')||$('bcr-stage');
+    if(root&&root.scrollIntoView) root.scrollIntoView({behavior:'instant',block:'start'});
+    window.scrollTo(0,0);
+    if(document.documentElement) document.documentElement.scrollTop=0;
+    if(document.body) document.body.scrollTop=0;
+  }catch(e){}
 }
 
 function getSpSite(){
@@ -586,7 +613,11 @@ function spPost(url,body,cb){
 }
 function spMapItem(item){
   var o={Id:item.Id};
-  RECORD_SP_FIELDS.forEach(function(f){ if(f!=='Id'&&item[f]!=null) o[f]=item[f]; });
+  RECORD_SP_FIELDS.forEach(function(f){
+    if(f==='Id') return;
+    if(item[f]==null) return;
+    o[f]= SP_BOOL_FIELDS.indexOf(f)>=0 ? fromSpBool(item[f]) : item[f];
+  });
   return makeRecord(o);
 }
 function loadRecordsFromSharePoint(cb){
@@ -605,7 +636,8 @@ function saveRecordToSharePoint(rec,cb){
     if(!listType){ toast('Cannot resolve list type for '+SP_CONFIG.recordsList,'error'); if(cb)cb(new Error('no list type')); return; }
     var body={__metadata:{type:listType}};
     RECORD_SP_FIELDS.forEach(function(f){
-      if(f==='Id')return;
+      if(f==='Id') return;
+      if(SP_BOOL_FIELDS.indexOf(f)>=0){ body[f]=toSpBool(rec[f]); return; }
       if(rec[f]!=null&&rec[f]!=='') body[f]=rec[f];
     });
     spPost(site+spListPath(SP_CONFIG.recordsList,'/items'),body,function(err,data){
@@ -1701,9 +1733,10 @@ function setupLanding(user){
 function launchPortal(){
   showPortal();
   BCR.view=isAdmin()?'dashboard':'form'; BCR.formMode='entry'; BCR.pending={};
-  if(USE_DUMMY){ hideLoading(); renderMain(); return; }
+  function done(){ hideLoading(); scrollBcrTop(); renderMain(); }
+  if(USE_DUMMY){ done(); return; }
   showLoading('Loading records...');
-  loadRecords(function(){ hideLoading(); renderMain(); });
+  loadRecords(done);
 }
 
 /* ── theme ───────────────────────────────────────────────── */
