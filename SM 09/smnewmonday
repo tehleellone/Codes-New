@@ -6,11 +6,31 @@
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
 
+/* Early global stub — prevents "initSEMailbox is not defined" if script fails mid-load */
+(function(w) {
+    if (!w) return;
+    w.__SEMAILBOX_VERSION = '6.5';
+    w.initSEMailbox = function() {
+        if (w.SEMailbox && typeof w.SEMailbox.init === 'function') return w.SEMailbox.init();
+        console.error('[SEMailbox] Script did not finish loading. Re-upload semailbox.js to SharePoint Shared Documents and hard-refresh (Ctrl+F5).');
+        var root = document.getElementById('semailbox-root');
+        if (root) root.innerHTML = '<div style="padding:20px;color:#e74c3c;font-weight:700;">SE Mailbox script failed to load.<br><span style="font-size:13px;font-weight:500;">Re-upload <b>semailbox.js</b> to SharePoint Shared Documents, then press Ctrl+F5.</span></div>';
+    };
+})(typeof window !== 'undefined' ? window : null);
+
+function mbSafeStorageGet(key) {
+    try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
+}
+function mbSafeStorageSet(key, val) {
+    try { localStorage.setItem(key, val); } catch (e) {}
+}
+
 /* ── CONFIG ──────────────────────────────────────────────────── */
 const MB_CONFIG = {
-    SP_SITE:      (typeof _spPageContextInfo !== 'undefined' && _spPageContextInfo)
+    SP_SITE:      (typeof _spPageContextInfo !== 'undefined' && _spPageContextInfo && _spPageContextInfo.webAbsoluteUrl)
                     ? _spPageContextInfo.webAbsoluteUrl
-                    : (window.location.origin + '/sites/SM'),
+                    : ((typeof window !== 'undefined' && window.location && window.location.origin)
+                        ? window.location.origin : '') + '/sites/SM',
     SP_DOC_LIB:  'Shared Documents',
     SP_FILE_NAME: 'SEMailbox_Data.xlsx',
     ACCT_MAP_LIST:'Account Mapping',
@@ -63,7 +83,7 @@ let MB = {
     activeSourceFilter: null,  // sender type key (lowercase) or 'repeat'
 
     dataLoaded:   false,
-    lastFileName: localStorage.getItem(MB_CONFIG.STORAGE_KEY) || '',
+    lastFileName: mbSafeStorageGet('semailbox_last_file_name'),
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -434,7 +454,7 @@ async function mbSaveToSP(arrayBuffer, fileName) {
             credentials:'include', body:arrayBuffer,
         });
         if (!res.ok) throw new Error('Upload failed');
-        localStorage.setItem(MB_CONFIG.STORAGE_KEY, fileName);
+        mbSafeStorageSet(MB_CONFIG.STORAGE_KEY, fileName);
         MB.lastFileName = fileName;
         mbShowToast('✅ Saved to SharePoint','success');
     } catch(e) { mbShowToast('⚠ SP save failed','warning'); }
@@ -1854,25 +1874,44 @@ function mbInjectShell() {
 let _mbInited = false;
 const SEMailbox = {
     async init() {
-        const isAdmin = window.USER_CONTEXT && window.USER_CONTEXT.isAdmin;
-        mbInjectShell();
+        try {
+            const isAdmin = window.USER_CONTEXT && window.USER_CONTEXT.isAdmin;
+            const root = document.getElementById('semailbox-root');
+            if (!root) {
+                console.error('[SEMailbox] #semailbox-root not found in page.');
+                return;
+            }
+            mbInjectShell();
 
-        document.getElementById('mb-ag-search').oninput   = e => mbSearch(e.target.value);
+            const search = document.getElementById('mb-ag-search');
+            if (search) search.oninput = e => mbSearch(e.target.value);
 
-        if (isAdmin) {
-            const area = document.getElementById('mb-upload-area');
-            if (area) { area.style.display='block'; mbBuildUploadBtn(MB.lastFileName); }
+            if (isAdmin) {
+                const area = document.getElementById('mb-upload-area');
+                if (area) { area.style.display='block'; mbBuildUploadBtn(MB.lastFileName); }
+            }
+            if (typeof lucide!=='undefined') lucide.createIcons();
+
+            if (_mbInited && MB.dataLoaded) { mbRenderAll(); return; }
+            _mbInited = true;
+
+            await mbLoadAccountMapping();
+            const loaded = await mbLoadFromSP();
+            if (!loaded) mbShowStatus(isAdmin
+                ? 'No saved data — upload the TSM SE MailBox Excel file.'
+                : 'No mailbox data available.');
+        } catch (err) {
+            console.error('[SEMailbox] init failed:', err);
+            const root = document.getElementById('semailbox-root');
+            if (root) root.innerHTML = '<div style="padding:20px;color:#e74c3c;font-weight:700;">SE Mailbox failed to start: ' + (err.message || err) + '</div>';
         }
-        if (typeof lucide!=='undefined') lucide.createIcons();
-
-        if (_mbInited && MB.dataLoaded) { mbRenderAll(); return; }
-        _mbInited = true;
-
-        await mbLoadAccountMapping();
-        const loaded = await mbLoadFromSP();
-        if (!loaded) mbShowStatus(isAdmin
-            ? 'No saved data — upload the TSM SE MailBox Excel file.'
-            : 'No mailbox data available.');
     }
 };
-function initSEMailbox() { SEMailbox.init(); }
+function initSEMailbox() { return SEMailbox.init(); }
+
+/* Expose globals for SharePoint inline handlers */
+if (typeof window !== 'undefined') {
+    window.SEMailbox = SEMailbox;
+    window.initSEMailbox = initSEMailbox;
+    window.MB = MB;
+}
