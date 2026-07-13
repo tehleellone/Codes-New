@@ -15,10 +15,10 @@ body[data-theme="magenta"]{--bg-body:linear-gradient(145deg,#f9f0ff,#fce7ff,#f5e
 body[data-theme="magenta-dark"]{--bg-body:linear-gradient(145deg,#120820,#1e0d33,#160a28);--bg-card:#1f0d38;--bg-header:rgba(18,8,32,.98);--bg-sidebar:linear-gradient(180deg,#230f3d,#1a0a2e);--bg-content:#160a28;--bg-input:rgba(168,85,247,.12);--bg-secondary:rgba(168,85,247,.08);--bg-hover:rgba(168,85,247,.12);--border:rgba(168,85,247,.2);--border-s:rgba(168,85,247,.5);--t1:#f3e8ff;--t2:#c4b5fd;--t3:#8b5cf6;--acc:#c084fc;--acc2:#e879f9;--glow:rgba(192,132,252,.35);--grad:linear-gradient(135deg,#9248b9,#c724b1);--nab:rgba(168,85,247,.16);--nab2:rgba(168,85,247,.45);--sc:#e879f9;--cs:0 2px 16px rgba(0,0,0,.5);--ch:0 6px 24px rgba(168,85,247,.25);--chip:rgba(168,85,247,.15)}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:var(--bg-body);color:var(--t1);min-height:100vh;line-height:1.5;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:var(--bg-body);color:var(--t1);min-height:100vh;line-height:1.5;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased;margin:0!important;padding:0!important}
 select,input,textarea,button{font-family:inherit}
 .portal-shell{max-width:1800px;margin:0 auto;width:100%;flex-direction:column}
-.header{background:var(--bg-header);border-bottom:1px solid var(--border);backdrop-filter:blur(16px);padding:0 1.25rem;height:56px;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:200}
+.header{background:var(--bg-header);border-bottom:1px solid var(--border);backdrop-filter:blur(16px);padding:0 1.25rem;height:56px;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:relative;top:auto;z-index:200;flex-shrink:0}
 .logo-section{display:flex;align-items:center;gap:.65rem}
 .logo{width:36px;height:36px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px var(--glow)}
 .logo svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2}
@@ -229,16 +229,14 @@ select,input,textarea,button{font-family:inherit}
 @media(max-width:900px){.chart-grid{grid-template-columns:1fr}.landing-page{flex-direction:column}}
 @media(max-width:768px){.form-grid{grid-template-columns:1fr}.header-center{display:none}}
 @media print{body *{visibility:hidden}#printArea,#printArea *{visibility:visible}#printArea{position:absolute;left:0;top:0;width:100%}}
-#bcr-root{position:relative;width:100%;isolation:isolate;display:block;box-sizing:border-box;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--t1);line-height:1.5}
+#bcr-root{position:relative;width:100%;isolation:isolate;display:block;box-sizing:border-box;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--t1);line-height:1.5;overflow:hidden}
 #bcr-root *,#bcr-root *::before,#bcr-root *::after{box-sizing:border-box}
 #bcr-root a,#bcr-root button,#bcr-root h1,#bcr-root h2,#bcr-root h3,#bcr-root p,#bcr-root .insight-title,#bcr-root .insight-sub,#bcr-root .stat-label,#bcr-root .stat-subtitle,#bcr-root .mt-label,#bcr-root .nav-item,#bcr-root .panel-title,#bcr-root .dash-sub,#bcr-root .export-btn,#bcr-root .landing-brand-title,#bcr-root .landing-title{text-decoration:none!important}
-#bcr-root .landing-page{min-height:auto!important;height:auto!important;padding:1.5rem 1rem}
-#bcr-root .landing-left,#bcr-root .landing-right{align-items:flex-start!important;padding:1rem 1.25rem}
-#bcr-root .landing-right .landing-container{margin-top:0}
-#bcr-root #landingPage{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;min-height:0!important;margin:0!important;padding:0!important;pointer-events:none!important}
-#bcr-root #landingPage.bcr-active{display:flex!important;visibility:visible!important;height:auto!important;overflow:visible!important;min-height:520px!important;margin:0!important;padding:1.5rem 1rem!important;pointer-events:auto!important;flex-wrap:wrap;width:100%}
-#bcr-root #portalShell{display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;overflow:hidden!important;min-height:0!important;margin:0!important;padding:0!important;border:none!important;pointer-events:none!important}
-#bcr-root #portalShell.bcr-active{display:flex!important;visibility:visible!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:100vh!important;margin:0 auto!important;padding:0!important;pointer-events:auto!important;flex-direction:column!important}
+#bcr-stage{position:relative;width:100%;min-height:640px;overflow:hidden}
+#bcr-root .bcr-view{display:none!important;visibility:hidden!important;position:absolute!important;left:0!important;top:0!important;width:100%!important;z-index:-9999!important;pointer-events:none!important;height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:none!important}
+#bcr-root #landingPage.bcr-on{display:flex!important;visibility:visible!important;position:relative!important;z-index:2!important;pointer-events:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:640px!important;flex-wrap:wrap;width:100%;padding:1.5rem 1rem;margin:0}
+#bcr-root #portalShell.bcr-on{display:flex!important;visibility:visible!important;position:relative!important;z-index:2!important;pointer-events:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;min-height:100vh!important;flex-direction:column!important;width:100%;margin:0 auto;padding:0}
+#bcr-root .landing-left,#bcr-root .landing-right{align-items:flex-start;padding:1rem 1.25rem}
 #bcr-root [data-lucide]{stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
 .insight-ico{display:flex;align-items:center;justify-content:center}
 .nav-item .nav-icon{display:flex;align-items:center;flex-shrink:0;width:17px;height:17px}
@@ -258,7 +256,9 @@ select,input,textarea,button{font-family:inherit}
   <div class="loading-step" id="loadingStep">Initializing...</div>
 </div>
 
-<div id="landingPage" class="landing-page">
+<div id="bcr-stage">
+
+<div id="landingPage" class="landing-page bcr-view" style="display:none;visibility:hidden;position:absolute;z-index:-9999;height:0;overflow:hidden;">
   <div class="landing-left animate-fade-in">
     <div class="landing-branding">
       <div style="margin-bottom:.85rem"><div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div></div>
@@ -292,7 +292,7 @@ select,input,textarea,button{font-family:inherit}
   </div>
 </div>
 
-<div class="portal-shell" id="portalShell">
+<div class="portal-shell bcr-view" id="portalShell" style="display:none;visibility:hidden;position:absolute;z-index:-9999;height:0;overflow:hidden;">
   <div class="header">
     <div class="logo-section">
       <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
@@ -304,7 +304,7 @@ select,input,textarea,button{font-family:inherit}
       <div class="date-badge" id="headerUser" style="color:var(--acc);font-weight:600;"></div>
     </div>
     <div class="header-actions">
-      <button type="button" class="script-toggle-btn" id="headerScriptBtn" style="display:none;">Show_Script</button>
+      <button type="button" class="script-toggle-btn" id="headerScriptBtn" style="display:none;">Show Script</button>
       <select class="color-scheme-selector" id="colorSchemeSelector"><option value="blue">◆ Blue</option><option value="magenta">◆ Magenta</option></select>
       <div class="theme-toggle" id="themeToggle" title="Light / Dark"><svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg></div>
       <button type="button" class="reset-btn" id="logoutBtn" title="Back to landing">Exit</button>
@@ -318,6 +318,8 @@ select,input,textarea,button{font-family:inherit}
     <div class="content" id="mainContent"></div>
   </div>
 </div>
+
+</div><!-- /bcr-stage -->
 
 <div id="toastContainer" class="toast-container"></div>
 <div id="detailDrawer" class="detail-drawer"><div class="detail-drawer-inner" id="detailDrawerInner"></div></div>
@@ -477,15 +479,47 @@ function toast(msg, type){
 }
 function showLoading(step){ $('loadingOverlay').style.display='flex'; if(step) $('loadingStep').textContent=step; }
 function hideLoading(){ $('loadingOverlay').style.display='none'; }
+function hideView(el){
+  if(!el) return;
+  el.classList.remove('bcr-on');
+  el.style.display='none';
+  el.style.visibility='hidden';
+  el.style.position='absolute';
+  el.style.left='0';
+  el.style.top='0';
+  el.style.width='100%';
+  el.style.zIndex='-9999';
+  el.style.height='0';
+  el.style.maxHeight='0';
+  el.style.overflow='hidden';
+  el.style.pointerEvents='none';
+}
+function showView(el,display){
+  if(!el) return;
+  el.classList.add('bcr-on');
+  el.style.display=display||'flex';
+  el.style.visibility='visible';
+  el.style.position='relative';
+  el.style.zIndex='2';
+  el.style.left='';
+  el.style.top='';
+  el.style.width='100%';
+  el.style.height='auto';
+  el.style.maxHeight='none';
+  el.style.overflow='visible';
+  el.style.pointerEvents='auto';
+}
 function showLanding(){
-  var land=$('landingPage'), portal=$('portalShell');
-  if(portal){ portal.classList.remove('bcr-active'); portal.style.display='none'; }
-  if(land){ land.classList.add('bcr-active'); land.style.display='flex'; }
+  hideView($('portalShell'));
+  showView($('landingPage'),'flex');
+  try{ window.scrollTo(0,0); }catch(e){}
 }
 function showPortal(){
-  var land=$('landingPage'), portal=$('portalShell');
-  if(land){ land.classList.remove('bcr-active'); land.style.display='none'; }
-  if(portal){ portal.classList.add('bcr-active'); portal.style.display='flex'; portal.style.flexDirection='column'; }
+  hideView($('landingPage'));
+  var portal=$('portalShell');
+  showView(portal,'flex');
+  portal.style.flexDirection='column';
+  try{ window.scrollTo(0,0); }catch(e){}
 }
 
 function getSpSite(){
@@ -1486,7 +1520,7 @@ function renderForm(){
   var sections={};
   FORM_FIELDS.forEach(function(f){ (sections[f.section]=sections[f.section]||[]).push(f); });
   var html='<div class="dashboard-section agent-form-wrap"><div class="form-card">'
-    +'<div class="table-header"><div class="table-title">New Entry</div><button type="button" class="script-toggle-btn" id="formScriptBtn">Show_Script</button></div>'
+    +'<div class="table-header"><div class="table-title">New Entry</div></div>'
     +'<div id="dupBanner" class="warn-banner" style="display:none"></div>';
   Object.keys(sections).forEach(function(sec){
     html+='<div class="form-section-title">'+pretty(sec)+'</div><div class="form-grid">';
@@ -1508,7 +1542,6 @@ function renderForm(){
   html+='<div class="form-actions"><button type="button" class="btn-secondary" id="formClearBtn">Clear</button><button type="button" class="btn-primary" id="formReviewBtn">Review_And_Confirm</button></div></div></div>';
   c.innerHTML=html;
   populateForm(Object.keys(BCR.pending).length?BCR.pending:getFormDefaults());
-  $('formScriptBtn').onclick=openScript;
   $('formClearBtn').onclick=function(){ BCR.pending={}; populateForm(getFormDefaults()); };
   $('formReviewBtn').onclick=function(){
     var data=collectForm();
@@ -1545,13 +1578,12 @@ function renderReview(){
   var c=$('mainContent'); var d=BCR.pending;
   var html='<div class="dashboard-section agent-form-wrap"><div class="form-card">'
     +'<div class="review-banner">Review all details, then Confirm. Click Edit to make changes.</div>'
-    +'<div class="table-header"><div class="table-title">Review Entry</div><button type="button" class="script-toggle-btn" id="reviewScriptBtn">Show_Script</button></div>';
+    +'<div class="table-header"><div class="table-title">Review Entry</div></div>';
   if(BCR.dupWarn) html+='<div class="warn-banner">⚠️ Duplicate_Flag = Yes · Previous_Entry_ID '+esc(BCR.dupWarn.Reference_ID)+'</div>';
   html+='<div class="review-grid">';
   FORM_FIELDS.forEach(function(f){ html+='<div class="review-item"><div class="review-key">'+f.key+'</div><div class="review-val">'+esc(pretty(d[f.key])||'—')+'</div></div>'; });
   html+='</div><div class="form-actions"><button type="button" class="btn-secondary" id="reviewEditBtn">Edit</button><button type="button" class="btn-primary" id="reviewConfirmBtn">Confirm_Submit</button></div></div></div>';
   c.innerHTML=html;
-  $('reviewScriptBtn').onclick=openScript;
   $('reviewEditBtn').onclick=function(){ BCR.formMode='entry'; renderMain(); };
   $('reviewConfirmBtn').onclick=submitRecord;
 }
@@ -1707,6 +1739,8 @@ function initShellControls(){
 
 /* ── init ────────────────────────────────────────────────── */
 function init(){
+  hideView($('portalShell'));
+  hideView($('landingPage'));
   initTheme();
   initShellControls();
   loadLucide(function(){
