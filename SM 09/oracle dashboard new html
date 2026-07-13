@@ -749,6 +749,7 @@ body.light-theme .data-table thead{
                 <div>
                   <div class="card-title">Active Users</div>
                   <div class="card-value" id="activeUsersValue">-</div>
+                  <div class="card-label" id="activeUsersSub">Status = Active only</div>
                 </div>
                 <div class="card-icon"><i data-lucide="users"></i></div>
               </div>
@@ -758,6 +759,7 @@ body.light-theme .data-table thead{
                 <div>
                   <div class="card-title">No. of Handsets</div>
                   <div class="card-value" id="handsetsValue">-</div>
+                  <div class="card-label" id="handsetsSub">Active + HS contract not expired</div>
                 </div>
                 <div class="card-icon"><i data-lucide="smartphone"></i></div>
               </div>
@@ -935,7 +937,8 @@ var CONFIG = {
 // Master Data stats (Active users + Handsets)
 var MASTER_STATS = {
   activeUsers: null,
-  handsets: null
+  handsets: null,
+  totalRecords: null
 };
 
 // ================= DATA MODEL =================
@@ -1919,6 +1922,7 @@ function loadMasterCounts(){
 
           MASTER_STATS.activeUsers = activeUsers;
           MASTER_STATS.handsets = handsets;
+          MASTER_STATS.totalRecords = rows.length;
           updateTopMetrics();
         }catch(e){
           console.error("Error parsing Master Data response", e);
@@ -1938,6 +1942,10 @@ function updateTopMetrics(){
 
   if(MASTER_STATS.activeUsers != null){
     au.textContent = Number(MASTER_STATS.activeUsers).toLocaleString("en-US");
+    var sub = document.getElementById("activeUsersSub");
+    if(sub && MASTER_STATS.totalRecords != null){
+      sub.textContent = "Status = Active (of " + Number(MASTER_STATS.totalRecords).toLocaleString("en-US") + " total in Master Data)";
+    }
   }else{
     au.textContent = "-";
   }
