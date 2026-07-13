@@ -2005,7 +2005,7 @@
                     html += '<td class="dg-action"><button type="button" class="btn-view" onclick="event.preventDefault();event.stopPropagation();openEdit(\'' + gridType + '\',' + r.Id + ')"><i data-lucide="eye" style="width:13px;height:13px;"></i> View</button></td>';
                     g.columns.forEach(function(c) {
                         var val = r[c.key];
-                        if (c.key === "End_x0020_User_x0020_Email" && (!val || val === "")) val = r.Title || "";
+                        if (c.key === "Title" && g.containerId === "oracleGridContainer") val = r.Title || r.End_x0020_User_x0020_Email || "";
                         if (val != null && val !== "") {
                             // Format dates and datetimes for display
                             if (c.key.indexOf("Date") > -1 || c.key.indexOf("_x0020_Date") > -1 || c.key === "Created" || c.key === "Modified" ||
@@ -2344,7 +2344,7 @@
                 width: 150
             },
             {
-                key: "End_x0020_User_x0020_Email",
+                key: "Title",
                 label: "Email",
                 width: 200
             },
@@ -2555,7 +2555,7 @@
 
         function loadAndRenderOracle() {
             document.getElementById("oracleGridContainer").innerHTML = '<div class="dg-empty"><span class="spinner"></span> Loading all Oracle Activation records...</div>';
-            var url = getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items?$select=Id,Title,End_x0020_User_x0020_Email,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_Last_x0020_,Transaction_x0020_Type,Status,MSISDN,SIM_x0020_Serial_x0020__x0028_IC,SIM_x0020_Type,Tariff_x0020__x0028_Rate_x0020_P,Add_x002d_ons,Device_x0020__x0028_Brand_x0029_,Device_x0020_Subcategory,Capacity,IMEI,Quantity,Request_ID,Remarks,Entity,Subscriber,Account_x0020_Code,PO_x0020_No,PO_x0020_Date,Activity_x0020_Ref_x002e__x0020_,Activity_x0020_Date,SR_x0020_Date,SO_x0020_No,SO_x0020_Creation_x0020_Date,Ship_x0020_To,Update_x0020_Order,Activity_x0020_Ref_x002e__x0020_0,Activity_x0020_Date_x0020_2,SO_x0020_No_x0020_2,SO_x0020_Creation_x0020_Date_x00,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Activation_x0020_Date_x0020__x200,Contract_x0020_End_x0020_Date_x00,Future_x0020_Termination_x0020_D,Reason,Pending_x0020_With,Email_x0020_Received,Logged_x0020_in_x0020_SP,Completed_x0020_Date,Created,Modified&$orderby=Modified desc";
+            var url = getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items?$select=Id,Title,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_Last_x0020_,Transaction_x0020_Type,Status,MSISDN,SIM_x0020_Serial_x0020__x0028_IC,SIM_x0020_Type,Tariff_x0020__x0028_Rate_x0020_P,Add_x002d_ons,Device_x0020__x0028_Brand_x0029_,Device_x0020_Subcategory,Capacity,IMEI,Quantity,Request_ID,Remarks,Entity,Subscriber,Account_x0020_Code,PO_x0020_No,PO_x0020_Date,Activity_x0020_Ref_x002e__x0020_,Activity_x0020_Date,SR_x0020_Date,SO_x0020_No,SO_x0020_Creation_x0020_Date,Ship_x0020_To,Update_x0020_Order,Activity_x0020_Ref_x002e__x0020_0,Activity_x0020_Date_x0020_2,SO_x0020_No_x0020_2,SO_x0020_Creation_x0020_Date_x00,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Activation_x0020_Date_x0020__x200,Contract_x0020_End_x0020_Date_x00,Future_x0020_Termination_x0020_D,Reason,Pending_x0020_With,Email_x0020_Received,Logged_x0020_in_x0020_SP,Completed_x0020_Date,Created,Modified&$orderby=Modified desc";
             fetchAllItems(url, [], function(items, err) {
                 if (err) {
                     document.getElementById("oracleGridContainer").innerHTML = '<div class="dg-empty" style="color:#ef4444;">Error: ' + (err.text || JSON.stringify(err)) + '</div>';
@@ -2615,7 +2615,7 @@
             } else {
                 document.getElementById("oa_requestid").value = row.Request_ID || "";
                 document.getElementById("oa_requestIdCard").style.display = row.Request_ID ? "block" : "none";
-                document.getElementById("oa_email").value = row.End_x0020_User_x0020_Email || row.Title || "";
+                document.getElementById("oa_email").value = row.Title || "";
                 document.getElementById("oa_firstname").value = row.End_x0020_User_x0020_First_x0020 || "";
                 document.getElementById("oa_lastname").value = row.End_x0020_User_x0020_Last_x0020_ || "";
                 document.getElementById("oa_entity").value = row.Entity || "";
@@ -2877,7 +2877,6 @@
             var email = document.getElementById("oa_email").value.trim();
             return {
                 Title: email,
-                End_x0020_User_x0020_Email: email,
                 End_x0020_User_x0020_First_x0020: document.getElementById("oa_firstname").value || null,
                 End_x0020_User_x0020_Last_x0020_: document.getElementById("oa_lastname").value || null,
                 Entity: document.getElementById("oa_entity").value || null,
@@ -3411,7 +3410,7 @@
                     renderBulkReviewTable();
                 });
             } else {
-                var url = getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items?$select=Id,Title,End_x0020_User_x0020_Email,Request_ID,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_Last_x0020_,Transaction_x0020_Type,Status,MSISDN,SIM_x0020_Serial_x0020__x0028_IC,SIM_x0020_Type,Tariff_x0020__x0028_Rate_x0020_P,Add_x002d_ons,Device_x0020__x0028_Brand_x0029_,Device_x0020_Subcategory,Capacity,IMEI,Quantity,Remarks,Entity,Subscriber,Account_x0020_Code,PO_x0020_No,PO_x0020_Date,Activity_x0020_Ref_x002e__x0020_,Activity_x0020_Date,SR_x0020_Date,SO_x0020_No,SO_x0020_Creation_x0020_Date,Ship_x0020_To,Update_x0020_Order,Activity_x0020_Ref_x002e__x0020_0,Activity_x0020_Date_x0020_2,SO_x0020_No_x0020_2,SO_x0020_Creation_x0020_Date_x00,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Activation_x0020_Date_x0020__x200,Contract_x0020_End_x0020_Date_x00,Future_x0020_Termination_x0020_D,Reason,Pending_x0020_With,Email_x0020_Received,Logged_x0020_in_x0020_SP,Completed_x0020_Date";
+                var url = getSite() + "/_api/web/lists/getbytitle('Oracle Activation')/items?$select=Id,Title,Request_ID,End_x0020_User_x0020_First_x0020,End_x0020_User_x0020_Last_x0020_,Transaction_x0020_Type,Status,MSISDN,SIM_x0020_Serial_x0020__x0028_IC,SIM_x0020_Type,Tariff_x0020__x0028_Rate_x0020_P,Add_x002d_ons,Device_x0020__x0028_Brand_x0029_,Device_x0020_Subcategory,Capacity,IMEI,Quantity,Remarks,Entity,Subscriber,Account_x0020_Code,PO_x0020_No,PO_x0020_Date,Activity_x0020_Ref_x002e__x0020_,Activity_x0020_Date,SR_x0020_Date,SO_x0020_No,SO_x0020_Creation_x0020_Date,Ship_x0020_To,Update_x0020_Order,Activity_x0020_Ref_x002e__x0020_0,Activity_x0020_Date_x0020_2,SO_x0020_No_x0020_2,SO_x0020_Creation_x0020_Date_x00,Activation_x0020_Date_x0020__x20,Contract_x0020_Start_x0020_Date_,Contract_x0020_End_x0020_Date_x0,Activation_x0020_Date_x0020__x200,Contract_x0020_End_x0020_Date_x00,Future_x0020_Termination_x0020_D,Reason,Pending_x0020_With,Email_x0020_Received,Logged_x0020_in_x0020_SP,Completed_x0020_Date";
                 fetchAllItems(url, [], function(items) {
                     var map = {};
                     items.forEach(function(it) {
@@ -3556,7 +3555,6 @@
                 }
                 return {
                     Title: r.Email || null,
-                    End_x0020_User_x0020_Email: r.Email || null,
                     End_x0020_User_x0020_First_x0020: r.FirstName || null,
                     End_x0020_User_x0020_Last_x0020_: r.LastName || null,
                     Entity: r.Entity || null,
