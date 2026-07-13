@@ -17,7 +17,7 @@ a,a:hover,a:focus,a:active,label,label:hover,span:hover,div:hover,p:hover,.form-
 #dashboardContent{display:none!important;width:100%}
 #dashboardContent.bcr-show{display:flex!important;flex-direction:column!important;width:100%!important;min-height:100vh!important;background:var(--bg-body)!important;margin:0!important;padding:0!important}
 #dashboardContent.bcr-show .main-container{flex:1;min-height:0;overflow:hidden}
-#dashboardContent.bcr-show .content{overflow-y:auto;-webkit-overflow-scrolling:touch}
+#dashboardContent.bcr-show #bcrMainPanel{overflow-y:auto;-webkit-overflow-scrolling:touch}
 .landing-page{min-height:100vh;display:flex!important;flex-direction:row!important;background:var(--bg-body);width:100%}
 .landing-left,.landing-right{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem}
 .portal-shell{max-width:1800px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-body);width:100%}
@@ -239,8 +239,14 @@ select,input,textarea,button{font-family:inherit}
 .script-acc-item.open .chev{transform:rotate(180deg)}
 .script-acc-body{display:none;padding:.85rem 1rem;font-size:.82rem;color:var(--t2);line-height:1.65;border-top:1px solid var(--border)}
 .script-acc-item.open .script-acc-body{display:block}
-.agent-mode .sidebar{display:none}
-.agent-mode .content{padding:1.5rem}
+.agent-mode #bcrSidebar{display:none!important;width:0!important;min-width:0!important;border:none!important;padding:0!important;margin:0!important;overflow:hidden!important}
+.agent-mode #bcrSidebarToggle{display:none!important}
+.agent-mode .main-container{display:flex!important;width:100%!important}
+.agent-mode #bcrMainPanel{width:100%!important;flex:1 1 auto!important;padding:1.25rem 1.5rem!important}
+.admin-mode #bcrSidebar{display:flex!important;flex-direction:column!important}
+#dashboardContent.bcr-show{height:100vh!important;max-height:100vh!important;overflow:hidden!important}
+#dashboardContent.bcr-show .main-container{flex:1 1 0!important;min-height:0!important;display:flex!important;overflow:hidden!important}
+#dashboardContent.bcr-show #bcrMainPanel{flex:1 1 0!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;width:100%!important;display:block!important}
 .agent-form-wrap{max-width:1100px;margin:0 auto}
 @media(max-width:900px){.chart-grid{grid-template-columns:1fr}.landing-page{flex-direction:column}}
 @media(max-width:768px){.form-grid{grid-template-columns:1fr}.header-center{display:none}}
@@ -314,11 +320,11 @@ select,input,textarea,button{font-family:inherit}
     </div>
   </div>
   <div class="main-container">
-    <div class="sidebar" id="sidebar" style="position:relative;">
-      <div class="sidebar-toggle-btn" id="sidebarToggle"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
-      <div class="nav-items" id="navItems"></div>
+    <div class="sidebar" id="bcrSidebar" style="position:relative;">
+      <div class="sidebar-toggle-btn" id="bcrSidebarToggle"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <div class="nav-items" id="bcrNavItems"></div>
     </div>
-    <div class="content" id="mainContent"></div>
+    <div class="content" id="bcrMainPanel"></div>
   </div>
 </div>
 
@@ -448,7 +454,14 @@ var BCR = {
 FILTER_DIMS.forEach(function(d){ BCR.filters[d.id] = []; });
 
 /* ── helpers ─────────────────────────────────────────────── */
-function $(id){ return document.getElementById(id); }
+function $(id){
+  var app=document.getElementById('bcrApp');
+  if(app){
+    var inside=app.querySelector('[id="'+id+'"]');
+    if(inside) return inside;
+  }
+  return document.getElementById(id);
+}
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normEmail(e){ return String(e||'').trim().toLowerCase(); }
 function emailKey(e){
@@ -464,7 +477,13 @@ function findAccessInList(rows,email){
   }
   return null;
 }
-function isAdmin(){ return USER.role === 'Admin'; }
+function normalizeRole(r){
+  r=String(r||'Agent').trim();
+  if(/^admin$/i.test(r)) return 'Admin';
+  if(/^agent$/i.test(r)) return 'Agent';
+  return r;
+}
+function isAdmin(){ return USER.role==='Admin'; }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function monthStr(d){ var dt=new Date(d); return isNaN(dt)?'':MONTHS[dt.getMonth()]+' '+dt.getFullYear(); }
@@ -831,7 +850,7 @@ function getStats(list){
 
 /* ── render orchestrator ─────────────────────────────────── */
 function renderDashboard(){
-  var c = $('mainContent');
+  var c = $('bcrMainPanel');
   c.innerHTML = ''
     + '<div class="dashboard-section">'
     + '<div class="dash-head"><div><div class="section-title">Dashboard</div><div class="dash-sub">Barred account customer contacts — click any tile to filter</div></div>'
@@ -1572,7 +1591,7 @@ function getFormDefaults(){
   return o;
 }
 function renderForm(){
-  var c=$('mainContent');
+  var c=$('bcrMainPanel');
   var sections={};
   FORM_FIELDS.forEach(function(f){ (sections[f.section]=sections[f.section]||[]).push(f); });
   var html='<div class="dashboard-section agent-form-wrap"><div class="form-card">'
@@ -1641,7 +1660,7 @@ function updateDupBanner(msisdn){
   else { box.style.display='none'; box.innerHTML=''; }
 }
 function renderReview(){
-  var c=$('mainContent'); var d=BCR.pending;
+  var c=$('bcrMainPanel'); var d=BCR.pending;
   var html='<div class="dashboard-section agent-form-wrap"><div class="form-card">'
     +'<div class="review-banner">Review all details, then Confirm. Click Edit to make changes.</div>'
     +'<div class="table-header"><div class="table-title">Review Entry</div></div>';
@@ -1700,8 +1719,23 @@ function closeScript(){ $('scriptPanel').classList.remove('open'); }
 $('scriptPanel').onclick=function(e){ if(e.target.id==='scriptPanel') closeScript(); };
 
 /* ── nav + main render ───────────────────────────────────── */
+function applyShellLayout(){
+  var shell=$('dashboardContent');
+  if(!shell) return;
+  if(isAdmin()){
+    shell.classList.remove('agent-mode');
+    shell.classList.add('admin-mode');
+    if(!BCR.view || (BCR.view!=='dashboard' && BCR.view!=='form')) BCR.view='dashboard';
+  } else {
+    shell.classList.add('agent-mode');
+    shell.classList.remove('admin-mode');
+    BCR.view='form';
+    BCR.formMode=BCR.formMode||'entry';
+  }
+}
 function renderNav(){
-  var nav=$('navItems'); nav.innerHTML='';
+  var nav=$('bcrNavItems'); if(!nav) return;
+  nav.innerHTML='';
   if(!isAdmin()) return;
   nav.innerHTML='<div class="nav-section-label">BCR</div>';
   var items=[
@@ -1718,19 +1752,17 @@ function renderNav(){
   bcrIcons();
 }
 function renderMain(){
+  applyShellLayout();
   renderNav();
   $('headerUser').textContent=USER.name+' · '+USER.role;
   $('headerDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   var showScript = (!isAdmin()) || BCR.view==='form';
   $('headerScriptBtn').style.display = showScript ? 'inline-flex' : 'none';
   $('headerScriptBtn').onclick=openScript;
-  var shell=$('dashboardContent');
   if(!isAdmin()){
-    shell.classList.add('agent-mode');
     if(BCR.formMode==='review') renderReview(); else renderForm();
     return;
   }
-  shell.classList.remove('agent-mode');
   if(BCR.view==='form'){ if(BCR.formMode==='review') renderReview(); else renderForm(); }
   else renderDashboard();
 }
@@ -1749,7 +1781,7 @@ var LANDING_FEATURES = {
   ]
 };
 function setupLanding(user){
-  USER.name=user.Title; USER.email=user.User_Email; USER.role=user.Role;
+  USER.name=user.Title; USER.email=user.User_Email; USER.role=normalizeRole(user.Role);
   $('lAvatar').textContent=initials(USER.name);
   $('lName').textContent=USER.name; $('lEmail').textContent=USER.email; $('lRole').textContent=USER.role;
   var feats=LANDING_FEATURES[USER.role]||LANDING_FEATURES.Agent;
@@ -1767,7 +1799,10 @@ function setupLanding(user){
 }
 function launchPortal(){
   showDashboard();
-  BCR.view=isAdmin()?'dashboard':'form'; BCR.formMode='entry'; BCR.pending={};
+  BCR.view=isAdmin()?'dashboard':'form';
+  BCR.formMode='entry';
+  BCR.pending={};
+  applyShellLayout();
   $('loadingOverlay').style.display='flex';
   $('loadingStep').textContent='Loading records...';
   function done(){
@@ -1807,7 +1842,7 @@ function initDev(){
 
 /* ── sidebar / exit ──────────────────────────────────────── */
 function initShellControls(){
-  $('sidebarToggle').onclick=function(){ $('sidebar').classList.toggle('collapsed'); };
+  $('bcrSidebarToggle').onclick=function(){ var sb=$('bcrSidebar'); if(sb) sb.classList.toggle('collapsed'); };
   $('logoutBtn').onclick=function(){ showLandingPage(); };
 }
 
