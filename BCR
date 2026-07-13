@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BCR — Barred Contact Registry</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/32.0.2/ag-grid-community.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-grid.css">
+<link rel="stylesheet" href="https://unpkg.com/ag-grid-community@32.0.2/styles/ag-theme-alpine.css">
+<style id="bcr-styles">/* BCR_STYLES_PLACEHOLDER */</style>
+</head>
+<body data-theme="blue">
+
+<div id="loadingOverlay" class="loading-overlay" style="display:none;">
+  <div class="loading-logo"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+  <div class="loading-title">BCR Portal</div>
+  <div class="loading-subtitle">Loading workspace...</div>
+  <div class="loading-bar-wrap"><div class="loading-bar-fill"></div></div>
+  <div class="loading-step" id="loadingStep">Initializing...</div>
+</div>
+
+<div id="landingPage" class="landing-page" style="display:none;">
+  <div class="landing-left animate-fade-in">
+    <div class="landing-branding">
+      <div style="margin-bottom:.85rem"><div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div></div>
+      <h1 class="landing-brand-title">BCR<br><span>Barred Contact Registry</span></h1>
+      <p class="landing-brand-subtitle" id="landingTagline">Log every customer reach-out. Script-guided. TDRA compliant.</p>
+      <div class="landing-features" id="landingFeatures"></div>
+    </div>
+  </div>
+  <div class="landing-right">
+    <div class="landing-container">
+      <div class="landing-header animate-slide-up">
+        <div class="landing-logo"><div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div></div>
+        <h1 class="landing-title">Welcome</h1>
+        <p class="landing-subtitle">Sign in to access BCR</p>
+      </div>
+      <div class="landing-card animate-slide-up">
+        <div class="welcome-badge"><span class="badge-pulse"></span><span>BCR Portal</span></div>
+        <div class="landing-user-info">
+          <div class="landing-avatar"><div class="avatar-ring"></div><div class="avatar-placeholder" id="lAvatar">?</div></div>
+          <div class="landing-details"><h3 id="lName">Select user</h3><p id="lEmail">Use dev login below</p><p id="lRole" class="landing-role">—</p></div>
+        </div>
+        <div class="landing-actions">
+          <button type="button" id="launchBtn" class="landing-btn btn-primary-enhanced" disabled>
+            <span class="btn-text" id="launchBtnText">Select a test user...</span>
+          </button>
+          <p class="landing-note" id="accessNote"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg><span>Ctrl+Shift+D to switch test users</span></p>
+        </div>
+      </div>
+      <div class="landing-footer"><p>BCR · Barred Contact Registry · Dummy Mode</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="portal-shell" id="portalShell" style="display:none;">
+  <div class="header">
+    <div class="logo-section">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <span class="header-title">BCR — Barred Contact Registry</span>
+    </div>
+    <div class="header-center">
+      <div class="live-badge-pill"><span class="status-dot"></span><span>Live</span></div>
+      <div class="date-badge" id="headerDate"></div>
+      <div class="date-badge" id="headerUser" style="color:var(--acc);font-weight:600;"></div>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="script-toggle-btn" id="headerScriptBtn" style="display:none;">Show_Script</button>
+      <select class="color-scheme-selector" id="colorSchemeSelector"><option value="blue">◆ Blue</option><option value="magenta">◆ Magenta</option></select>
+      <div class="theme-toggle" id="themeToggle" title="Light / Dark"><svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg></div>
+      <button type="button" class="reset-btn" id="logoutBtn" title="Back to landing">Exit</button>
+    </div>
+  </div>
+  <div class="main-container">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-toggle-btn" id="sidebarToggle"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <div class="nav-items" id="navItems"></div>
+    </div>
+    <div class="content" id="mainContent"></div>
+  </div>
+</div>
+
+<div id="toastContainer" class="toast-container"></div>
+<div id="detailDrawer" class="detail-drawer"><div class="detail-drawer-inner" id="detailDrawerInner"></div></div>
+<div id="scriptPanel" class="script-panel"><div class="script-panel-inner" id="scriptPanelInner"></div></div>
+
+<div class="dev-console" id="devConsole">
+  <span class="dev-console-label">Test Login</span>
+  <select id="devUserSelect"></select>
+  <button type="button" id="devLoginBtn">Login</button>
+</div>
+
+<script id="bcr-script">/* BCR_SCRIPT_PLACEHOLDER */</script>
+</body>
+</html>
