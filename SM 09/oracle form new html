@@ -1761,18 +1761,75 @@
             }
         }
 
+        function parseSharePointDate(dateStr) {
+            if (!dateStr) return null;
+            var s = String(dateStr).trim();
+            var m = s.match(/\/Date\((-?\d+)\)\//);
+            if (m) return new Date(parseInt(m[1], 10));
+            var d = new Date(s);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
         function formatDateForCompare(dateStr) {
             if (!dateStr) return "";
             var s = String(dateStr).trim();
-            var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso && s.length <= 10) return iso[1] + "-" + iso[2] + "-" + iso[3];
-            try {
-                var d = new Date(s);
-                if (isNaN(d.getTime())) return s;
-                return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
-            } catch (e) {
-                return s;
+            if (!s) return "";
+            var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (iso) return iso[1] + "-" + iso[2] + "-" + iso[3];
+            var isoPrefix = s.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/);
+            if (isoPrefix) return isoPrefix[1] + "-" + isoPrefix[2] + "-" + isoPrefix[3];
+            var parts = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            if (parts) {
+                var p1 = parseInt(parts[1], 10);
+                var p2 = parseInt(parts[2], 10);
+                var yr = parseInt(parts[3], 10);
+                var day, mo;
+                if (p1 > 12) {
+                    day = p1;
+                    mo = p2;
+                } else if (p2 > 12) {
+                    day = p2;
+                    mo = p1;
+                } else {
+                    mo = p1;
+                    day = p2;
+                }
+                return yr + "-" + String(mo).padStart(2, "0") + "-" + String(day).padStart(2, "0");
             }
+            var d = parseSharePointDate(s);
+            if (!d) return s;
+            return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        }
+
+        function bulkDatesEqual(csvKey, a, b) {
+            if (!a && !b) return true;
+            if (!a || !b) return false;
+            return normalizeBulkCompareValue(csvKey, a) === normalizeBulkCompareValue(csvKey, b);
+        }
+
+        function getBulkDateKeysForTarget(target) {
+            if (target === "master") {
+                return ["ExpiryDate", "ActivationDateSIM", "ContractStartSIM", "ContractEndSIM", "ContractStartHandset", "ContractEndHandset", "DeactivationDateSIM"];
+            }
+            return ["PODate", "ActivityDate", "SRDate", "SOCreationDate", "ActivityDate2", "SOCreationDate2", "ActivationDateSIM", "ContractStartSIM", "ContractEndSIM", "ActivationDateHandset", "ContractEndHandset", "FutureTermDate", "CompletedDate"];
+        }
+
+        function syncBulkUpdateRowsFromExisting(target) {
+            bulkParsedRows.forEach(function(r) {
+                if (r._bulkAction !== "update" || !r._existing) return;
+                getBulkDateKeysForTarget(target).forEach(function(key) {
+                    var csvVal = bulkNorm(r[key]);
+                    var spRaw = getExistingCsvValue(r._existing, key, target);
+                    var spNorm = spRaw ? normalizeBulkCompareValue(key, spRaw) : "";
+                    if (!csvVal && spNorm) {
+                        r[key] = spNorm;
+                        return;
+                    }
+                    if (csvVal && spNorm && bulkDatesEqual(key, csvVal, spRaw)) {
+                        r[key] = spNorm;
+                    }
+                });
+            });
         }
 
         function isBulkDateKey(csvKey) {
@@ -3268,7 +3325,6 @@
                 };
                 v = om[csvKey];
             }
-            if (csvKey.indexOf("Date") > -1 && v) return formatDateForCompare(v);
             return bulkNorm(v);
         }
 
@@ -3277,8 +3333,11 @@
             if (target === "oracle" && (csvKey === "RequestID" || csvKey === "RequestId")) return false;
             if (target === "master" && csvKey === "Email") return false;
             if (ORACLE_HIDDEN_BULK.indexOf(csvKey) > -1) return false;
-            var newVal = normalizeBulkCompareValue(csvKey, row[csvKey]);
-            var oldVal = normalizeBulkCompareValue(csvKey, getExistingCsvValue(row._existing, csvKey, target));
+            if (isBulkDateKey(csvKey)) {
+                return !bulkDatesEqual(csvKey, row[csvKey], getExistingCsvValue(row._existing, csvKey, target));
+            }
+            var newVal = bulkNorm(row[csvKey]);
+            var oldVal = bulkNorm(getExistingCsvValue(row._existing, csvKey, target));
             if (!newVal && !oldVal) return false;
             return newVal !== oldVal;
         }
@@ -3407,6 +3466,7 @@
                         r._existing = ex || null;
                         r._markedDelete = wasDelete;
                     });
+                    syncBulkUpdateRowsFromExisting("master");
                     renderBulkReviewTable();
                 });
             } else {
@@ -3431,6 +3491,7 @@
                         }
                         r._markedDelete = wasDelete;
                     });
+                    syncBulkUpdateRowsFromExisting("oracle");
                     assignOracleRequestIdsForPreview();
                 });
             }
